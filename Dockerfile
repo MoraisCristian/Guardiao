@@ -3,7 +3,7 @@ FROM python:3.9-slim
 COPY . .
 
 # Instalar dependências do sistema primeiro
-RUN apt-get update && 
+RUN apt-get update 
 RUN apt-get install -y 
 RUN curl 
 RUN golang 

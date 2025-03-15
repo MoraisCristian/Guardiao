@@ -16,7 +16,7 @@ RUN apt-get install -y wget sudo postfix python3 python3-pip
 RUN wget -q -O - https://updates.atomicorp.com/installers/atomic | bash  
 RUN apt-get update 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" ossec-hids-server && 
-RUN pip3 install flask && 
+RUN pip3 install flask 
 RUN chmod +x /ossec-server.sh
 
 # Define o volume de dados
