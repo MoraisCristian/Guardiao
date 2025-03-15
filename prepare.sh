@@ -1,9 +1,7 @@
 #!/bin/bash
 
-<<<<<<< HEAD
 # Atualizar pip
 python3 -m pip install --upgrade pip
-=======
 # Create the downloads directory if it doesn't exist
 mkdir -p apps/downloads
 
@@ -46,8 +44,6 @@ rm "apps/downloads/trivy-macos.tar.gz"
 
 echo "All Trivy binaries have been downloaded to apps/downloads/"
 ls -la apps/downloads/
-
->>>>>>> 6ce7231d3afd2cbdc44a1b9b7d363343fefd082b
 
 # Instalar dependências do sistema primeiro
 apt-get update
