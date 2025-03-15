@@ -1,135 +1,419 @@
-{% extends 'layouts/base-fullscreen.html' %}
-
-{% block title %} Sign IN {% endblock title %}
+{% extends 'layouts/base-fullscreen.html' %} {% block title %} Sign IN {%
+endblock title %}
 
 <!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 
-{% block content %}
+  .animated-title {
+    animation: pulse 2s infinite;
+    background: linear-gradient(45deg, #2152ff, #21d4fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px rgba(33, 82, 255, 0.2);
+    transition: all 0.3s ease;
+    font-size: 2.5rem !important;
+    margin-bottom: 1px;
+    font-weight: 800 !important;
+  }
 
-  <main class="main-content  mt-0">
-    <section>
-      <div class="page-header min-vh-75">
-        <div class="container">
-          <div class="row">
-            <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
-              <div class="card card-plain mt-8">
-                <div class="card-header pb-0 text-left bg-transparent">
-                  <h3 class="font-weight-bolder text-info " >
-                    Guardião Software
-                  </h3>
-                  <p class="mb-0">
-                    {% if msg %}
-                      <span class="text-danger">{{ msg | safe }}</span>
-                    {% else %}
-                      Entre com suas credenciais
-                    {% endif %}                     
-                  </p>
-                </div>
-                <div class="card-body">
+  .animated-title:hover {
+    transform: scale(1.1);
+    text-shadow: 0 0 20px rgba(33, 82, 255, 0.2);
+  }
 
-                  <form role="form text-left" method="post" action="">
-                    
-                    {{ form.hidden_tag() }}
+  /* Estilo para o card de login */
+  .card-plain {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 
-                    <label>Usuário</label>
-                    <div class="mb-3">
-                      {{ form.username(autofocus=True, placeholder="Usuário", class="form-control") }}
-                    </div>
+  /* Estilo para os campos de input */
+  .form-control {
+    border: 2px solid #e9ecef !important;
+    border-radius: 12px !important;
+    padding: 14px 20px !important;
+    transition: all 0.3s ease !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
+    font-size: 1rem !important;
+  }
 
-                    <label>Senha</label>
-                    <div class="mb-3">
-                      {{ form.password(placeholder="Senha", class="form-control", type="password") }}
-                    </div>
+  .form-control:focus {
+    border-color: #2152ff !important;
+    box-shadow: 0 0 0 4px rgba(33, 82, 255, 0.15) !important;
+    transform: translateY(-2px);
+  }
 
-                    <div class="text-center">
-                      <button type="submit" name="login" class="btn bg-gradient-secondary  w-100 mt-4 mb-0">Entrar</button>
-                    </div>
+  /* Estilo para labels */
+  label {
+    font-weight: 600 !important;
+    color: #344767 !important;
+    margin-bottom: 8px !important;
+    font-size: 0.875rem !important;
+  }
 
-  
+  /* Estilo para o botão */
+  .btn-login {
+    background: linear-gradient(45deg, #2152ff, #21d4fd) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 16px 32px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 8px 20px rgba(33, 82, 255, 0.25) !important;
+    font-size: 1.2rem !important;
+    color: white !important;
+    width: 100% !important;
+    max-width: 400px !important;
+  }
 
-                  </form>
+  .btn-login:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(33, 82, 255, 0.35) !important;
+    background: linear-gradient(45deg, #1e47e5, #1ec0e5) !important;
+  }
 
-                </div>
-                <div class="card-footer text-center pt-0 px-lg-2 px-1">
-                  <p class="mb-4 text-sm mx-auto">
+  /* Estilo para o botão de registro */
+  .btn-register {
+    background: transparent !important;
+    border: 2px solid #2152ff !important;
+    border-radius: 12px !important;
+    padding: 14px 32px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    font-size: 1.1rem !important;
+    color: #2152ff !important;
+    width: 100% !important;
+    max-width: 400px !important;
+    margin-top: 15px !important;
+  }
 
-                    <!-- GitHub button starts here -->
-                    {% if config.SOCIAL_AUTH_GITHUB %}
-                      
-                      <p class="mb-2">or SignIn with</p>
-                      
-                      <a class="btn btn-outline" href="{{url_for('authentication_blueprint.login_github')}}">
-                        <span class="text-lg fs-1 fab fa-github"></span>
-                      </a>
-                          
-                    {% endif %}
-                    <!-- GitHub ends here -->
-                                                           
-                  </p>
-                </div>
-              </div>
+  .btn-register:hover {
+    background: rgba(33, 82, 255, 0.1) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px rgba(33, 82, 255, 0.15) !important;
+  }
+
+  /* Container dos botões */
+  .buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 40px;
+  }
+
+  /* Estilo para mensagens de erro */
+  .text-danger {
+    background: rgba(255, 82, 82, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.875rem;
+  }
+
+  /* Container principal */
+  .login-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 35px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15),
+      0 5px 15px rgba(33, 82, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  .login-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.18),
+      0 8px 20px rgba(33, 82, 255, 0.15) !important;
+  }
+
+  /* Estilo para o container do título */
+  .title-container {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 20px;
+  }
+
+  /* Novo estilo para o container do botão */
+  .button-outer-container {
+    margin-top: 40px;
+    text-align: center;
+  }
+
+  /* Mensagem de boas-vindas */
+  .welcome-text {
+    color: #344767;
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 25px;
+  }
+
+  /* Estilo para o botão de tema */
+  .theme-switch-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
+
+  .form-check {
+    display: flex;
+    align-items: center;
+  }
+
+  .form-check-input {
+    cursor: pointer;
+    border: 1px solid #e9ecef;
+    background-color: #fff;
+    width: 40px !important;
+    height: 20px !important;
+    margin: 0 !important;
+  }
+
+  .form-check-input:checked {
+    background-color: #344767;
+    border-color: #344767;
+  }
+
+  .theme-icon {
+    margin-left: 8px;
+    font-size: 1.2rem;
+    color: #344767;
+    transition: all 0.3s ease;
+  }
+
+  /* Estilos para o modo escuro */
+  body.dark-page {
+    background-color: #283149 !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .login-container {
+    background: #404b69 !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+      0 5px 15px rgba(33, 82, 255, 0.1) !important;
+  }
+
+  body.dark-page .form-control {
+    background-color: rgba(40, 49, 73, 0.6) !important;
+    border-color: rgba(64, 75, 105, 0.6) !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .form-control:focus {
+    border-color: #283149 !important;
+    box-shadow: 0 0 0 2px #283149 !important;
+  }
+
+  body.dark-page .form-control::placeholder {
+    color: #8391a2;
+  }
+
+  body.dark-page label {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .welcome-text {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .theme-switch-container {
+    background: #404b69 !important;
+    border-color: #283149 !important;
+  }
+
+  body.dark-page .theme-icon {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .btn-register {
+    background: transparent !important;
+    border-color: #d7d7d7 !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .btn-register:hover {
+    background: rgba(215, 215, 215, 0.1) !important;
+  }
+
+  body.dark-page .animated-title {
+    color: #fff !important;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  }
+
+  /* Estilo para o footer no modo escuro */
+  body.dark-page footer.footer {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page footer.footer .copyright {
+    color: #d7d7d7 !important;
+  }
+
+  /* Estilo para o footer no modo escuro */
+  .footer-text {
+    color: #344767;
+    transition: color 0.3s ease;
+  }
+
+  body.dark-page .footer-text {
+    color: #d7d7d7 !important;
+  }
+</style>
+{% endblock stylesheets %} {% block content %}
+
+<main class="main-content mt-0">
+  <!-- Botão de tema -->
+  <div class="theme-switch-container">
+    <div class="form-check form-switch ps-0">
+      <input
+        class="form-check-input ms-auto"
+        type="checkbox"
+        id="theme-switch" />
+      <i class="fa fa-sun ms-2 theme-icon" id="theme-indicator"></i>
+    </div>
+  </div>
+
+  <section>
+    <div class="page-header min-vh-75">
+      <div class="container">
+        <div class="row">
+          <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
+            <!-- Título -->
+            <div class="title-container">
+              <h3 class="font-weight-bolder animated-title">
+                Guardião Software
+              </h3>
             </div>
-            <div class="col-md-6">
-              <div class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
-                <div class=" oblique-image position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6" style="background-image:url('{{ config.ASSETS_ROOT }}/img/curved-images/guardiao1sf.png'); background-size: contain; background-repeat: no-repeat;"></div>
-              </div>
+
+            <!-- Container de Login -->
+            <div class="login-container">
+              {% if msg %}
+              <span class="text-danger">{{ msg | safe }}</span>
+              {% else %}
+              <p class="welcome-text">Entre com suas credenciais</p>
+              {% endif %}
+
+              <form
+                id="loginForm"
+                role="form text-left"
+                method="post"
+                action="">
+                {{ form.hidden_tag() }}
+
+                <label>Usuário</label>
+                <div class="mb-4">
+                  {{ form.username(autofocus=True, placeholder="Digite seu
+                  usuário", class="form-control") }}
+                </div>
+
+                <label>Senha</label>
+                <div class="mb-4">
+                  {{ form.password(placeholder="Digite sua senha",
+                  class="form-control", type="password") }}
+                </div>
+
+                <!-- Container dos botões -->
+                <div class="buttons-container">
+                  <button type="submit" name="login" class="btn btn-login">
+                    Entrar
+                  </button>
+                  <a href="/register" class="btn btn-register">
+                    Criar nova conta
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div
+              class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
+              <div
+                class="oblique-image position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6"
+                style="background-image:url('{{ config.ASSETS_ROOT }}/img/curved-images/guardiao1sf.png'); background-size: contain; background-repeat: no-repeat;"></div>
             </div>
           </div>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
+</main>
 
-  {% include "includes/footer-fullscreen.html" %}
+{% include "includes/footer-fullscreen.html" %} {% endblock content %}
 
-{% endblock content %}
-
-<!-- Specific JS goes HERE --> 
+<!-- Specific JS goes HERE -->
 {% block javascripts %}
-
+<script src="{{ config.ASSETS_ROOT }}/js/dark-mode-handler.js"></script>
 <script>
+  // Carregar tema salvo
+  document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem("theme");
+    const body = document.body;
+    const themeIcon = document.querySelector(".theme-icon");
 
-  // Save aKey in localStorage 
+    if (savedTheme === "dark") {
+      body.classList.add("dark-page");
+      themeIcon.classList.remove("fa-sun");
+      themeIcon.classList.add("fa-moon");
+    }
+  });
+
+  // Save aKey in localStorage
   const asyncLocalStorage = {
-      setItem: function (key, value) {
-          return Promise.resolve().then(function () {
-              localStorage.setItem(key, value);
-          });
-      }
-  }
+    setItem: function (key, value) {
+      return Promise.resolve().then(function () {
+        localStorage.setItem(key, value);
+      });
+    },
+  };
 
-// Login hook  
-document.getElementsByTagName('form')[0].onsubmit = (e) => {
+  // Login hook
+  document.getElementById("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
 
-  e.preventDefault();
-  
-  const formData = new FormData(e.target)
-  const username = formData.get('username');
-  const password = formData.get('password');
+    const formData = new FormData(e.target);
+    const username = formData.get("username");
+    const password = formData.get("password");
 
-  fetch('/login/jwt/',{
-      method: 'POST',
+    fetch("/login/jwt/", {
+      method: "POST",
       body: JSON.stringify({
-          username: username,
-          password: password
+        username: username,
+        password: password,
       }),
       headers: {
-          'Content-Type': 'application/json'
-      }
-  })
+        "Content-Type": "application/json",
+      },
+    })
       .then((response) => response.json())
       .then((res) => {
-
-        //console.log('Token: ' + res.data); 
-
         // store token in localStorage
-        asyncLocalStorage.setItem('token',res.data).then(result => {e.target.submit()})
-
+        asyncLocalStorage.setItem("token", res.data).then(() => {
+          this.submit();
+        });
       })
-      .catch((err) => {console.log(err)})   
-}
-
+      .catch((err) => {
+        console.error("Erro no login:", err);
+      });
+  });
 </script>
-
 {% endblock javascripts %}

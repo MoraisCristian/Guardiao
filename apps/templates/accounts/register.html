@@ -1,111 +1,396 @@
-{% extends 'layouts/base-fullscreen.html' %}
-
-{% block title %} Sign UP {% endblock title %}
+{% extends 'layouts/base-fullscreen.html' %} {% block title %} Sign UP {%
+endblock title %}
 
 <!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 
-{% block content %}
+  .animated-title {
+    animation: pulse 2s infinite;
+    background: linear-gradient(45deg, #2152ff, #21d4fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px rgba(33, 82, 255, 0.2);
+    transition: all 0.3s ease;
+    font-size: 2.5rem !important;
+    margin-bottom: 1px;
+    font-weight: 800 !important;
+  }
 
-  <div class="container position-sticky z-index-sticky top-1">
-    <div class="row">
-      <div class="col-12">
+  .animated-title:hover {
+    transform: scale(1.1);
+    text-shadow: 0 0 20px rgba(33, 82, 255, 0.2);
+  }
 
-        {% include "includes/navigation-fullscreen.html" %}
+  /* Estilo para o card de login */
+  .card-plain {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 
-      </div>
+  /* Container principal */
+  .register-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15),
+      0 5px 15px rgba(33, 82, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .register-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.18),
+      0 8px 20px rgba(33, 82, 255, 0.15) !important;
+  }
+
+  /* Estilo para os campos de input */
+  .form-control {
+    border: 2px solid #e9ecef !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    transition: all 0.3s ease !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
+    font-size: 0.95rem !important;
+  }
+
+  .form-control:focus {
+    border-color: #2152ff !important;
+    box-shadow: 0 0 0 4px rgba(33, 82, 255, 0.15) !important;
+    transform: translateY(-2px);
+  }
+
+  /* Estilo para labels */
+  label {
+    font-weight: 600 !important;
+    color: #344767 !important;
+    margin-bottom: 6px !important;
+    font-size: 0.875rem !important;
+  }
+
+  /* Estilo para os botões */
+  .btn-register {
+    background: linear-gradient(45deg, #2152ff, #21d4fd) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 8px 20px rgba(33, 82, 255, 0.25) !important;
+    font-size: 1rem !important;
+    color: white !important;
+    width: 48% !important;
+  }
+
+  .btn-register:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(33, 82, 255, 0.35) !important;
+    background: linear-gradient(45deg, #1e47e5, #1ec0e5) !important;
+  }
+
+  .btn-login {
+    background: transparent !important;
+    border: 2px solid #2152ff !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    font-size: 1rem !important;
+    color: #2152ff !important;
+    width: 48% !important;
+    margin-top: 0 !important;
+    margin-left: 4% !important;
+  }
+
+  .btn-login:hover {
+    background: rgba(33, 82, 255, 0.1) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px rgba(33, 82, 255, 0.15) !important;
+  }
+
+  /* Container dos botões */
+  .buttons-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: 25px;
+    width: 100%;
+  }
+
+  /* Estilo para mensagens de erro */
+  .text-danger {
+    background: rgba(255, 82, 82, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.875rem;
+  }
+
+  /* Estilo para o container do título */
+  .title-container {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 15px;
+  }
+
+  /* Mensagem de boas-vindas */
+  .welcome-text {
+    color: #344767;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* Estilo para o botão de tema */
+  .theme-switch-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
+
+  .form-check {
+    display: flex;
+    align-items: center;
+  }
+
+  .form-check-input {
+    cursor: pointer;
+    border: 1px solid #e9ecef;
+    background-color: #fff;
+    width: 40px !important;
+    height: 20px !important;
+    margin: 0 !important;
+  }
+
+  .form-check-input:checked {
+    background-color: #344767;
+    border-color: #344767;
+  }
+
+  .theme-icon {
+    margin-left: 8px;
+    font-size: 1.2rem;
+    color: #344767;
+    transition: all 0.3s ease;
+  }
+
+  /* Estilos para o modo escuro */
+  body.dark-page {
+    background-color: #283149 !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .register-container {
+    background: #404b69 !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+      0 5px 15px rgba(33, 82, 255, 0.1) !important;
+  }
+
+  body.dark-page .form-control {
+    background-color: rgba(40, 49, 73, 0.6) !important;
+    border-color: rgba(64, 75, 105, 0.6) !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .form-control:focus {
+    border-color: #283149 !important;
+    box-shadow: 0 0 0 2px #283149 !important;
+  }
+
+  body.dark-page .form-control::placeholder {
+    color: #8391a2;
+  }
+
+  body.dark-page label {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .welcome-text {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .theme-switch-container {
+    background: #404b69 !important;
+    border-color: #283149 !important;
+  }
+
+  body.dark-page .theme-icon {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .btn-login {
+    background: transparent !important;
+    border-color: #d7d7d7 !important;
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page .btn-login:hover {
+    background: rgba(215, 215, 215, 0.1) !important;
+  }
+
+  body.dark-page .animated-title {
+    color: #fff !important;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  }
+
+  /* Estilo para o footer no modo escuro */
+  body.dark-page footer.footer {
+    color: #d7d7d7 !important;
+  }
+
+  body.dark-page footer.footer .copyright {
+    color: #d7d7d7 !important;
+  }
+
+  /* Estilo para o footer no modo escuro */
+  .footer-text {
+    color: #344767;
+    transition: color 0.3s ease;
+  }
+
+  body.dark-page .footer-text {
+    color: #d7d7d7 !important;
+  }
+
+  /* Ajuste para o grid do Bootstrap */
+  .col-xl-4 {
+    flex: 0 0 auto;
+    width: 50% !important;
+  }
+
+  .col-lg-5 {
+    flex: 0 0 auto;
+    width: 50% !important;
+  }
+
+  .col-md-6 {
+    flex: 0 0 auto;
+    width: 50% !important;
+  }
+</style>
+{% endblock stylesheets %} {% block content %}
+<main class="main-content mt-0">
+  <!-- Botão de tema -->
+  <div class="theme-switch-container">
+    <div class="form-check form-switch ps-0">
+      <input
+        class="form-check-input ms-auto"
+        type="checkbox"
+        id="theme-switch" />
+      <i class="fa fa-sun ms-2 theme-icon" id="theme-indicator"></i>
     </div>
   </div>
 
-  <main class="main-content  mt-0">
-
-    <section class="min-vh-100 mb-8">
-      <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ config.ASSETS_ROOT }}/img/curved-images/curved14.jpg');">
-        <span class="mask bg-gradient-dark opacity-6"></span>
-        <div class="container">
-          <div class="row justify-content-center">
-            <div class="col-lg-5 text-center mx-auto">
-              <h1 class="text-white mb-2 mt-5">Welcome!</h1>
-            </div>
-          </div>
-        </div>
-      </div>
+  <section>
+    <div class="page-header min-vh-75">
       <div class="container">
-        <div class="row mt-lg-n10 mt-md-n11 mt-n10">
-          <div class="col-xl-4 col-lg-5 col-md-7 mx-auto">
-            <div class="card z-index-0">
+        <div class="row">
+          <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
+            <!-- Título -->
+            <div class="title-container">
+              <h3 class="font-weight-bolder animated-title">
+                Guardião Software
+              </h3>
+            </div>
 
-              <div class="card-header text-center pt-4">
-                <h5>Sign UP</h5>
+            <!-- Container de Registro -->
+            <div class="register-container">
+              {% if msg %}
+              <span class="text-danger">{{ msg | safe }}</span>
+              {% else %}
+              <p class="welcome-text">Crie sua nova conta</p>
+              {% endif %} {% if success %}
+              <p class="welcome-text">{{ msg }}</p>
+              <div class="buttons-container">
+                <a
+                  href="{{ url_for('authentication_blueprint.login') }}"
+                  class="btn btn-register"
+                  >Fazer Login</a
+                >
               </div>
+              {% else %}
+              <form role="form text-left" method="post" action="">
+                {{ form.hidden_tag() }}
 
-              <div class="row px-xl-5 px-sm-4 px-3">
-                
-                <div class="mt-2 position-relative text-center">
-                  <p class="text-sm font-weight-bold mb-2 text-secondary text-border d-inline z-index-2 px-3">
-                    {% if msg %}
-                      <span class="text-danger">{{ msg | safe }}</span>
-                    {% else %}
-                      Add your credentials
-                    {% endif %}  
-                  </p>
+                <label>Usuário</label>
+                <div class="mb-4">
+                  {{ form.username(placeholder="Digite seu usuário",
+                  class="form-control") }}
                 </div>
 
-              </div>
+                <label>Email</label>
+                <div class="mb-4">
+                  {{ form.email(placeholder="Digite seu email",
+                  class="form-control", type="email") }}
+                </div>
 
-              <div class="card-body">
+                <label>Senha</label>
+                <div class="mb-4">
+                  {{ form.password(placeholder="Digite sua senha",
+                  class="form-control", type="password") }}
+                </div>
 
-                {% if success %} 
-                
-                  <p class="text-sm mt-3 mb-0 text-center"> 
-                    <div class="text-center">
-                      <a href="{{ url_for('authentication_blueprint.login') }}" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign IN</a>
-                    </div> 
-                  </p>
+                <!-- Container dos botões -->
+                <div class="buttons-container">
+                  <button
+                    type="submit"
+                    name="register"
+                    class="btn btn-register">
+                    Criar Conta
+                  </button>
+                  <a
+                    href="{{ url_for('authentication_blueprint.login') }}"
+                    class="btn btn-login">
+                    Voltar <<<<
+                  </a>
+                </div>
+              </form>
+              {% endif %}
+            </div>
+          </div>
 
-                {% else %}
-
-                  <form role="form text-left" method="post" action="">
-
-                    {{ form.hidden_tag() }}
-
-                      <label>Username</label>
-                      <div class="mb-3">
-                        {{ form.username(placeholder="Username", class="form-control") }}
-                      </div>
-                      <label>Email</label>
-                      <div class="mb-3">
-                        {{ form.email(placeholder="Email", class="input form-control", type="email") }}
-                      </div>
-                      <label>Password</label>
-                      <div class="mb-3">
-                        {{ form.password(placeholder="Password", class="form-control", type="password") }}
-                      </div>
-
-                      <div class="text-center">
-                        <button type="submit" name="register" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign UP</button>
-                      </div>
-
-                      <div class="text-center">
-                        <a href="{{ url_for('authentication_blueprint.login') }}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Sign IN</a>
-                      </div>                
-
-                  </form>
-
-                {% endif %}
-
-              </div>
+          <div class="col-md-6">
+            <div
+              class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
+              <div
+                class="oblique-image position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6"
+                style="background-image:url('{{ config.ASSETS_ROOT }}/img/curved-images/guardiao1sf.png'); 
+                          background-size: contain; 
+                          background-repeat: no-repeat;"></div>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
+</main>
 
-    {% include "includes/footer-fullscreen.html" %}
+{% include "includes/footer-fullscreen.html" %} {% endblock content %}
 
-  </main>
-
-  {% endblock content %}
-
-  <!-- Specific JS goes HERE --> 
-  {% block javascripts %}{% endblock javascripts %}
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/js/dark-mode-handler.js"></script>
+{% endblock javascripts %}
