@@ -216,7 +216,7 @@ def registrar_agente(chave, host):
     else:
         id_agente = 1
     data_ativacao = datetime.now()
-    acoes=['softwares', 'infos', 'vuln-scan', 'ossec-register']
+    acoes=['softwares', 'vuln-scan', 'infos', 'ossec-register']
     for acao in acoes:
         print(id_agente, chave, acao, data_ativacao)
         fila = Fila(id_agente=id_agente, chave=chave, fila=acao, data_registro=data_ativacao)

@@ -1123,6 +1123,48 @@ def enviar_softwares():
     enviar_mensagem(mensagem, 'envios')
     print('softwares.json enviado!')
 
+# Função para coletar informações do sistema
+def infos():
+    info = coletar_info()
+
+    with open('info.json', 'w') as f:
+        json.dump(info, f, indent=4)
+    enviar_infos()
+
+# Função para coletar informações do sistema
+def coletar_info():
+    hostname = socket.gethostname()
+    ip_externo = requests.get('http://httpbin.org/ip').json()['origin']
+    os_info = platform.platform()
+    addrs = psutil.net_if_addrs()
+    ip_info = {iface: [addr.address for addr in addrs_info if addr.family == socket.AF_INET] for iface, addrs_info in addrs.items()}
+    all_users = [user.pw_name for user in pwd.getpwall() if not user.pw_name.startswith('_')]
+    ram_info = psutil.virtual_memory()._asdict()
+    manufacturer = platform.uname().node
+    model = platform.uname().machine
+    disk_info = psutil.disk_usage('/')._asdict()
+    cpu_info = {
+        'name': platform.processor(),
+        'version': platform.uname().release,
+        'cores': psutil.cpu_count(logical=False),
+        'threads': psutil.cpu_count(logical=True)
+    }
+
+    return {
+        'chave': chave_ativacao,
+        'id_agente': id_agente,
+        'hostname': hostname,
+        'ip_externo': ip_externo,
+        'os_info': os_info,
+        'ip_info': ip_info,
+        'all_users': all_users,
+        'ram_info': ram_info,
+        'manufacturer': manufacturer,
+        'model': model,
+        'disk_info': disk_info,
+        'cpu_info': cpu_info,
+    }
+
 # Função para enviar informações do sistema
 def enviar_infos():
     with open('info.json', 'r') as file:
@@ -1156,25 +1198,29 @@ def baixar_e_instalar_trivy():
     arquitetura = platform.machine().lower()
 
     if sistema_operacional == 'linux':
-        if 'arm' in arquitetura or 'aarch64' in arquitetura:
-            if os.path.exists('/usr/bin/dpkg'):
-                binario = 'trivy-arm.deb'
-            else:
-                binario = 'trivy-arm.rpm'
-        elif '64' in arquitetura:
-            if os.path.exists('/usr/bin/dpkg'):
-                binario = 'trivy-64.deb'
-            else:
-                binario = 'trivy-64.rpm'
-        elif '32' in arquitetura:
-            if os.path.exists('/usr/bin/dpkg'):
-                binario = 'trivy-32.deb'
-            else:
-                binario = 'trivy-32.rpm'
+        # Determine architecture
+        if 'aarch64' in arquitetura:
+            arch_prefix = 'arm64'
+        elif 'arm' in arquitetura:
+            arch_prefix = 'arm'
+        elif 'x86_64' in arquitetura or 'amd64' in arquitetura:
+            arch_prefix = '64'
+        else:
+            arch_prefix = '32'
+        
+        # Determine package format
+        if os.path.exists('/usr/bin/dpkg'):
+            pkg_ext = 'deb'
+        else:
+            pkg_ext = 'rpm'
+        
+        binario = f'trivy-{arch_prefix}.{pkg_ext}'
+    elif sistema_operacional == 'darwin':
+        binario = 'trivy-macos'
     elif sistema_operacional == 'windows':
-        binario = 'trivy.exe'
+        binario = 'trivy-windows.exe'
     else:
-        print("Sistema operacional não suportado.")
+        print(f"Sistema operacional {sistema_operacional} não suportado.")
         return
 
     url = f'http://10.0.10.183:5002/download/{binario}'
@@ -1195,16 +1241,58 @@ def baixar_e_instalar_trivy():
                 comando = ['dpkg', '-i', binario]
             elif binario.endswith('.rpm'):
                 comando = ['rpm', '-i', binario]
+            
             if usar_sudo:
                 comando.insert(0, 'sudo')
-            subprocess.run(comando, check=True)
+            
+            try:
+                subprocess.run(comando, check=True)
+                print(f'Trivy instalado com sucesso via {binario}.')
+            except subprocess.CalledProcessError as e:
+                print(f'Erro ao instalar Trivy: {str(e)}')
+                return False
+        elif sistema_operacional == 'darwin':
+            # Para macOS, mover para /usr/local/bin
+            destino = '/usr/local/bin/trivy'
+            comando = ['mv', binario, destino]
+            if usar_sudo:
+                comando.insert(0, 'sudo')
+            
+            try:
+                subprocess.run(comando, check=True)
+                subprocess.run(['chmod', '+x', destino], check=True)
+                print('Trivy instalado com sucesso no macOS.')
+            except subprocess.CalledProcessError as e:
+                print(f'Erro ao instalar Trivy no macOS: {str(e)}')
+                return False
         elif sistema_operacional == 'windows':
-            # Mover o binário para um diretório no PATH (por exemplo, C:\Windows\System32)
-            os.rename(binario, os.path.join(os.environ['SystemRoot'], 'System32', 'trivy.exe'))
+            # Mover o binário para um diretório no PATH
+            try:
+                destino = os.path.join(os.environ.get('ProgramFiles', 'C:\\Program Files'), 'Trivy')
+                if not os.path.exists(destino):
+                    os.makedirs(destino)
+                os.rename(binario, os.path.join(destino, 'trivy.exe'))
+                
+                # Adicionar ao PATH se não estiver
+                path_env = os.environ.get('PATH', '')
+                if destino not in path_env:
+                    # Apenas informativo, pois não podemos modificar o PATH do sistema aqui
+                    print(f'Trivy instalado em {destino}. Considere adicionar este diretório ao PATH.')
+                print('Trivy instalado com sucesso no Windows.')
+            except Exception as e:
+                print(f'Erro ao instalar Trivy no Windows: {str(e)}')
+                return False
 
-        print(f'Trivy instalado com sucesso.')
+        # Limpar o arquivo baixado
+        try:
+            os.remove(binario)
+        except:
+            pass
+            
+        return True
     else:
-        print(f'Falha ao baixar o binário {binario}. Status Code:', resposta.status_code)
+        print(f'Falha ao baixar o binário {binario}. Status Code: {resposta.status_code}')
+        return False
 
 # Função para executar um scan de vulnerabilidades
 def vuln_scan():

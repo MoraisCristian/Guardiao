@@ -12,7 +12,12 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+<<<<<<< HEAD
 COPY requirements.txt .
+=======
+RUN python3 -m pip install --upgrade pip
+
+>>>>>>> 6ce7231d3afd2cbdc44a1b9b7d363343fefd082b
 RUN pip install -r requirements.txt
 
 COPY . .
@@ -23,6 +28,13 @@ RUN dos2unix prepare.sh && \
 
 RUN bash prepare.sh
 
+<<<<<<< HEAD
+=======
+RUN pip install -r requirements.txt
+
+RUN apt install git -y
+
+>>>>>>> 6ce7231d3afd2cbdc44a1b9b7d363343fefd082b
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=development
 
