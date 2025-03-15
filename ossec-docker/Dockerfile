@@ -11,13 +11,13 @@ ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Instala dependências
-RUN apt-get update && \
-    apt-get install -y wget sudo postfix python3 python3-pip && \
-    wget -q -O - https://updates.atomicorp.com/installers/atomic | bash && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" ossec-hids-server && \
-    pip3 install flask && \
-    chmod +x /ossec-server.sh
+RUN apt-get update 
+RUN apt-get install -y wget sudo postfix python3 python3-pip 
+RUN wget -q -O - https://updates.atomicorp.com/installers/atomic | bash  
+RUN apt-get update 
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" ossec-hids-server && 
+RUN pip3 install flask && 
+RUN chmod +x /ossec-server.sh
 
 # Define o volume de dados
 VOLUME ["/root/"]
