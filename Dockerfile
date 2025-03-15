@@ -1,5 +1,7 @@
 FROM python:3.9-slim
 
+COPY . /app
+
 # Instalar dependências do sistema primeiro
 RUN apt-get update && \
     apt-get install -y \
@@ -8,8 +10,6 @@ RUN apt-get update && \
     git \
     python3-flask-sqlalchemy \
     python3-flask-migrate \
-
-WORKDIR /app
 
 COPY requirements.txt .
 RUN python3 -m pip install --upgrade pip
