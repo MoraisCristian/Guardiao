@@ -4,10 +4,7 @@ COPY . .
 
 # Instalar dependências do sistema primeiro
 RUN apt-get update 
-RUN apt-get install -y 
-RUN curl 
-RUN golang 
-RUN git 
+RUN apt-get install -y curl golang git 
 RUN python3-flask-sqlalchemy 
 RUN python3-flask-migrate 
 
