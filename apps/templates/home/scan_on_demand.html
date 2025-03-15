@@ -1,0 +1,88 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Scan On Demand {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+  <div class="container-fluid py-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header pb-0">
+            <h6 class="font-weight-bolder">Scan On Demand - Agente {{ id }}</h6>
+          </div>
+          <div class="card-body p-3">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="numbers">
+                  {% if scan_na_fila %}
+                    <p class="text-sm mb-0 text-capitalize font-weight-bold">Status:</p>
+                    <h5 class="font-weight-bolder mb-0">
+                      ⚠️ Já existe um scan na fila para este agente.
+                    </h5>
+                  {% else %}
+                    <p class="text-sm mb-0 text-capitalize font-weight-bold">Status:</p>
+                    <h5 class="font-weight-bolder mb-0">
+                      ✅ Não há scans pendentes para este agente.
+                    </h5>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="numbers">
+                  {% if ultimo_scan %}
+                    <p class="text-sm mb-0 text-capitalize font-weight-bold">Último Scan:</p>
+                    <h5 class="font-weight-bolder mb-0">
+                      🕒 {{ ultimo_scan.data_contato }}
+                    </h5>
+                  {% else %}
+                    <p class="text-sm mb-0 text-capitalize font-weight-bold">Último Scan:</p>
+                    <h5 class="font-weight-bolder mb-0">
+                      ❌ Nenhum scan foi realizado ainda.
+                    </h5>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="numbers">
+                  {% if scan_recente %}
+                    <p class="text-sm mb-0 text-capitalize font-weight-bold">Aviso:</p>
+                    <h5 class="font-weight-bolder mb-0">
+                      🚨 O último scan foi realizado recentemente (menos de 5 minutos).
+                    </h5>
+                    <form method="POST" class="mt-3">
+                      <input type="hidden" name="force" value="true">
+                      <button type="submit" class="btn bg-gradient-primary">
+                        Forçar Novo Scan
+                      </button>
+                    </form>
+                  {% else %}
+                    <form method="POST" class="mt-3">
+                      <button type="submit" class="btn bg-gradient-primary">
+                        Agendar Novo Scan
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+  <script src="{{ config.ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+  <script>
+    // Scripts personalizados (se necessário)
+  </script>
+{% endblock javascripts %}

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Define o título da página -->
+  <title>Ambientes</title>
+  <!-- Importa um template base -->
+  {% extends 'layouts/base.html' %}
+  <!-- Aqui poderiam ser incluídos estilos específicos -->
+  {% block stylesheets %}
+  <style>
+    .modal {
+      z-index: 9999;
+    }
+
+    .sidenav {
+      z-index: 1;
+    }
+  </style>
+
+  {% endblock stylesheets %}
+</head>
+
+<body>
+  <!-- Define o conteúdo principal da página -->
+  {% block content %}
+  <main>
+    <!-- Seção principal -->
+    <section class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+          <article class="card mb-4">
+            <header class="card-header pb-0">
+              <h3>Ambientes</h3>
+            </header>
+            <div class="card-body px-0 pt-0 pb-2">
+              <!-- Botão para abrir o modal de criação de chave -->
+              <button type="button" class="btn btn-sm bg-gradient-secondary w-10 mb-3 ms-2" data-bs-toggle="modal"
+                data-bs-target="#staticBackdrop">
+                Criar chave
+              </button>
+
+              <!-- Modal de criação de chave -->
+              <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false"
+                tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <header class="modal-header">
+                      <h2 class="modal-title" id="staticBackdropLabel">Criação de chaves</h2>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </header>
+                    <div class="modal-body">
+                      <!-- Formulário para criar uma nova chave -->
+                      <form action="/criar-chave" method="post">
+                        <input class="form-control form-control-sm mb-3" type="text" name="nome" placeholder="Nome"
+                          required>
+                        <input class="form-control form-control-sm mb-3" type="text" name="tags" placeholder="Tag"
+                          required>
+                        <input class="form-control form-control-sm mb-3 w-30" type="number" name="limite_agentes"
+                          placeholder="Limite de agentes" required>
+                        <input class="form-control form-control-sm mb-3 w-45" type="date" name="data_expiracao"
+                          placeholder="Data" required>
+
+                        <select class="form-control form-control-sm mb-3 w-45" name="status" required>
+                          <option disabled selected value="">Selecione o status</option>
+                          <option value="Ativo">Ativo</option>
+                          <option value="Inativo">Inativo</option>
+                        </select>
+
+                        <footer class="modal-footer">
+                          <button type="submit" class="btn bg-gradient-secondary mb-3"
+                            value="Criar Chave">Criar</button>
+                          <button type="button" class="btn bg-gradient-secondary"
+                            data-bs-dismiss="modal">Fechar</button>
+                        </footer>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tabela para exibir as chaves -->
+              <div class="table-responsive p-0">
+                <table class="table align-items-center mb-0">
+                  <thead>
+                    <!-- Cabeçalho da tabela -->
+                    <tr>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                        Nome
+                      </th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                        Chave
+                      </th>
+                      <th
+                        class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder w-10">
+                        Limite de Agentes
+                      </th>
+                      <th
+                        class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder w-10">
+                        Tags
+                      </th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                        Status
+                      </th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                        Editar
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Loop para exibir cada chave -->
+                    {% for chave in chaves %}
+                    <tr>
+                      <td>
+                        <div class="text-center me-2 d-flex align-items-center justify-content-center">
+                          <h2 class="mb-0 text-sm">{{ chave.nome }}</h2>
+                        </div>
+                      </td>
+                      <td>
+                        <p class="align-middle text-center text-sm">{{ chave.chave }}</p>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <span class="text-center me-2 d-flex align-items-center justify-content-center">{{
+                          chave.limite_agentes }}</span>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <span class="text-secondary text-xs font-weight-bold">{{ chave.tags }}</span>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <!-- Badge para exibir o status -->
+                        <span id="statusBadge" class="badge badge-sm bg-gradient-success">{{ chave.status }}</span>
+                      </td>
+                      <td class="align-middle text-center">
+                        <!-- Botão para abrir o modal de exclusão -->
+                        <button type="button" class="btn btn-transparent text-danger" data-bs-toggle="modal"
+                          data-bs-target="#exampleModal_{{ chave.chave }}">
+                          <i class="fa fa-trash"></i> <!-- Ícone de lixeira do Bootstrap Icons -->
+                        </button>
+                        <!-- Modal de confirmação para excluir a chave -->
+                        <div class="modal fade" id="exampleModal_{{ chave.chave }}" tabindex="-1"
+                          aria-labelledby="exampleModalLabel" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <header class="modal-header">
+                                <h1 class="modal-title fs-5" id="exampleModalLabel">Confirmação</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                  aria-label="Close"></button>
+                              </header>
+                              <div class="modal-body">
+                                <!-- Mensagem de confirmação com o nome da chave -->
+                                <p>Deseja realmente cancelar a chave:<br>{{ chave.chave }}?</p>
+                              </div>
+                              <footer>
+                                <form id="deleteForm_{{ chave.chave }}" action="/deletar-chave" method="post">
+                                  <input type="hidden" name="chave" value="{{ chave.chave }}" />
+                                  <!-- Botão para cancelar a exclusão -->
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sair</button>
+                                  <!-- Botão para confirmar a exclusão -->
+                                  <button type="submit" class="btn btn-primary">Confirmar</button>
+                                </form>
+                              </footer>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    {% include "includes/footer.html" %}
+  </footer>
+  {% endblock content %}
+
+</body>
+
+</html>

@@ -1,0 +1,120 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Status dos Agentes {% endblock title %}
+
+{% block stylesheets %}
+<!-- Specific CSS goes HERE -->
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h3>Status dos Agentes</h3>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <form method="post">
+                    <div class="row m-1">
+                      <!-- Campo de busca -->
+                      <input class="form-control w-25 mb-4 m-1" type="text" name="buscar" placeholder="Buscar">
+                      <!-- Botão de busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" value="buscar">
+                      <!-- Botão para limpar a busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" href="/agents-status" value="Limpar">
+                    </div>
+                  </form>
+                </tr>
+                <tr>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    ID
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Hostname
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    IP
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Sistema Operacional
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Última Conexão
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Tipo de Atividade
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Status
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for agent in agents %}
+                <tr>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ agent.id }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['hostname'] }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['ip'] }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['os'] }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">
+                      {% if activities[agent.id]['last_contact'] %}
+                        {{ activities[agent.id]['last_contact'].strftime('%d/%m/%Y %H:%M:%S') }}
+                      {% else %}
+                        Nunca conectado
+                      {% endif %}
+                    </p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ activities[agent.id]['activity_type'] }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    {% if activities[agent.id]['last_contact'] %}
+                      {% set time_diff = ((now - activities[agent.id]['last_contact']).total_seconds() / 60) %}
+                      {% if time_diff < 10 %}
+                        <span class="badge badge-sm bg-gradient-success">Online</span>
+                      {% elif time_diff < 60 %}
+                        <span class="badge badge-sm bg-gradient-warning">Recente</span>
+                      {% else %}
+                        <span class="badge badge-sm bg-gradient-danger">Offline</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="badge badge-sm bg-gradient-secondary">Nunca conectado</span>
+                    {% endif %}
+                  </td>
+                  <td class="align-middle text-center">
+                    <a href="/guardiao/{{ agent.id }}" class="btn btn-sm btn-primary">Detalhes</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  // Add any JavaScript needed for this page
+</script>
+{% endblock javascripts %}

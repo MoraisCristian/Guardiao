@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Define o título da página -->
+    <title>Agentes</title>
+    <!-- Importa um template base -->
+    {% extends 'layouts/base.html' %}
+    <!-- Aqui poderiam ser incluídos estilos específicos -->
+    {% block stylesheets %}
+    <style>
+        .modal {
+            z-index: 9999;
+        }
+
+        .sidenav {
+            z-index: 1;
+        }
+    </style>
+
+    {% endblock stylesheets %}
+</head>
+
+<body>
+    <!-- Define o conteúdo principal da página -->
+    {% block content %}
+    <main>
+        <div class="container-fluid py-4">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-4">
+                        <div class="card-header pb-0">
+                            <h3>Softwares</h3>
+                        </div>
+                        <div class="card-body px-0 pt-0 pb-2">
+                            <div class="table-responsive p-0">
+                                <table class="table align-items-center mb-0">
+                                    <thead>
+                                        <tr>
+                                            <form method="post">
+                                                <div class="row m-1">
+                                                    <div class="form-check form-switch col-md-5 text-center">
+                                                        <input class="form-check-input" type="checkbox" name="cpesearch"
+                                                            id="inlineCheckbox1" value="true">
+                                                        <label class="form-check-label" for="inlineCheckbox1">Com CPE
+                                                            registrado</label>
+                                                    </div>
+
+                                                    <!-- Campo de busca -->
+                                                    <input class="form-control w-50 mb-4 m-1 col-md-2" type="text"
+                                                        name="buscar" placeholder="Buscar">
+                                                    <!-- Botão de busca -->
+                                                    <input class="btn bg-gradient-secondary w-25 m-1" type="submit"
+                                                        value="buscar">
+                                                </div>
+                                            </form>
+                                        </tr>
+                                        <tr>
+                                            <th
+                                                class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                                                Software</th>
+                                            <th
+                                                class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                                                Severidade</th>
+                                            <th
+                                                class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                                                Detalhes</th>
+
+                                    </thead>
+                                    <tbody>
+                                        {% if softwares %}
+                                        {% for software in softwares %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex px-2 py-1 ">
+                                                    <div class="d-flex flex-column justify-content-center ">
+                                                        <h4 class="mb-0 text-sm text-center">{{ software.software }}
+                                                        </h4>
+                                                        <p class="text-xs text-secondary mb-0 text-center">CVSS: {{
+                                                            software.software }}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="align-middle text-center">
+                                                <span id="statusBadge" class="badge badge-sm bg-gradient-success">{{
+                                                    software.software.upper() }}</span>
+
+                                            </td>
+                                            <td class="align-middle text-center">
+                                                <a href="/cpe_match/{{ software.id }}" target="_blank"
+                                                    class="btn btn-primary">Detalhes</a>
+                            </div>
+                        </div>
+                    </div>
+                    </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+        </div>
+        <script src="{{ url_for('static', filename='../../static/assets/vuln_status.js') }}"></script>
+    </main>
+    <!-- Rodapé da página -->
+    <footer>
+        {% include "includes/footer.html" %}
+    </footer>
+    {% endblock content %}
+</body>
+
+</html>

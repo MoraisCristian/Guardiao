@@ -1,0 +1,60 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Executar Script {% endblock title %}
+
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+          <div class="card mb-4">
+            <div class="card-header pb-0">
+              <h6>Executar Script no Agente</h6>
+            </div>
+            <div class="card-body px-4">
+              <form method="post">
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <div class="form-group">
+                      <label for="script_name" class="form-control-label">Nome do Script</label>
+                      <input type="text" class="form-control" id="script_name" name="script_name" placeholder="Ex.: meu_script.py, backup.sh, config.json" required>
+                    </div>
+                  </div>
+                  <div class="col-md-12">
+                    <div class="form-group">
+                      <label for="script" class="form-control-label">Script</label>
+                      <textarea class="form-control" id="script" name="script" rows="10" placeholder="Digite seu script aqui..." required></textarea>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mt-4">
+                  <div class="col-12">
+                    <button type="submit" class="btn bg-gradient-primary">Executar Script</button>
+                    <a href="{{ url_for('home_blueprint.index') }}" class="btn bg-gradient-secondary">Voltar</a>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% include "includes/footer.html" %}
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}

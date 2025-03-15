@@ -1,0 +1,51 @@
+/* Dark mode text adjustments for the entire application */
+.dark-mode {
+  color: #f8f9fa;
+}
+
+.dark-mode .text-secondary {
+  color: #e2e2e2 !important;
+}
+
+.dark-mode .text-dark {
+  color: #f8f9fa !important;
+}
+
+.dark-mode .text-xs,
+.dark-mode .text-sm,
+.dark-mode .text-md,
+.dark-mode .text-lg,
+.dark-mode .text-xl {
+  color: #f8f9fa !important;
+}
+
+.dark-mode .card {
+  background-color: #2c3e50;
+}
+
+.dark-mode .table {
+  color: #f8f9fa;
+}
+
+.dark-mode .modal-content {
+  background-color: #2c3e50;
+  color: #f8f9fa;
+}
+
+.dark-mode .sidenav {
+  background-color: #1a2530;
+}
+
+.dark-mode .navbar-vertical .navbar-nav .nav-link {
+  color: #e2e2e2;
+}
+
+.dark-mode .form-control {
+  background-color: #34495e;
+  color: #f8f9fa;
+  border-color: #4a6583;
+}
+
+.dark-mode .form-control::placeholder {
+  color: #b2bec3;
+}

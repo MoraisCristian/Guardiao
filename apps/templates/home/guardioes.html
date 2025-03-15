@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Define o título da página -->
+  <title>Agentes</title>
+  <!-- Importa um template base -->
+  {% extends 'layouts/base.html' %}
+  <!-- Aqui poderiam ser incluídos estilos específicos -->
+  {% block stylesheets %}
+  <style>
+    .modal {
+      z-index: 9999;
+    }
+
+    .sidenav {
+      z-index: 1;
+    }
+  </style>
+
+  {% endblock stylesheets %}
+</head>
+
+<body>
+  <!-- Define o conteúdo principal da página -->
+  {% block content %}
+  <main>
+    <!-- Seção principal -->
+    <section class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+          <!-- Artigo com informações dos guardiões -->
+          <article class="card mb-4">
+            <header class="card-header pb-0">
+              <!-- Título do artigo -->
+              <h3>Guardiões</h3>
+            </header>
+            <div class="card-body px-0 pt-0 pb-2">
+              <div class="table-responsive p-0">
+                <!-- Formulário para busca de guardiões -->
+                <form method="POST">
+                  <div class="row m-1">
+                    <!-- Campo de busca -->
+                    <input class="form-control w-25 mb-4 m-1" type="text" name="buscar" placeholder="Buscar">
+                    <!-- Botão de busca -->
+                    <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" value="buscar">
+                    <!-- Botão para limpar a busca -->
+                    <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" href="/guardioes"
+                      value="Limpar">
+                  </div>
+                </form>
+
+                <!-- Tabela para exibição dos guardiões -->
+                <table class="table align-items-center mb-0">
+                  <thead>
+                    <!-- Cabeçalho da tabela -->
+                    <tr>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Hostname</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">IP Externo
+                      </th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                        Sistema Operacional</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Chave
+                        de ativação</th>
+                      <th class="text-secondary opacity-7"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Loop para exibir informações de cada guardião -->
+                    {% for info in infos %}
+                    <tr>
+                      <td>
+                        <!-- Informações do guardião -->
+                        <div class="d-flex px-2 py-1">
+                          <figure>
+                            <!-- Imagem do sistema operacional -->
+                            {% set os_images = {'windows': 'windows.png', 'ubuntu': 'ubuntu.png', 'freebsd':
+                            'freebsd.png', 'centos': 'centos.png', 'mac': 'macos.png'} %}
+                            {% for os_name, image_name in os_images.items() %}
+                            {% if os_name in info['manufacturer'].lower() %}
+                            <img src="{{ config.ASSETS_ROOT }}/img/logos/{{ image_name }}" class="avatar avatar-sm me-3"
+                              alt="user1">
+                            {% endif %}
+                            {% endfor %}
+                          </figure>
+                          <!-- Informações adicionais do guardião -->
+                          <div class="d-flex flex-column justify-content-center">
+                            <h3 class="mb-0 text-sm">{{ info['hostname'] }}</h3>
+                            <p class="text-xs text-secondary mb-0">{{ info['model'] }}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <!-- Endereço IP externo do guardião -->
+                        <p class="text-xs font-weight-bold mb-0">{{ info['ip_externo'] }}</p>
+                        <p class="text-xs text-secondary mb-0">{{ info['ip_externo'] }}</p>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <!-- Informações sobre o sistema operacional -->
+                        <span class="badge badge-sm bg-gradient-success">{{ info['os_info'] }}</span>
+                      </td>
+                      <td class="align-middle text-center">
+                        <!-- Chave de ativação do guardião -->
+                        <span class="text-secondary text-xs font-weight-bold">{{ info['chave'] }}</span>
+                      </td>
+                      <td class="align-middle">
+                        <!-- Button trigger modal -->
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                          data-bs-target="#modal{{ info['id_agente'] }}">
+                          Detalhes
+                        </button>
+                        <!-- Modal -->
+                        <div class="modal fade" id="modal{{ info['id_agente'] }}" data-bs-backdrop="static"
+                          data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel"
+                          aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen ">
+                            <div class="modal-content ">
+                              <div class="modal-header ">
+                                <button type="button" class="btn-close text-bg-secondary" data-bs-dismiss="modal"
+                                  aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                <iframe class="iframe-agente" src="/guardiao/{{ info['id_agente'] }}"
+                                  frameborder="0"></iframe>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Rodapé da página -->
+  <footer>
+    {% include "includes/footer.html" %}
+  </footer>
+  {% endblock content %}
+</body>
+
+</html>

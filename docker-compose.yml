@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  guardiao:
+    image: guardiao
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./apps:/app/apps
+    ports:
+      - "5002:5000"  # Expõe a API do Flask para o host
+    environment:
+      - FLASK_APP=app.py
+    networks:
+      - app-network
+
+  ossec:
+    image: ossec
+    build:
+      context: .
+      dockerfile: ossec-docker/Dockerfile
+    ports:
+      - "1514:1514/udp"  # Porta para receber logs dos agentes
+      - "1515:1515/tcp"  # Porta para comunicação com os agentes
+    volumes:
+      - ./ossec-data:/root/  # Volume único para persistir dados do OSSEC
+    networks:
+      - app-network
+    environment:
+      - API_PASSWORD=sua_senha_secreta  # Senha para proteger a API
+
+networks:
+  app-network:
+    driver: bridge

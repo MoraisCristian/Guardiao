@@ -1,0 +1,88 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Chaves de Ativação {% endblock title %}
+
+{% block stylesheets %}
+<!-- Specific CSS goes HERE -->
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h3>Vulnerabilidades</h3>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <form method="post">
+                    <div class="row m-1">
+                      <!-- Campo de busca -->
+                      <input class="form-control w-25 mb-4 m-1" type="text" name="buscar" placeholder="Buscar">
+                      <!-- Botão de busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" value="buscar">
+                      <!-- Botão para limpar a busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" href="/vulns" value="Limpar">
+                    </div>
+                  </form>
+                </tr>
+                <tr>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    CVE
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Severidade</th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Descrição</th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Ofensores</th>
+
+                </tr>
+
+              </thead>
+              <tbody>
+                {% if vulns %}
+                {% for vuln in vulns %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1 ">
+                      <div class="d-flex flex-column justify-content-center ">
+                        <h4 class="mb-0 text-sm text-center">{{ vuln.cve_id }}</h4>
+                        <p class="text-xs text-secondary mb-0 text-center">CVSS: {{ vuln.cvss_score }}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle text-center">
+                    <span id="statusBadge" class="badge badge-sm bg-gradient-success">{{ vuln.severity.upper() }}</span>
+
+                  </td>
+                  <td style="max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <p class="text-xs font-weight-bold text-center text-truncate" data-bs-toggle="tooltip"
+                      data-bs-placement="bottom" data-bs-title="{{ vuln.cve_description }}"> {{ vuln.cve_description }}
+                    </p>
+                    <p class="text-xs text-secondary mb-0 text-center"> {{ vuln.cvss_metrics }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Explorada: {{ vuln.is_exploited }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Template: {{ vuln.is_template }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Remota: {{ vuln.is_remote }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">POC: {{ vuln.is_poc }}</p>
+                  </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='../../static/assets/vuln_status.js') }}"></script>
+{% include "includes/footer.html" %}
+{% endblock content %}

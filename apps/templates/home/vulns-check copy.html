@@ -1,0 +1,127 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Chaves de Ativação {% endblock title %}
+
+{% block stylesheets %}
+<!-- Specific CSS goes HERE -->
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h3>Check de Vunerabilidades</h3>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+
+            <table class="table align-items-center mb-0">
+
+              <tr>
+                <form method="post">
+                  <div class="row m-1">
+                    <!-- Campo de busca -->
+                    <input class="form-control w-25 mb-4 m-1" type="text" name="buscar" placeholder="Buscar">
+                    <!-- Botão de busca -->
+                    <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" value="buscar">
+                    <!-- Botão para limpar a busca -->
+                    <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" href="/vulns" value="Limpar">
+                  </div>
+                </form>
+              </tr>
+
+              <tr>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  CVE
+                </th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  CVE Versão</th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  Software</th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  Software Versão
+                </th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  HostName</th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  CPE</th>
+
+                <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                  Validação</th>
+
+              </tr>
+
+
+
+              {% if vulns %}
+              {% for vuln in vulns %}
+
+              <tr>
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <p class="text-xs font-weight-bold mb-0 text-center">{{ vuln.cve_id }}</p>
+                </td>
+
+                <td>
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Basic radio toggle button group">
+                    <input type="radio" class="btn-check" name="btnradio" id="btnradio1" autocomplete="off" checked>
+                    <label class="btn btn-outline-success" for="btnradio1">
+                      <i class="far fa-thumbs-up"></i>
+                    </label>
+
+                    <input type="radio" class="btn-check" name="btnradio" id="btnradio2" autocomplete="off" checked>
+                    <label class="btn btn-outline-info" for="btnradio2">
+                      <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+
+
+                    </label>
+
+                    <input type="radio" class="btn-check" name="btnradio" id="btnradio3" autocomplete="off" checked>
+                    <label class="btn btn-outline-danger" for="btnradio3">
+                      <i class="far fa-thumbs-down "></i>
+                    </label>
+
+                    
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+              {% endif %}
+
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='../../static/assets/vuln_status.js') }}"></script>
+{% include "includes/footer.html" %}
+{% endblock content %}

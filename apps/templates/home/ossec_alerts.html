@@ -1,0 +1,188 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Alertas OSSEC {% endblock title %}
+
+{% block stylesheets %}
+<!-- Specific CSS goes HERE -->
+<style>
+  /* Alert level button colors */
+  .btn-level-1, .btn-level-2, .btn-level-3 {
+    background-color: #3498db;
+    color: white;
+  }
+  .btn-level-4, .btn-level-5, .btn-level-6 {
+    background-color: #f39c12;
+    color: white;
+  }
+  .btn-level-7, .btn-level-8, .btn-level-9 {
+    background-color: #e74c3c;
+    color: white;
+  }
+  .btn-level-10, .btn-level-11, .btn-level-12, .btn-level-13, .btn-level-14, .btn-level-15 {
+    background-color: #9b59b6;
+    color: white;
+  }
+  .alert-details {
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+  
+  /* Dark mode text adjustments */
+  .dark-mode .text-secondary {
+    color: #e2e2e2 !important;
+  }
+  .dark-mode .text-xs {
+    color: #f8f9fa !important;
+  }
+  .dark-mode .card {
+    background-color: #2c3e50;
+  }
+  .dark-mode .table {
+    color: #f8f9fa;
+  }
+  .dark-mode .modal-content {
+    background-color: #2c3e50;
+    color: #f8f9fa;
+  }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h3>Alertas OSSEC</h3>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <form method="post">
+                    <div class="row m-1">
+                      <!-- Campo de busca -->
+                      <input class="form-control w-25 mb-4 m-1" type="text" name="buscar" placeholder="Buscar">
+                      <!-- Botão de busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" value="buscar">
+                      <!-- Botão para limpar a busca -->
+                      <input class="btn bg-gradient-secondary w-10 h-25 m-1" type="submit" href="/ossec-alerts" value="Limpar">
+                    </div>
+                  </form>
+                </tr>
+                <tr>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Timestamp
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Nível
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Regra
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Descrição
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    IP de Origem
+                  </th>
+                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
+                    Detalhes
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for alert in alerts %}
+                <tr>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('timestamp', 'N/A') }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">
+                      {{ alert.get('level', 'N/A') }}
+                    </p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('rule', 'N/A') }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('src_ip', 'N/A') }}</p>
+                  </td>
+                  <td class="align-middle text-center">
+                    <button type="button" class="btn btn-sm btn-level-{{ alert.get('level', '0').strip() }}" data-bs-toggle="modal" data-bs-target="#alertModal{{ loop.index }}">
+                      Ver Detalhes
+                    </button>
+                    
+                    <!-- Modal for alert details -->
+                    <div class="modal fade" id="alertModal{{ loop.index }}" tabindex="-1" aria-labelledby="alertModalLabel{{ loop.index }}" aria-hidden="true">
+                      <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="alertModalLabel{{ loop.index }}">Detalhes do Alerta</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <div class="alert-details">{{ alert.get('full_log', 'Detalhes não disponíveis') }}</div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  // JavaScript for handling modals and other interactions
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check if dark mode is enabled
+    const isDarkMode = document.body.classList.contains('dark-mode') || 
+                       document.documentElement.classList.contains('dark-mode');
+    
+    // Apply dark mode class if needed
+    if (isDarkMode) {
+      document.querySelectorAll('.card, .table, .modal-content').forEach(el => {
+        el.classList.add('dark-mode');
+      });
+    }
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.attributeName === 'class') {
+          const isDarkNow = document.body.classList.contains('dark-mode') || 
+                           document.documentElement.classList.contains('dark-mode');
+          
+          document.querySelectorAll('.card, .table, .modal-content').forEach(el => {
+            if (isDarkNow) {
+              el.classList.add('dark-mode');
+            } else {
+              el.classList.remove('dark-mode');
+            }
+          });
+        }
+      });
+    });
+    
+    observer.observe(document.body, { attributes: true });
+    observer.observe(document.documentElement, { attributes: true });
+  });
+</script>
+{% endblock javascripts %}
