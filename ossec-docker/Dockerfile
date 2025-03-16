@@ -2,7 +2,11 @@ FROM ubuntu:22.04
 
 # Adiciona arquivos necessários
 ADD ossec-docker/default_agent /var/ossec/default_agent
+<<<<<<< HEAD
 ADD ossec-docker/ossec.conf /var/ossec/etc/ossec.conf 
+=======
+ADD ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
+>>>>>>> bcc9d53a5c64985ee6bdc10b6fbbadc079e979b2
 ADD ossec-docker/data_dirs.env /data_dirs.env
 ADD ossec-docker/init.sh /init.sh
 ADD ossec-docker/ossec-server.sh /ossec-server.sh

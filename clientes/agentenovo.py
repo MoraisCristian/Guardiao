@@ -530,11 +530,10 @@ def verificar_e_configurar_psad():
     if not verificar_psad_instalado():
         # Instala o PSAD se não estiver instalado
         if not instalar_psad():
-            print("Falha ao instalar o PSAD.")
+            print("Falha ao instalar o PSAD.")    
+            # Configura o PSAD
+            configurar_psad()
             return False
-    
-    # Configura o PSAD
-    configurar_psad()
     
     # Verifica se o PSAD está em execução
     if not verificar_psad_running():
@@ -1443,6 +1442,10 @@ def ativacao():
         elif not verificar_ossec_running():
             print("OSSEC não está em execução. Reiniciando...")
             reiniciar_ossec()
+    else:
+        print("OSSEC não está instalado. Instalando...")
+        instalar_ossec()
+        registrar_ossec()
 
 # Inicia a ativação do agente
 ativacao()
