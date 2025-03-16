@@ -163,3 +163,4 @@ cython_debug/
 .exe
 .deb
 .rpm
+.bash_history
