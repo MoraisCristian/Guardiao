@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Atualizar pip
-python3 -m pip install --upgrade pip
+#python3 -m pip install --upgrade pip
 # Create the downloads directory if it doesn't exist
 mkdir -p apps/downloads
 
@@ -45,16 +45,9 @@ rm "apps/downloads/trivy-macos.tar.gz"
 echo "All Trivy binaries have been downloaded to apps/downloads/"
 ls -la apps/downloads/
 
-# Instalar dependências do sistema primeiro
-apt-get update
-apt-get install -y curl golang python3-flask-sqlalchemy python3-flask-migrate
-
 # Configurar variável de ambiente para Flask
 export FLASK_APP=app.py
 export FLASK_ENV=development
-
-# Instalar Flask-Migrate
-pip install Flask-Migrate
 
 # Executar migrações do banco de dados
 flask db init || echo "Database already initialized"
