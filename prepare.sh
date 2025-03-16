@@ -5,6 +5,8 @@
 # Create the downloads directory if it doesn't exist
 mkdir -p apps/downloads
 
+chown -R root:root apps/
+
 # Define Trivy version
 TRIVY_VERSION="v0.60.0"
 
