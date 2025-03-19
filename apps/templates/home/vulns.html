@@ -52,7 +52,7 @@
                     <div class="d-flex px-2 py-1 ">
                       <div class="d-flex flex-column justify-content-center ">
                         <h4 class="mb-0 text-sm text-center">{{ vuln.cve_id }}</h4>
-                        <p class="text-xs text-secondary mb-0 text-center">CVSS: {{ vuln.cvss_score }}</p>
+                        <p class="text-xs text-secondary mb-0 text-center">CVSS: {{ vuln.cvss }}</p>
                       </div>
                     </div>
                   </td>
@@ -64,13 +64,14 @@
                     <p class="text-xs font-weight-bold text-center text-truncate" data-bs-toggle="tooltip"
                       data-bs-placement="bottom" data-bs-title="{{ vuln.description }}"> {{ vuln.description }}
                     </p>
-                    <p class="text-xs text-secondary mb-0 text-center"> {{ vuln.cvss_metrics }}</p>
+                    <p class="text-xs text-secondary mb-0 text-center"> {{ vuln.cwe_ids }}</p>
                   </td>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0 text-center">Explorada: {{ vuln.is_exploited }}</p>
-                    <p class="text-xs font-weight-bold mb-0 text-center">Template: {{ vuln.is_template }}</p>
-                    <p class="text-xs font-weight-bold mb-0 text-center">Remota: {{ vuln.is_remote }}</p>
-                    <p class="text-xs font-weight-bold mb-0 text-center">POC: {{ vuln.is_poc }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Lançamento: {{ vuln.published_date }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Última atualização: {{ vuln.last_modified_date }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Versão instalada: {{ vuln.installed_version }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Versão corrigida: {{ vuln.fixed_version }}</p>
+                    <p class="text-xs font-weight-bold mb-0 text-center">Referências: {{ vuln.references }}</p>
                   </td>
                 </tr>
                 {% endfor %}
