@@ -297,9 +297,17 @@ def agents_status():
             last_keepalive = agent.get('last_keepalive', 'Nunca conectado')
             status = agent.get('status', 'Desconhecido')
             
+            # Check if last_keepalive is a valid datetime string
+            if last_keepalive and last_keepalive != 'Unknown' and last_keepalive != 'Nunca conectado':
+                try:
+                    last_contact = datetime.strptime(last_keepalive, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    last_contact = "Unknown"
+            else:
+                last_contact = "Unknown"
+            
             agent_activities[agent_id] = {
-                'last_contact': datetime.strptime(last_keepalive, '%Y-%m-%d %H:%M:%S') 
-                                if last_keepalive != 'Nunca conectado' else None,
+                'last_contact': last_contact,
                 'activity_type': status
             }
             
