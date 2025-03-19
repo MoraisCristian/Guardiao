@@ -28,6 +28,14 @@
     font-size: 0.8rem;
   }
   
+  /* Description cell max width */
+  .description-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
   /* Dark mode text adjustments */
   .dark-mode .text-secondary {
     color: #e2e2e2 !important;
@@ -95,28 +103,31 @@
               </thead>
               <tbody>
                 {% for alert in alerts %}
-                <tr>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('timestamp', 'N/A') }}</p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">
-                      {{ alert.get('level', 'N/A') }}
-                    </p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('rule', 'N/A') }}</p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}</p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('src_ip', 'N/A') }}</p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <button type="button" class="btn btn-sm btn-level-{{ alert.get('level', '0').strip() }}" data-bs-toggle="modal" data-bs-target="#alertModal{{ loop.index }}">
-                      Ver Detalhes
-                    </button>
+                <!-- In the table body section -->
+                                <tr>
+                                  <td class="align-middle text-center">
+                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('timestamp', 'N/A') }}</p>
+                                  </td>
+                                  <td class="align-middle text-center">
+                                    <p class="text-xs font-weight-bold mb-0">
+                                      {{ alert.get('level', 'N/A') }}
+                                    </p>
+                                  </td>
+                                  <td class="align-middle text-center">
+                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('rule', 'N/A') }}</p>
+                                  </td>
+                                  <td class="align-middle text-center description-cell">
+                                    <p class="text-xs font-weight-bold mb-0" title="{{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}">
+                                      {{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}
+                                    </p>
+                                  </td>
+                                  <td class="align-middle text-center">
+                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('src_ip', 'N/A') }}</p>
+                                  </td>
+                                  <td class="align-middle text-center">
+                                    <button type="button" class="btn btn-sm btn-level-{{ alert.get('level', '0').strip() }}" data-bs-toggle="modal" data-bs-target="#alertModal{{ loop.index }}">
+                                      Ver Detalhes
+                                    </button>
                     
                     <!-- Modal for alert details -->
                     <div class="modal fade" id="alertModal{{ loop.index }}" tabindex="-1" aria-labelledby="alertModalLabel{{ loop.index }}" aria-hidden="true">

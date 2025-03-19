@@ -1,6 +1,12 @@
 import subprocess, requests, platform, socket, base64, psutil, time, json, pwd, os
 from time import sleep
 
+# Variáveis globais
+ram = {}
+nome = socket.gethostname()
+chave_ativacao = 'KOAUBDFDOEOER1EQLKZQQQ5COTTQFLO1ZI1TYHDZVPLDEDA0'
+codigos = {'registro': 1, 'ping': 2, 'upload': 3, 'ossec-register': 4}
+
 def baixar_ossec_conf():
     url = 'http://10.0.10.183:5002/download/ossec.conf'
     resposta = requests.get(url)
@@ -873,11 +879,6 @@ def instalar_ossec():
     print('OSSEC instalado com sucesso.')
     return True
 
-# Variáveis globais
-ram = {}
-nome = socket.gethostname()
-chave_ativacao = 'KOAUBDFDOEOER1EQLKZQQQ5COTTQFLO1ZI1TYHDZVPLDEDA0'
-codigos = {'registro': 1, 'ping': 2, 'upload': 3, 'ossec-register': 4}
 
 # Função para codificar dados em base64
 def encrypt_base64(data):

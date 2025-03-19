@@ -4,6 +4,21 @@
 
 {% block stylesheets %}
 <!-- Specific CSS goes HERE -->
+<style>
+  /* Dark mode text adjustments */
+  .dark-mode .text-secondary {
+    color: #e2e2e2 !important;
+  }
+  .dark-mode .text-xs {
+    color: #f8f9fa !important;
+  }
+  .dark-mode .card {
+    background-color: #2c3e50;
+  }
+  .dark-mode .table {
+    color: #f8f9fa;
+  }
+</style>
 {% endblock stylesheets %}
 
 {% block content %}
@@ -75,7 +90,11 @@
                   <td class="align-middle text-center">
                     <p class="text-xs font-weight-bold mb-0">
                       {% if activities[agent.id]['last_contact'] %}
-                        {{ activities[agent.id]['last_contact'].strftime('%d/%m/%Y %H:%M:%S') }}
+                        {% if activities[agent.id]['last_contact'] == "Unknown" %}
+                          Desconhecido
+                        {% else %}
+                          {{ activities[agent.id]['last_contact'].strftime('%d/%m/%Y %H:%M:%S') }}
+                        {% endif %}
                       {% else %}
                         Nunca conectado
                       {% endif %}
@@ -85,7 +104,7 @@
                     <p class="text-xs font-weight-bold mb-0">{{ activities[agent.id]['activity_type'] }}</p>
                   </td>
                   <td class="align-middle text-center">
-                    {% if activities[agent.id]['last_contact'] %}
+                    {% if activities[agent.id]['last_contact'] and activities[agent.id]['last_contact'] != "Unknown" %}
                       {% set time_diff = ((now - activities[agent.id]['last_contact']).total_seconds() / 60) %}
                       {% if time_diff < 10 %}
                         <span class="badge badge-sm bg-gradient-success">Online</span>
@@ -94,8 +113,12 @@
                       {% else %}
                         <span class="badge badge-sm bg-gradient-danger">Offline</span>
                       {% endif %}
-                    {% else %}
+                    {% elif agent.get('status') == "Active" %}
+                      <span class="badge badge-sm bg-gradient-success">Online</span>
+                    {% elif agent.get('status') == "Never connected" %}
                       <span class="badge badge-sm bg-gradient-secondary">Nunca conectado</span>
+                    {% else %}
+                      <span class="badge badge-sm bg-gradient-danger">Offline</span>
                     {% endif %}
                   </td>
                   <td class="align-middle text-center">
@@ -115,6 +138,39 @@
 
 {% block javascripts %}
 <script>
-  // Add any JavaScript needed for this page
+  // JavaScript for handling dark mode
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check if dark mode is enabled
+    const isDarkMode = document.body.classList.contains('dark-mode') || 
+                       document.documentElement.classList.contains('dark-mode');
+    
+    // Apply dark mode class if needed
+    if (isDarkMode) {
+      document.querySelectorAll('.card, .table').forEach(el => {
+        el.classList.add('dark-mode');
+      });
+    }
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.attributeName === 'class') {
+          const isDarkNow = document.body.classList.contains('dark-mode') || 
+                           document.documentElement.classList.contains('dark-mode');
+          
+          document.querySelectorAll('.card, .table').forEach(el => {
+            if (isDarkNow) {
+              el.classList.add('dark-mode');
+            } else {
+              el.classList.remove('dark-mode');
+            }
+          });
+        }
+      });
+    });
+    
+    observer.observe(document.body, { attributes: true });
+    observer.observe(document.documentElement, { attributes: true });
+  });
 </script>
 {% endblock javascripts %}
