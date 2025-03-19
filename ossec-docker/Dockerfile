@@ -19,6 +19,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--forc
 RUN pip3 install flask 
 RUN chmod +x /ossec-server.sh
 
+COPY ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
+
 # Define o volume de dados
 VOLUME ["/root/"]
 
