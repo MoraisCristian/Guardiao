@@ -31,10 +31,7 @@ services:
       - API_PASSWORD=sua_senha_secreta  # Senha para proteger a API
 
   zincsearch:
-    image: zincsearch
-    build:
-      context: .
-      dockerfile: zincsearch/Dockerfile
+    image: public.ecr.aws/zinclabs/zincsearch:latest
     ports:
       - "4080:4080"  # Porta padrão do ZincSearch
     volumes:
