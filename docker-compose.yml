@@ -50,6 +50,7 @@ services:
     image: python:3.12-slim
     volumes:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
+      - ./zincsearch/check_zinc.py:/app/check_zinc.py
       - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
       - ./ossec-data/alerts.json:/ossec/alerts.json
     command: bash /app/ossec_to_zinc.sh
