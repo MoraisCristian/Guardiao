@@ -3,17 +3,29 @@
 # Install required dependencies
 pip install requests
 
-# Install curl
-apt-get update
-apt-get install -y curl
-
 # Wait for ZincSearch to be ready
 echo "Waiting for ZincSearch to be ready..."
-until $(curl --output /dev/null --silent --head --fail http://zincsearch:4080); do
-    printf '.'
-    sleep 5
-done
-echo "ZincSearch is ready!"
+cat > /tmp/check_zinc.py << 'EOF'
+import requests
+import time
+import sys
+
+def check_zinc_ready():
+    try:
+        response = requests.head("http://zincsearch:4080", timeout=2)
+        return response.status_code < 400
+    except:
+        return False
+
+while not check_zinc_ready():
+    sys.stdout.write('.')
+    sys.stdout.flush()
+    time.sleep(2)
+
+print("\nZincSearch is ready!")
+EOF
+
+python3 /tmp/check_zinc.py
 
 # Run the Python script
 echo "Starting OSSEC to ZincSearch connector..."
