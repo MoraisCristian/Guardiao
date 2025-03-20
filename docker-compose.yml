@@ -48,10 +48,14 @@ services:
     image: python:3.12-slim
     volumes:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
+      - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
       - ./ossec-data/alerts.json:/ossec/alerts.json
-    command: python3 /app/ossec_to_zincsearch.py
+    command: bash /app/ossec_to_zinc.sh
     networks:
       - app-network
+    depends_on:
+      - zincsearch
+      - ossec
 
 networks:
   app-network:
