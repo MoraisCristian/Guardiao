@@ -21,7 +21,7 @@ python3 /opt/conector/ossec_api.py &
 # continuamente copia o ossec.log, alerts.log e client.keys para o diretório /root
 while true; do
     cp /var/ossec/logs/ossec.log /root/ossec.log
-    cp /var/ossec/logs/alerts/alerts.log /root/alerts.log
+    cp /var/ossec/logs/alerts/alerts.json /root/alerts.json
     cp /var/ossec/etc/client.keys /root/client.keys
     sleep 10
 done &

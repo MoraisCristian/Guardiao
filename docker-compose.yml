@@ -44,6 +44,15 @@ services:
       - app-network
     restart: unless-stopped
 
+  ossec-to-zinc:
+    image: python:3.12-slim
+    volumes:
+      - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
+      - ./ossec-data/alerts.json:/ossec/alerts.json
+    command: python3 /app/ossec_to_zincsearch.py
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
