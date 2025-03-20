@@ -166,3 +166,4 @@ cython_debug/
 *.keys
 
 ossec-data/
+zinc-data/
