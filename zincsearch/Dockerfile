@@ -4,7 +4,7 @@
 ############################
 FROM node:18.18.2-slim as webBuilder
 WORKDIR /web
-COPY ./web /web/
+COPY ./zincsearch/web /web/
 
 RUN npm install
 RUN npm run build
