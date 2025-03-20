@@ -163,5 +163,6 @@ cython_debug/
 .deb
 .rpm
 .bash_history
+*.keys
 
-client.keys
+ossec-data/
