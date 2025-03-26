@@ -888,6 +888,7 @@ def encrypt_base64(data):
 
 # Função para enviar mensagens ao servidor
 def enviar_mensagem(message, endpoint):
+    print(message)
     url = f'http://10.0.10.183:5002/{endpoint}'
     resposta = requests.post(url, data=json.dumps(message), headers={'Content-Type': 'application/json'})
     return resposta
