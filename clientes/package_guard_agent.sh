@@ -24,10 +24,13 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Source directory
-SOURCE_DIR="clientes/guard-agent"
-# Destination directory
-DEST_DIR="apps/downloads"
+# Get the absolute path of the project root directory
+PROJECT_ROOT="/var/guardiao"
+
+# Source directory (full path)
+SOURCE_DIR="${PROJECT_ROOT}/clientes/guard-agent"
+# Destination directory (full path)
+DEST_DIR="${PROJECT_ROOT}/apps/downloads"
 
 # Check if source directory exists
 if [ ! -d "$SOURCE_DIR" ]; then
@@ -44,6 +47,10 @@ fi
 # Package the guard-agent folder
 print_message "Creating guardiao.tar from $SOURCE_DIR"
 tar -cf "$DEST_DIR/guardiao.tar" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")"
+
+# Copy the install.sh file to the downloads folder
+print_message "Copying install.sh to $DEST_DIR"
+cp "${PROJECT_ROOT}/clientes/guard-agent/install.sh" "$DEST_DIR/install.sh"
 
 # Generate MD5 hash - check for md5 or md5sum command
 print_message "Generating MD5 hash"
