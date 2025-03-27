@@ -252,9 +252,12 @@ def main():
             log_warning("OSSEC instalado mas sem chave. Registrando...")
             registrar_ossec(id_agente)
         
-        # Configure PSAD
-        log_info("Verificando e configurando PSAD...")
-        verificar_e_configurar_psad()
+        # Configure PSAD with enhanced settings
+        log_info("Verificando e configurando PSAD para detecção de port scans...")
+        if verificar_e_configurar_psad():
+            log_info("PSAD configurado com sucesso.")
+        else:
+            log_warning("Houve problemas na configuração do PSAD. Alguns recursos podem não funcionar corretamente.")
         
         # Main loop
         log_info(f"Agente Guardian iniciado com ID: {id_agente}")

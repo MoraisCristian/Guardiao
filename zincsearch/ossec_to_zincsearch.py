@@ -190,23 +190,55 @@ def monitor_ossec_log():
                     if not line:
                         continue
                     
-                    # Skip lines that don't look like JSON objects
+                    # Enhanced JSON validation
                     if not (line.startswith('{') and line.endswith('}')):
                         log_message(f"Skipping non-JSON line: {line[:50]}...", "WARNING")
                         continue
-                        
+                    
+                    # Try to fix common JSON issues
                     try:
+                        # Replace any unescaped control characters
+                        line = ''.join(c if ord(c) >= 32 or c in '\r\n\t' else ' ' for c in line)
+                        
+                        # Fix potential issues with trailing commas
+                        line = line.replace(',}', '}').replace(',]', ']')
+                        
+                        # Fix potential issues with missing quotes around keys
+                        # This is a simple approach and might not catch all cases
+                        import re
+                        line = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', line)
+                        
                         # Try to parse JSON
                         alert = json.loads(line)
+                        
+                        # Validate alert structure
+                        if not isinstance(alert, dict):
+                            log_message(f"Skipping non-object JSON: {line[:50]}...", "WARNING")
+                            continue
+                            
                         send_to_zincsearch(alert)
                     except json.JSONDecodeError as e:
                         # Log the error and the problematic line
                         log_message(f"JSON decode error: {str(e)}", "ERROR")
                         log_message(f"Problematic line: {line[:200]}...", "DEBUG")
                         
-                        # Try to recover by finding the next valid JSON object
-                        # This is a simple approach - we just skip this line
-                        continue
+                        # Try more aggressive JSON repair
+                        try:
+                            # Try to find a valid JSON object within the line
+                            start_idx = line.find('{')
+                            end_idx = line.rfind('}')
+                            
+                            if start_idx >= 0 and end_idx > start_idx:
+                                potential_json = line[start_idx:end_idx+1]
+                                alert = json.loads(potential_json)
+                                log_message(f"Successfully extracted JSON from problematic line", "INFO")
+                                send_to_zincsearch(alert)
+                            else:
+                                log_message(f"Could not extract valid JSON from line", "WARNING")
+                        except Exception:
+                            # If all repair attempts fail, just skip this line
+                            log_message(f"Failed to repair JSON, skipping line", "WARNING")
+                            continue
                     except Exception as e:
                         log_message(f"Unexpected error processing line: {str(e)}", "ERROR")
                         log_message(traceback.format_exc(), "DEBUG")
