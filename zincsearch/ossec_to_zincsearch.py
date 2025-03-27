@@ -189,6 +189,11 @@ def monitor_ossec_log():
                     line = line.strip()
                     if not line:
                         continue
+                    
+                    # Skip lines that don't look like JSON objects
+                    if not (line.startswith('{') and line.endswith('}')):
+                        log_message(f"Skipping non-JSON line: {line[:50]}...", "WARNING")
+                        continue
                         
                     try:
                         # Try to parse JSON

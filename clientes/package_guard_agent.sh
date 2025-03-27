@@ -24,13 +24,10 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Get the absolute path of the project root directory
-PROJECT_ROOT="/var/guardiao"
-
-# Source directory (full path)
-SOURCE_DIR="${PROJECT_ROOT}/clientes/guard-agent"
-# Destination directory (full path)
-DEST_DIR="${PROJECT_ROOT}/apps/downloads"
+# Source directory
+SOURCE_DIR="clientes/guard-agent"
+# Destination directory
+DEST_DIR="apps/downloads"
 
 # Check if source directory exists
 if [ ! -d "$SOURCE_DIR" ]; then
@@ -48,9 +45,42 @@ fi
 print_message "Creating guardiao.tar from $SOURCE_DIR"
 tar -cf "$DEST_DIR/guardiao.tar" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")"
 
-# Copy the install.sh file to the downloads folder
-print_message "Copying install.sh to $DEST_DIR"
-cp "${PROJECT_ROOT}/clientes/guard-agent/install.sh" "$DEST_DIR/install.sh"
+# Read server IP and port from guard_config.json
+CONFIG_FILE="clientes/guard-agent/guard_config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    print_message "Reading server information from $CONFIG_FILE"
+    SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
+    SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
+    print_message "Using server IP: $SERVER_IP and port: $SERVER_PORT"
+else
+    print_warning "Configuration file not found. Using default values."
+    SERVER_IP="10.0.10.233"
+    SERVER_PORT="5002"
+fi
+
+# Copy and modify the install.sh file
+print_message "Preparing install.sh with server information"
+cp "clientes/guard-agent/install.sh" "$DEST_DIR/install.sh.tmp"
+
+# Replace placeholders in the install script with actual values
+# Check OS type to use the correct sed syntax
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS version
+    sed -i '' "s/SERVER_IP_PLACEHOLDER/$SERVER_IP/g" "$DEST_DIR/install.sh.tmp"
+    sed -i '' "s/SERVER_PORT_PLACEHOLDER/$SERVER_PORT/g" "$DEST_DIR/install.sh.tmp"
+else
+    # Linux version
+    sed -i "s/SERVER_IP_PLACEHOLDER/$SERVER_IP/g" "$DEST_DIR/install.sh.tmp"
+    sed -i "s/SERVER_PORT_PLACEHOLDER/$SERVER_PORT/g" "$DEST_DIR/install.sh.tmp"
+fi
+
+# Move the modified file to the final location
+mv "$DEST_DIR/install.sh.tmp" "$DEST_DIR/install.sh"
+chmod +x "$DEST_DIR/install.sh"
+
+# Copy the configuration file to the downloads directory
+print_message "Copying guard_config.json to $DEST_DIR"
+cp "$CONFIG_FILE" "$DEST_DIR/guard_config.json"
 
 # Generate MD5 hash - check for md5 or md5sum command
 print_message "Generating MD5 hash"

@@ -11,6 +11,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Server information - will be replaced during packaging
+SERVER_IP="SERVER_IP_PLACEHOLDER"
+SERVER_PORT="SERVER_PORT_PLACEHOLDER"
+
 # Function to print colored messages
 print_message() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -32,6 +36,7 @@ fi
 
 # Installation directory
 INSTALL_DIR="/var/guardiao"
+AGENT_DIR="$INSTALL_DIR/guard-agent"
 CONFIG_FILE="guard_config.json"
 SERVICE_NAME="guardiao"
 MD5_FILE="guardiao.md5"
@@ -53,37 +58,74 @@ install_dependencies() {
     print_message "Installing dependencies"
     if [ "$DISTRO" == "debian" ]; then
         apt-get update
-        apt-get install -y python3 python3-pip curl tar md5sum
+        apt-get install -y python3 python3-pip curl tar 
     elif [ "$DISTRO" == "centos" ]; then
         yum update -y
-        yum install -y python3 python3-pip curl tar md5sum
+        yum install -y python3 python3-pip curl tar 
+    fi
+}
+
+# Download configuration file
+download_config() {
+    print_message "Downloading configuration file from server"
+    
+    # Create installation directory if it doesn't exist
+    if [ ! -d "$INSTALL_DIR" ]; then
+        print_message "Creating installation directory at $INSTALL_DIR"
+        mkdir -p "$INSTALL_DIR"
+    fi
+    
+    # Download configuration file
+    CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guard_config.json"
+    print_message "Downloading configuration from $CONFIG_URL"
+    
+    if curl -s -f -o "$INSTALL_DIR/$CONFIG_FILE" "$CONFIG_URL"; then
+        print_message "Configuration file downloaded successfully to $INSTALL_DIR/$CONFIG_FILE"
+        # Read server information from the downloaded config
+        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+        print_message "Using server: ${SERVER_IP}:${SERVER_PORT}"
+        return 0
+    else
+        print_warning "Failed to download configuration file from server"
+        return 1
     fi
 }
 
 # Get server information
 get_server_info() {
-    # Get server information from config file if it exists in current directory or install directory
-    if [ -f "$CONFIG_FILE" ]; then
-        print_message "Found configuration file in current directory"
-        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
-        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
-    elif [ -f "$INSTALL_DIR/$CONFIG_FILE" ]; then
-        print_message "Found configuration file in installation directory"
-        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-    else
-        print_warning "Configuration file not found. Please enter server information:"
-        read -p "Server IP: " SERVER_IP
-        read -p "Server Port: " SERVER_PORT
-        
-        # Create a basic config file
-        cat > "$CONFIG_FILE" << EOF
+    # First try to download the config file
+    if ! download_config; then
+        # If download fails, check if config exists in current directory or install directory
+        if [ -f "$CONFIG_FILE" ]; then
+            print_message "Found configuration file in current directory"
+            cp "$CONFIG_FILE" "$INSTALL_DIR/$CONFIG_FILE"
+            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
+            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
+        elif [ -f "$INSTALL_DIR/$CONFIG_FILE" ]; then
+            print_message "Found configuration file in installation directory"
+            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+        else
+            print_warning "Configuration file not found. Using embedded server information."
+            # If SERVER_IP is still the placeholder, prompt for input
+            if [ "$SERVER_IP" == "SERVER_IP_PLACEHOLDER" ]; then
+                print_warning "Server information not available. Please enter server information:"
+                read -p "Server IP: " SERVER_IP
+                read -p "Server Port: " SERVER_PORT
+                
+                # Create a basic config file
+                cat > "$INSTALL_DIR/$CONFIG_FILE" << EOF
 {
     "server_ip": "$SERVER_IP",
     "server_port": "$SERVER_PORT"
 }
 EOF
+            fi
+        fi
     fi
+    
+    print_message "Using server: ${SERVER_IP}:${SERVER_PORT}"
 }
 
 # Check if update is needed
@@ -140,9 +182,9 @@ download_and_install() {
     curl -s -o /tmp/guardiao.md5 "$REMOTE_MD5_URL"
     
     # Backup existing configuration if this is an update
-    if [ -f "$INSTALL_DIR/$CONFIG_FILE" ]; then
+    if [ -f "$AGENT_DIR/$CONFIG_FILE" ]; then
         print_message "Backing up existing configuration"
-        cp "$INSTALL_DIR/$CONFIG_FILE" "/tmp/$CONFIG_FILE.backup"
+        cp "$AGENT_DIR/$CONFIG_FILE" "/tmp/$CONFIG_FILE.backup"
     fi
     
     # Extract the package
@@ -155,17 +197,13 @@ download_and_install() {
     # Restore configuration if this was an update
     if [ -f "/tmp/$CONFIG_FILE.backup" ]; then
         print_message "Restoring configuration"
-        cp "/tmp/$CONFIG_FILE.backup" "$INSTALL_DIR/$CONFIG_FILE"
-    # Copy new config file if it exists in current directory
-    elif [ -f "$CONFIG_FILE" ]; then
-        print_message "Copying configuration file to $INSTALL_DIR"
-        cp "$CONFIG_FILE" "$INSTALL_DIR/"
+        cp "/tmp/$CONFIG_FILE.backup" "$AGENT_DIR/$CONFIG_FILE"
     fi
     
     # Install Python dependencies
     print_message "Installing Python dependencies"
-    if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-        pip3 install -r "$INSTALL_DIR/requirements.txt"
+    if [ -f "$AGENT_DIR/requirements.txt" ]; then
+        pip3 install -r "$AGENT_DIR/requirements.txt"
     else
         print_warning "requirements.txt not found. Installing basic dependencies."
         pip3 install requests psutil
@@ -188,8 +226,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=$INSTALL_DIR
-ExecStart=/usr/bin/python3 $INSTALL_DIR/main.py
+WorkingDirectory=$AGENT_DIR
+ExecStart=/usr/bin/python3 $AGENT_DIR/main.py
 Restart=always
 RestartSec=10
 
