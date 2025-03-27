@@ -178,10 +178,12 @@ def configurar_psad():
 
 def verificar_e_configurar_psad():
     """Verify if PSAD is installed and properly configured"""
-    from logger import log_info, log_warning, log_error
+    from logger import log_info, log_warning, log_error, log_debug
     import subprocess
     import os
     from system_utils import detect_os_distribution, os_install
+    import requests
+    from config import SERVER_URL
 
     log_info("Verificando PSAD...")
     
@@ -226,7 +228,15 @@ def verificar_e_configurar_psad():
             distro = detect_os_distribution()
             if distro in ['debian', 'ubuntu']:
                 # For Debian/Ubuntu
-                subprocess.run(["iptables-save", ">", "/etc/iptables/rules.v4"], shell=True)
+                if os.path.exists("/etc/iptables"):
+                    subprocess.run("iptables-save > /etc/iptables/rules.v4", shell=True, check=True)
+                else:
+                    subprocess.run("mkdir -p /etc/iptables", shell=True, check=True)
+                    subprocess.run("iptables-save > /etc/iptables/rules.v4", shell=True, check=True)
+                    # Add persistence on boot
+                    with open("/etc/network/if-pre-up.d/iptables", "w") as f:
+                        f.write("#!/bin/sh\niptables-restore < /etc/iptables/rules.v4\nexit 0\n")
+                    subprocess.run("chmod +x /etc/network/if-pre-up.d/iptables", shell=True, check=True)
             elif distro in ['centos', 'redhat']:
                 # For CentOS/RHEL
                 subprocess.run(["service", "iptables", "save"], check=True)
@@ -246,6 +256,29 @@ def verificar_e_configurar_psad():
         if os.path.exists("/etc/psad/psad.conf"):
             subprocess.run(["cp", "/etc/psad/psad.conf", "/etc/psad/psad.conf.bak"], check=True)
         
+        # Determine which configuration file to download
+        arquivo_config = "psad-syslog.conf" if os.path.exists('/var/log/syslog') else "psad.conf"
+        log_info(f"Detectado sistema com {'syslog' if os.path.exists('/var/log/syslog') else 'messages'}, baixando {arquivo_config}...")
+        
+        # Download the appropriate configuration file
+        url = f'{SERVER_URL}/download/{arquivo_config}'
+        resposta = requests.get(url)
+        if resposta.status_code == 200:
+            # Save temporarily
+            with open('psad_temp.conf', 'wb') as file:
+                file.write(resposta.content)
+            log_info(f"Arquivo de configuração {arquivo_config} baixado com sucesso.")
+            
+            # Move to correct location
+            comando_mv = ['mv', 'psad_temp.conf', '/etc/psad/psad.conf']
+            if os.geteuid() != 0:
+                comando_mv.insert(0, 'sudo')
+            subprocess.run(comando_mv, check=True)
+            log_info("Arquivo de configuração movido para /etc/psad/psad.conf")
+        else:
+            log_error(f"Falha ao baixar o arquivo de configuração {arquivo_config}. Status Code: {resposta.status_code}")
+            return False
+
         # Update PSAD configuration
         psad_config_updates = [
             "sed -i 's/^EMAIL_ADDRESSES.*/EMAIL_ADDRESSES             root@localhost;/' /etc/psad/psad.conf",
@@ -306,18 +339,26 @@ def verificar_e_configurar_psad():
                     "/<\/ossec_config>/i \  <localfile>\n    <log_format>syslog</log_format>\n    <location>/var/log/psad/psad.log</location>\n  </localfile>", 
                     "/var/ossec/etc/ossec.conf"
                 ], check=True)
-                
-                # Restart OSSEC
-                subprocess.run(["/var/ossec/bin/ossec-control", "restart"], check=True)
+        
+        # Update PSAD signatures
+        log_info("Atualizando assinaturas do PSAD...")
+        subprocess.run(["psad", "--sig-update"], check=True)
+        
+        # Initialize PSAD
+        log_info("Inicializando PSAD...")
+        subprocess.run(["psad", "-H"], check=True)
         
         # Restart PSAD to apply changes
         log_info("Reiniciando PSAD...")
         subprocess.run(["systemctl", "restart", "psad"], check=True)
         
-        # Initialize PSAD
-        log_info("Inicializando PSAD...")
-        subprocess.run(["psad", "--sig-update"], check=True)
-        subprocess.run(["psad", "-H"], check=True)
+        # Validate PSAD configuration
+        log_info("Validando configuração do PSAD...")
+        psad_status = subprocess.run(["psad", "--Status"], capture_output=True, text=True)
+        if "psad: pid" in psad_status.stdout:
+            log_info("PSAD está em execução corretamente.")
+        else:
+            log_warning("PSAD pode não estar em execução corretamente. Verifique manualmente.")
         
         log_info("PSAD configurado com sucesso para integração com OSSEC.")
         return True

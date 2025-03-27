@@ -249,13 +249,17 @@ def main():
             log_warning("OSSEC não está em execução. Reiniciando...")
             reiniciar_ossec()
         elif not verificar_chave_ossec_importada():
-            log_warning("OSSEC instalado mas sem chave. Registrando...")
+            log_warning("OSSEC instalado mas sem chave ou chave inválida. Registrando...")
             registrar_ossec(id_agente)
         
         # Configure PSAD with enhanced settings
         log_info("Verificando e configurando PSAD para detecção de port scans...")
         if verificar_e_configurar_psad():
             log_info("PSAD configurado com sucesso.")
+            
+            # Restart OSSEC after PSAD configuration to ensure integration
+            log_info("Reiniciando OSSEC para garantir integração com PSAD...")
+            reiniciar_ossec()
         else:
             log_warning("Houve problemas na configuração do PSAD. Alguns recursos podem não funcionar corretamente.")
         

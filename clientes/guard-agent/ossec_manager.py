@@ -24,21 +24,25 @@ def verificar_ossec_instalado():
     return os.path.exists('/var/ossec/bin/ossec-agentd')
 
 def verificar_chave_ossec_importada():
-    """Check if OSSEC key is already imported"""
+    """Check if OSSEC key is imported"""
     try:
-        with open('/var/ossec/etc/client.keys', 'r') as f:
-            conteudo = f.read().strip()
-            return len(conteudo) > 0
-    except FileNotFoundError:
-        return False
-    except PermissionError:
-        # Se não conseguir ler o arquivo por permissão, tenta verificar com sudo
-        if verificar_sudo_disponivel():
-            try:
-                output = subprocess.check_output(['sudo', 'cat', '/var/ossec/etc/client.keys'], stderr=subprocess.PIPE).decode().strip()
-                return len(output) > 0
-            except subprocess.CalledProcessError:
+        # Check if client.keys exists and is not empty
+        client_keys_path = "/var/ossec/etc/client.keys"
+        if not os.path.exists(client_keys_path):
+            print("Arquivo client.keys não encontrado.")
+            return False
+            
+        # Check if file is empty or contains only whitespace
+        with open(client_keys_path, 'r') as f:
+            content = f.read().strip()
+            if not content:
+                print("Arquivo client.keys está vazio.")
                 return False
+                
+        print("Chave do OSSEC já importada.")
+        return True
+    except Exception as e:
+        print(f"Erro ao verificar chave do OSSEC: {str(e)}")
         return False
 
 def reiniciar_ossec():

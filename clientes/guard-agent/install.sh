@@ -53,15 +53,35 @@ else
     DISTRO="debian"
 fi
 
-# Install dependencies
+# Install required packages
 install_dependencies() {
-    print_message "Installing dependencies"
-    if [ "$DISTRO" == "debian" ]; then
-        apt-get update
-        apt-get install -y python3 python3-pip curl tar 
-    elif [ "$DISTRO" == "centos" ]; then
-        yum update -y
-        yum install -y python3 python3-pip curl tar 
+    print_message "Installing required packages"
+    
+    # Detect distribution
+    if [ -f /etc/debian_version ]; then
+        DISTRO="debian"
+        print_message "Detected Debian/Ubuntu system"
+        
+        # Only update packages if we need to install the agent
+        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
+            print_message "Update needed, updating package lists..."
+            apt-get update -y
+            apt-get install -y python3 python3-pip curl tar
+        else
+            print_message "Agent already installed and up to date, skipping package updates"
+        fi
+    elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
+        DISTRO="centos"
+        print_message "Detected CentOS/RHEL system"
+        
+        # Only update packages if we need to install the agent
+        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
+            print_message "Update needed, updating packages..."
+            yum update -y
+            yum install -y python3 python3-pip curl tar 
+        else
+            print_message "Agent already installed and up to date, skipping package updates"
+        fi
     fi
 }
 
