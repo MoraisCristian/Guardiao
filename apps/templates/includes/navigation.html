@@ -117,15 +117,15 @@
         </li>
         <li class="nav-item">
             <a id="theme-toggle" class="nav-link" href="#">
-                <i class="fas fa-moon"></i>
+                <i class="fas fa-sun"></i> <!-- Changed from moon to sun since dark is default -->
                 <span>Toggle Theme</span>
             </a>
         </li>
         <li class="nav-item pe-2 d-flex align-items-center">
-          <label for="theme-switch" class="nav-link text-body p-0 m-0">
-            <i class="fa fa-sun fixed-plugin-button-nav cursor-pointer" id="theme-indicator"></i>
-          </label>
-          <input type="checkbox" class="d-none" id="theme-switch" />
+            <label for="theme-switch" class="nav-link text-body p-0 m-0">
+                <i class="fa fa-moon fixed-plugin-button-nav cursor-pointer" id="theme-indicator"></i> <!-- Changed from sun to moon -->
+            </label>
+            <input type="checkbox" class="d-none" id="theme-switch" checked /> <!-- Added checked attribute -->
         </li>
       </ul>
     </div>

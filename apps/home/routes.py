@@ -199,13 +199,12 @@ def route_template(template):
         if not template.endswith('.html'):
             template += '.html'
 
-        # Get theme from session or default to light
-        theme = session.get('theme', 'light')
+        # Set dark theme as default if no theme is set
+        theme = session.get('theme', 'dark')
         
         # Detect the current page
         segment = get_segment(request)
 
-        # Serve the file with theme context
         return render_template("home/" + template, 
                             segment=segment, 
                             API_GENERATOR=len(API_GENERATOR),
