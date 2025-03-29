@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-br" class="{% if theme == 'dark' %}dark-theme{% endif %}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -28,8 +27,18 @@
 
   <!-- Add this line in the head section, before your other stylesheets -->
   <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/dark-mode.css') }}">
+  <style>
+    .dark-theme {
+      background-color: #344767;
+      color: #ffffff;
+    }
+    .dark-theme .card {
+      background-color: lighten(#344767, 5%);
+      color: #ffffff;
+    }
+    /* Add other dark theme styles here */
+  </style>
 </head>
-
 <body class="g-sidenav-show  bg-gray-100">
 
   {% include "includes/sidebar.html" %}
