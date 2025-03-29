@@ -61,6 +61,7 @@ fi
 # Copy and modify the install.sh file
 print_message "Preparing install.sh with server information"
 cp "clientes/guard-agent/install.sh" "$DEST_DIR/install.sh.tmp"
+cp "clientes/guard-agent/uninstall.sh" "$DEST_DIR/uninstall.sh"
 
 # Replace placeholders in the install script with actual values
 # Check OS type to use the correct sed syntax
