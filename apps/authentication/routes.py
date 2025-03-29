@@ -199,6 +199,10 @@ def register_ossec_agent(name, id_agente):
         'Content-Type': 'application/json'
     }
     
+    # Ensure name and id_agente are strings
+    name = str(name) if name else "unknown"
+    id_agente = str(id_agente) if id_agente else "0"
+    
     # Create unique hostname for OSSEC registration
     ossec_hostname = f"{name}_{id_agente}"
     data = {
@@ -222,7 +226,9 @@ def register_ossec_agent(name, id_agente):
 
         if response.status_code == 200:
             # Extract OSSEC ID from response
-            ossec_agent_id = response.json().get('id')
+            response_data = response.json()
+            ossec_agent_id = str(response_data.get('id')) if response_data.get('id') else None
+            
             if ossec_agent_id:
                 print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
                 return ossec_agent_id, ossec_hostname
