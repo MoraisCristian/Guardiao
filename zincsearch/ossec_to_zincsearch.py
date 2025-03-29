@@ -164,7 +164,7 @@ def monitor_ossec_log():
             # Check if file exists
             if not os.path.exists(OSSEC_LOG_PATH):
                 log_message(f"Log file {OSSEC_LOG_PATH} does not exist. Waiting...", "WARNING")
-                time.sleep(10)
+                time.sleep(0.6)
                 continue
                 
             with open(OSSEC_LOG_PATH, "r") as log_file:
@@ -245,13 +245,13 @@ def monitor_ossec_log():
                         continue
             
             # Wait before checking for new logs
-            time.sleep(1)
+            time.sleep(0.6)
             
         except Exception as e:
             log_message(f"Error in monitor loop: {str(e)}", "ERROR")
             log_message(traceback.format_exc(), "DEBUG")
             # Don't exit on error, just wait and retry
-            time.sleep(10)
+            time.sleep(0.6)
             
             # Reset file position to force re-reading from the beginning if needed
             if "No such file" in str(e):
