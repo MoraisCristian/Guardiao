@@ -225,16 +225,12 @@ def register_ossec_agent(name, id_agente):
         print(f"Response Body: {response.text}")
 
         if response.status_code == 200:
-            # Extract OSSEC ID from response
             response_data = response.json()
-            ossec_agent_id = str(response_data.get('id')) if response_data.get('id') else None
-            
-            if ossec_agent_id:
-                print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
-                return ossec_agent_id, ossec_hostname
-            else:
-                print("Error: OSSEC ID not found in response")
-                return None, None
+            if response_data.get('status') == 'success':
+                ossec_agent_id = str(response_data.get('id'))
+                if ossec_agent_id:
+                    print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
+                    return ossec_agent_id, ossec_hostname
 
         print(f"Failed to register OSSEC agent. Status: {response.status_code}")
         return None, None

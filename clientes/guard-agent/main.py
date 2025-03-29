@@ -223,6 +223,41 @@ def executar_tarefa(tarefa, id_agente):
     except Exception as e:
         log_exception(f'Erro ao executar tarefa {tarefa}')
 
+def initialize_ossec(id_agente):
+    """Handle OSSEC initialization"""
+    try:
+        # Check if OSSEC is already installed and configured
+        if verificar_ossec_instalado() and verificar_chave_ossec_importada():
+            log_info("OSSEC já está instalado e configurado.")
+            return True
+            
+        # If not installed, install it
+        if not verificar_ossec_instalado():
+            log_info("OSSEC não está instalado. Iniciando instalação...")
+            if not instalar_ossec():
+                log_error("Falha na instalação do OSSEC.")
+                return False
+                
+        # Register with OSSEC server
+        log_info("Registrando agente no OSSEC...")
+        if not registrar_ossec(id_agente):
+            log_error("Falha no registro do OSSEC.")
+            return False
+            
+        # Verify final status
+        if not verificar_ossec_running():
+            log_warning("OSSEC não está em execução. Tentando reiniciar...")
+            if not reiniciar_ossec():
+                log_error("Falha ao reiniciar OSSEC.")
+                return False
+                
+        log_info("OSSEC inicializado com sucesso.")
+        return True
+        
+    except Exception as e:
+        log_exception("Erro durante a inicialização do OSSEC")
+        return False
+
 def main():
     """Main function"""
     log_info("Iniciando agente Guardian...")
@@ -240,6 +275,11 @@ def main():
                 log_critical("Falha no registro do agente. Saindo...")
                 return
         
+        # Initialize OSSEC
+        if not initialize_ossec(id_agente):
+            log_critical("Falha na inicialização do OSSEC. Saindo...")
+            return
+            
         # Validate OSSEC client.keys file and registration
         client_keys_path = "/var/ossec/etc/client.keys"
         if not os.path.exists(client_keys_path) or os.path.getsize(client_keys_path) == 0:
