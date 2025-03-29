@@ -26,33 +26,73 @@ def add_agent():
     try:
         # Verifica se o agente já existe
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
-                                    capture_output=True, text=True)
+                                  capture_output=True, text=True)
         
-        if name in list_result.stdout:
-            # Se o agente já existe, retorna o ID existente
-            match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
-            if match:
-                return jsonify({"id": match.group(1)}), 200
+        # Procura pelo agente existente
+        match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
+        if match:
+            agent_id = match.group(1)
+            # Se o agente já existe, extrai a chave
+            extract_result = subprocess.run(
+                ['/var/ossec/bin/manage_agents', '-e', agent_id],
+                capture_output=True,
+                text=True
+            )
+            
+            if extract_result.returncode == 0:
+                return jsonify({
+                    "status": "success",
+                    "id": agent_id,
+                    "key": extract_result.stdout.strip(),
+                    "message": "Agent already exists"
+                }), 200
+            else:
+                return jsonify({
+                    "error": "Failed to extract key for existing agent",
+                    "details": extract_result.stderr
+                }), 500
 
-        # Adiciona novo agente
-        process = subprocess.Popen(['/var/ossec/bin/manage_agents', '-i'],
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 text=True)
+        # Se o agente não existe, adiciona novo agente
+        add_result = subprocess.run(
+            ['/var/ossec/bin/manage_agents', '-a', ip, '-n', name],
+            capture_output=True,
+            text=True
+        )
         
-        # Envia os dados para o processo
-        output, error = process.communicate(input=f"{name}\n{ip}\nany\n")
-        
-        if process.returncode != 0:
-            return jsonify({"error": error}), 500
+        if add_result.returncode != 0:
+            return jsonify({
+                "error": "Failed to add new agent",
+                "details": add_result.stderr
+            }), 500
 
         # Extrai o ID do novo agente
-        match = re.search(r'ID:\s+(\d+)', output)
+        list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
+                                   capture_output=True, text=True)
+        match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
         if not match:
-            return jsonify({"error": "Failed to get agent ID"}), 500
+            return jsonify({"error": "Failed to get new agent ID"}), 500
 
-        return jsonify({"id": match.group(1)}), 200
+        agent_id = match.group(1)
+        
+        # Extrai a chave do novo agente
+        extract_result = subprocess.run(
+            ['/var/ossec/bin/manage_agents', '-e', agent_id],
+            capture_output=True,
+            text=True
+        )
+        
+        if extract_result.returncode != 0:
+            return jsonify({
+                "error": "Failed to extract key for new agent",
+                "details": extract_result.stderr
+            }), 500
+
+        return jsonify({
+            "status": "success",
+            "id": agent_id,
+            "key": extract_result.stdout.strip(),
+            "message": "Agent added successfully"
+        }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
