@@ -17,22 +17,43 @@ def add_agent():
 
     # Extrai os dados da requisição
     data = request.json
-    ip = data.get('ip')
+    ip = data.get('ip', 'any')
     name = data.get('name')
 
-    if not ip or not name:
-        return jsonify({"error": "IP and name are required"}), 400
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
 
-    # Adiciona o agente usando manage_agents
     try:
-        result = subprocess.run(
-            ["/var/ossec/bin/manage_agents", "-a", ip, "-n", name],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            return jsonify({"error": result.stderr}), 500
-        return jsonify({"message": "Agent added successfully"}), 200
+        # Verifica se o agente já existe
+        list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
+                                    capture_output=True, text=True)
+        
+        if name in list_result.stdout:
+            # Se o agente já existe, retorna o ID existente
+            match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
+            if match:
+                return jsonify({"id": match.group(1)}), 200
+
+        # Adiciona novo agente
+        process = subprocess.Popen(['/var/ossec/bin/manage_agents', '-i'],
+                                 stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 text=True)
+        
+        # Envia os dados para o processo
+        output, error = process.communicate(input=f"{name}\n{ip}\nany\n")
+        
+        if process.returncode != 0:
+            return jsonify({"error": error}), 500
+
+        # Extrai o ID do novo agente
+        match = re.search(r'ID:\s+(\d+)', output)
+        if not match:
+            return jsonify({"error": "Failed to get agent ID"}), 500
+
+        return jsonify({"id": match.group(1)}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

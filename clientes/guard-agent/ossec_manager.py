@@ -63,91 +63,51 @@ def reiniciar_ossec():
 
 def importar_chave_ossec(activation_key):
     """Import OSSEC key"""
-    # Verifica se a chave é uma lista e extrai o valor correto
-    if isinstance(activation_key, list):
-        print(activation_key)
-        # A chave está no primeiro elemento da lista
-        key_text = activation_key[0]
-    else:
-        key_text = activation_key
-    
-    # Extrai apenas a parte Base64 da chave
-    match = re.search(r'([A-Za-z0-9+/=]{20,})', key_text)
-    if match:
-        actual_key = match.group(1).strip()
-    else:
-        print("Formato de chave inválido. Não foi possível extrair a chave.")
-        return False
-    
-    if not actual_key:
-        print("Chave de ativação do OSSEC está vazia. Não é possível importar.")
-        return False
-    
-    print(f"Chave a ser importada: {actual_key}")
-    
-    # Executa comandos necessários antes de importar a chave
     try:
-        # Prepara os comandos com ou sem sudo conforme necessário
-        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        # Verifica se a chave é uma lista e extrai o valor correto
+        if isinstance(activation_key, list):
+            key_text = activation_key[0]
+        else:
+            key_text = activation_key
         
-        # Cria os diretórios necessários se não existirem
-        diretorios = [
-            '/var/ossec/queue',
-            '/var/ossec/queue/rids',
-            '/var/ossec/queue/agent-info',
-            '/var/ossec/queue/syscheck',
-            '/var/ossec/queue/rootcheck',
-            '/var/ossec/queue/diff'
-        ]
-        
-        for diretorio in diretorios:
-            if not os.path.exists(diretorio):
-                comando_mkdir = ['mkdir', '-p', diretorio]
-                if usar_sudo:
-                    comando_mkdir.insert(0, 'sudo')
-                subprocess.run(comando_mkdir, check=True)
-                print(f"Diretório {diretorio} criado com sucesso.")
-        
-        # Cria o arquivo sender
-        sender_path = '/var/ossec/queue/rids/sender'
-        comando_touch = ['touch', sender_path]
-        if usar_sudo:
-            comando_touch.insert(0, 'sudo')
-        subprocess.run(comando_touch, check=True)
-        print(f"Arquivo {sender_path} criado com sucesso.")
-        
-        # Ajusta as permissões
-        comando_chown = ['chown', '-R', 'ossec:ossec', '/var/ossec']
-        if usar_sudo:
-            comando_chown.insert(0, 'sudo')
-        subprocess.run(comando_chown, check=True)
-        
-        print("Preparação do ambiente OSSEC concluída com sucesso.")
-    except subprocess.CalledProcessError as e:
-        print(f"Erro ao preparar o ambiente OSSEC: {str(e)}")
-        # Continua mesmo com erro, pois pode ser que já esteja configurado
-    
-    try:
-        # Importa a chave diretamente usando o comando echo para fornecer 'y' como resposta
-        comando_completo = f"echo 'y' | "
-        if usar_sudo:
-            comando_completo += "sudo "
-        comando_completo += f"/var/ossec/bin/manage_agents -i {actual_key}"
-        
-        print(f"Executando comando: {comando_completo}")
-        resultado = subprocess.run(comando_completo, shell=True, capture_output=True, text=True)
-        
-        if resultado.returncode != 0:
-            print(f"Erro ao importar a chave: {resultado.stderr}")
+        # Extrai apenas a parte Base64 da chave
+        match = re.search(r'([A-Za-z0-9+/=]{20,})', key_text)
+        if not match:
+            print("Formato de chave inválido. Não foi possível extrair a chave.")
             return False
             
-        print("Chave do OSSEC importada com sucesso.")
-        print(f"Saída do comando: {resultado.stdout}")
+        actual_key = match.group(1).strip()
         
-        # Reinicia o serviço do OSSEC
-        return reiniciar_ossec()
+        if not actual_key:
+            print("Chave de ativação do OSSEC está vazia. Não é possível importar.")
+            return False
+        
+        print(f"Chave a ser importada: {actual_key}")
+        
+        # Executa o comando de importação
+        try:
+            process = subprocess.Popen(['/var/ossec/bin/manage_agents', '-i'],
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     text=True)
+            
+            # Envia 'y' e a chave para o processo
+            output, error = process.communicate(input=f"y\n{actual_key}\n")
+            
+            if process.returncode != 0:
+                print(f"Erro ao importar a chave: {error}")
+                return False
+                
+            print("Chave do OSSEC importada com sucesso.")
+            return True
+            
+        except Exception as e:
+            print(f"Erro ao importar a chave do OSSEC: {str(e)}")
+            return False
+            
     except Exception as e:
-        print(f"Erro ao importar a chave do OSSEC: {str(e)}")
+        print(f"Erro geral ao processar chave do OSSEC: {str(e)}")
         return False
 
 def verificar_ossec_running():

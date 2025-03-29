@@ -243,44 +243,35 @@ def registro_ossec():
     if not agente:
         return jsonify({'status': 'erro', 'mensagem': 'Agente não encontrado'}), 404
 
-    # Ensure the new fields exist
-    if not hasattr(agente, 'ossec_registered'):
-        agente.ossec_registered = False
-    if not hasattr(agente, 'ossec_id'):
-        agente.ossec_id = None
-    if not hasattr(agente, 'ossec_hostname'):
-        agente.ossec_hostname = None
-
-    # If already registered in OSSEC, return existing activation key
-    if agente.ossec_registered:
-        return jsonify({
-            'status': 'sucesso',
-            'activation_key': agente.ossec_id,
-            'ossec_hostname': agente.ossec_hostname,
-            'ossec_server': "ossec"
-        }), 200
-
-    # Register agent in OSSEC
-    ossec_agent_id, ossec_hostname = register_ossec_agent(name, id_agente)
-    
-    if ossec_agent_id:
-        # Update agent record with OSSEC information
-        agente.ossec_registered = True
-        agente.ossec_id = ossec_agent_id
-        agente.ossec_hostname = ossec_hostname
-        db.session.commit()
-
-        # Remove ossec-register from queue
-        remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
+    try:
+        # Register agent in OSSEC
+        ossec_agent_id, ossec_hostname = register_ossec_agent(name, id_agente)
         
+        if ossec_agent_id:
+            # Update agent record with OSSEC information
+            agente.ossec_registered = True
+            agente.ossec_id = ossec_agent_id
+            agente.ossec_hostname = ossec_hostname
+            db.session.commit()
+
+            # Remove ossec-register from queue
+            remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
+            
+            return jsonify({
+                'status': 'sucesso',
+                'activation_key': ossec_agent_id,
+                'ossec_hostname': ossec_hostname,
+                'ossec_server': "ossec"
+            }), 200
+            
+        return jsonify({'status': 'erro', 'mensagem': 'Falha ao registrar agente no OSSEC'}), 500
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({
-            'status': 'sucesso',
-            'activation_key': ossec_agent_id,
-            'ossec_hostname': ossec_hostname,
-            'ossec_server': "ossec"
-        }), 200
-    
-    return jsonify({'status': 'erro', 'mensagem': 'Falha ao registrar agente no OSSEC'}), 500
+            'status': 'erro',
+            'mensagem': str(e)
+        }), 500
 
 codigos = {'registro': 1, 'ping': 2, 'upload': 3}
 
