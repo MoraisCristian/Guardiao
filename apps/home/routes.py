@@ -11,7 +11,6 @@ from sqlalchemy import or_, desc
 from apps import db
 
 import random, string, os
-from flask import session
 
 @blueprint.route('/index')
 @login_required
@@ -90,7 +89,7 @@ def scan_on_demand(id):
     # Consulta a tabela de Atividades para obter o último scan realizado
     ultimo_scan = Atividades.query.filter_by(id_agente=id, atividade='vuln-scan').order_by(desc(Atividades.data_contato)).first()
     
-    # Verifica se o útimo scan foi realizado nos últimos 5 minutos
+    # Verifica se o último scan foi realizado nos últimos 5 minutos
     scan_recente = False
     if ultimo_scan:
         tempo_decorrido = datetime.now() - ultimo_scan.data_contato
@@ -195,34 +194,23 @@ def deletar():
 @blueprint.route('/<template>')
 @login_required
 def route_template(template):
+
     try:
+
         if not template.endswith('.html'):
             template += '.html'
 
-        # Set dark theme as default if no theme is set
-        theme = session.get('theme', 'dark')
-        
         # Detect the current page
         segment = get_segment(request)
 
-        return render_template("home/" + template, 
-                            segment=segment, 
-                            API_GENERATOR=len(API_GENERATOR),
-                            theme=theme)
+        # Serve the file (if exists) from app/templates/home/FILE.html
+        return render_template("home/" + template, segment=segment, API_GENERATOR=len(API_GENERATOR))
 
     except TemplateNotFound:
         return render_template('home/page-404.html'), 404
+
     except:
         return render_template('home/page-500.html'), 500
-
-# Add a route to toggle theme
-@blueprint.route('/toggle-theme', methods=['POST'])
-@login_required
-def toggle_theme():
-    current_theme = session.get('theme', 'light')
-    new_theme = 'dark' if current_theme == 'light' else 'light'
-    session['theme'] = new_theme
-    return '', 204
 
 
 # Helper - Extract current page name from request

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br" class="dark-theme">
+<html lang="pt-br">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -19,49 +20,26 @@
   <link href="{{ config.ASSETS_ROOT }}/css/nucleo-svg.css" rel="stylesheet" />
   <!-- CSS Files -->
   <link id="pagestyle" href="{{ config.ASSETS_ROOT }}/css/soft-ui-dashboard.css?v=1.0.6" rel="stylesheet" />
-  <link id="pagestyle_dark" href="{{ config.ASSETS_ROOT }}/css/dark-theme-core.css" rel="stylesheet" />
 
-  <!-- Global Theme Styles -->
-  <style>
-    :root {
-      --background-color: #344767;
-      --text-color: #ffffff;
-    }
-    
-    body {
-      background-color: var(--background-color);
-      color: var(--text-color);
-    }
-    
-    .light-theme {
-      --background-color: #ffffff;
-      --text-color: #000000;
-    }
-    
-    /* Apply dark theme to all elements */
-    body.dark-theme {
-      background-color: var(--background-color);
-      color: var(--text-color);
-    }
-    
-    body.dark-theme .card {
-      background-color: lighten(#344767, 5%);
-      color: var(--text-color);
-    }
-    
-    /* Add other global dark theme styles here */
-  </style>
+  <link id="pagestyle_dark" href="{{ config.ASSETS_ROOT }}/css/dark-theme-core.css" rel="stylesheet" />
 
   <!-- Specific CSS goes HERE -->
   {% block stylesheets %}{% endblock stylesheets %}
+
+  <!-- Add this line in the head section, before your other stylesheets -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/dark-mode.css') }}">
 </head>
-<body class="g-sidenav-show dark-theme"> <!-- Added dark-theme class here -->
+
+<body class="g-sidenav-show  bg-gray-100">
 
   {% include "includes/sidebar.html" %}
 
-  <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
+  <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg ">
+
     {% include "includes/navigation.html" %}
+
     {% block content %}{% endblock content %}
+
   </main>
 
   <!-- Core JS Files -->
