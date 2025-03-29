@@ -243,6 +243,14 @@ def registro_ossec():
     if not agente:
         return jsonify({'status': 'erro', 'mensagem': 'Agente não encontrado'}), 404
 
+    # Ensure the new fields exist
+    if not hasattr(agente, 'ossec_registered'):
+        agente.ossec_registered = False
+    if not hasattr(agente, 'ossec_id'):
+        agente.ossec_id = None
+    if not hasattr(agente, 'ossec_hostname'):
+        agente.ossec_hostname = None
+
     # If already registered in OSSEC, return existing activation key
     if agente.ossec_registered:
         return jsonify({
