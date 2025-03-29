@@ -194,42 +194,48 @@ def register_ossec_agent(name, id_agente):
     ossec_server_address = "ossec"
     ossec_http_auth = "sua_senha_secreta"
     url = f'http://{ossec_server_address}:59347/add'
-    headers = {'Authorization': ossec_http_auth, 'Content-Type': 'application/json'}
+    headers = {
+        'Authorization': ossec_http_auth,
+        'Content-Type': 'application/json'
+    }
     
     # Create unique hostname for OSSEC registration
     ossec_hostname = f"{name}_{id_agente}"
-    data = {'ip': 'any', 'name': ossec_hostname}
+    data = {
+        'ip': 'any',
+        'name': ossec_hostname
+    }
 
     try:
-        # Check if agent already exists in OSSEC
-        list_url = f'http://{ossec_server_address}:59347/list'
-        response = requests.get(list_url, headers=headers)
-        if response.status_code == 200:
-            agents_data = response.json().get('agents', '')
-            ossec_agent_id = None
-
-            # Process agent list
-            for line in agents_data.split('\n'):
-                if ossec_hostname in line:
-                    # Extract OSSEC ID
-                    ossec_agent_id = line.split('ID: ')[1].split(',')[0].strip()
-                    break
-
-            if ossec_agent_id:
-                # Agent already exists, return existing activation key
-                return ossec_agent_id, ossec_hostname
+        # Log request details
+        print(f"Preparing OSSEC registration request for {ossec_hostname}")
+        print(f"Request URL: {url}")
+        print(f"Request Headers: {headers}")
+        print(f"Request Body: {data}")
 
         # Register new agent
         response = requests.post(url, headers=headers, json=data)
+        
+        # Log response details
+        print(f"Response Status: {response.status_code}")
+        print(f"Response Body: {response.text}")
+
         if response.status_code == 200:
             # Extract OSSEC ID from response
             ossec_agent_id = response.json().get('id')
-            return ossec_agent_id, ossec_hostname
+            if ossec_agent_id:
+                print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
+                return ossec_agent_id, ossec_hostname
+            else:
+                print("Error: OSSEC ID not found in response")
+                return None, None
+
+        print(f"Failed to register OSSEC agent. Status: {response.status_code}")
+        return None, None
 
     except Exception as e:
-        print(f"Error registering OSSEC agent: {str(e)}")
-    
-    return None, None
+        print(f"Exception occurred during OSSEC registration: {str(e)}")
+        return None, None
 
 @blueprint.route('/registro-ossec', methods=['POST'])
 def registro_ossec():
@@ -238,10 +244,18 @@ def registro_ossec():
     id_agente = data.get('id')
     chave_ativacao = data.get('chave')
 
+    # Log incoming request
+    print(f"Received OSSEC registration request:")
+    print(f"Name: {name}")
+    print(f"Agent ID: {id_agente}")
+    print(f"Activation Key: {chave_ativacao}")
+
     # Verify if agent is already registered in Guardian
     agente = Agentes.query.filter_by(id=id_agente, chave=chave_ativacao).first()
     if not agente:
-        return jsonify({'status': 'erro', 'mensagem': 'Agente não encontrado'}), 404
+        error_msg = f"Agent not found. ID: {id_agente}, Key: {chave_ativacao}"
+        print(error_msg)
+        return jsonify({'status': 'erro', 'mensagem': error_msg}), 404
 
     try:
         # Register agent in OSSEC
@@ -257,6 +271,8 @@ def registro_ossec():
             # Remove ossec-register from queue
             remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
             
+            success_msg = f"Successfully registered OSSEC agent. ID: {ossec_agent_id}, Hostname: {ossec_hostname}"
+            print(success_msg)
             return jsonify({
                 'status': 'sucesso',
                 'activation_key': ossec_agent_id,
@@ -264,13 +280,17 @@ def registro_ossec():
                 'ossec_server': "ossec"
             }), 200
             
-        return jsonify({'status': 'erro', 'mensagem': 'Falha ao registrar agente no OSSEC'}), 500
+        error_msg = "Failed to register OSSEC agent"
+        print(error_msg)
+        return jsonify({'status': 'erro', 'mensagem': error_msg}), 500
         
     except Exception as e:
         db.session.rollback()
+        error_msg = f"Exception during OSSEC registration: {str(e)}"
+        print(error_msg)
         return jsonify({
             'status': 'erro',
-            'mensagem': str(e)
+            'mensagem': error_msg
         }), 500
 
 codigos = {'registro': 1, 'ping': 2, 'upload': 3}
