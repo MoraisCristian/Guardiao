@@ -240,7 +240,19 @@ def main():
                 log_critical("Falha no registro do agente. Saindo...")
                 return
         
-        # Install and configure OSSEC
+        # Validate OSSEC client.keys file and registration
+        client_keys_path = "/var/ossec/etc/client.keys"
+        if not os.path.exists(client_keys_path) or os.path.getsize(client_keys_path) == 0:
+            log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro OSSEC...")
+            if registrar_ossec(id_agente):
+                log_info("Registro OSSEC concluído com sucesso.")
+                reiniciar_ossec()
+            else:
+                log_error("Falha no registro OSSEC. Verifique os logs para mais detalhes.")
+        else:
+            log_info("Arquivo client.keys encontrado e válido.")
+        
+        # Verify OSSEC installation and status
         if not verificar_ossec_instalado():
             log_info("OSSEC não está instalado. Instalando...")
             instalar_ossec()
@@ -248,9 +260,12 @@ def main():
         elif not verificar_ossec_running():
             log_warning("OSSEC não está em execução. Reiniciando...")
             reiniciar_ossec()
-        elif not verificar_chave_ossec_importada():
-            log_warning("OSSEC instalado mas sem chave ou chave inválida. Registrando...")
-            registrar_ossec(id_agente)
+        
+        # Final OSSEC status verification
+        if verificar_ossec_instalado() and verificar_ossec_running() and verificar_chave_ossec_importada():
+            log_info("OSSEC está instalado, em execução e com chave importada corretamente.")
+        else:
+            log_error("Problemas na configuração do OSSEC. Verifique os logs para mais detalhes.")
         
         # Configure PSAD with enhanced settings
         log_info("Verificando e configurando PSAD para detecção de port scans...")

@@ -27,3 +27,33 @@
 .text-decoration-none:hover {
     text-decoration: underline;
 }
+
+// Add these new styles
+body {
+  background-color: #344767;
+  color: #ffffff;
+}
+
+.q-header {
+  background-color: lighten(#344767, 10%) !important;
+}
+
+.q-page {
+  background-color: #344767;
+  color: #ffffff;
+}
+
+.q-table {
+  background-color: lighten(#344767, 5%);
+  color: #ffffff;
+}
+
+.q-card {
+  background-color: lighten(#344767, 5%);
+  color: #ffffff;
+}
+
+.q-btn {
+  background-color: lighten(#344767, 15%);
+  color: #ffffff;
+}

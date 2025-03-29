@@ -230,7 +230,6 @@ def get_segment(request):
 
 
 # Helper function to call OSSEC API
-# Helper function to call OSSEC API
 def call_ossec_api(endpoint, method='GET', data=None):
     api_url = "http://ossec:59347"  # Assuming 'ossec' is the service name in docker-compose
     api_password = os.getenv("API_PASSWORD", "sua_senha_secreta")

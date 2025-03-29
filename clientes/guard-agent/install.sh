@@ -21,11 +21,11 @@ print_message() {
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[AVISO]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERRO]${NC} $1"
 }
 
 # Check if running as root
@@ -66,7 +66,7 @@ install_dependencies() {
         if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
             print_message "Update needed, updating package lists..."
             apt-get update -y
-            apt-get install -y python3 python3-pip curl tar
+            apt-get install -y python3 python3-pip python3-venv curl tar
         else
             print_message "Agent already installed and up to date, skipping package updates"
         fi
@@ -78,7 +78,7 @@ install_dependencies() {
         if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
             print_message "Update needed, updating packages..."
             yum update -y
-            yum install -y python3 python3-pip curl tar 
+            yum install -y python3 python3-pip python3-virtualenv curl tar 
         else
             print_message "Agent already installed and up to date, skipping package updates"
         fi
@@ -189,6 +189,10 @@ download_and_install() {
         mkdir -p "$INSTALL_DIR"
     fi
     
+    # Create virtual environment
+    print_message "Creating Python virtual environment"
+    python3 -m venv "$INSTALL_DIR/venv"
+    
     # Download the package
     DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.tar"
     print_message "Downloading Guard-Agent from $DOWNLOAD_URL"
@@ -220,13 +224,13 @@ download_and_install() {
         cp "/tmp/$CONFIG_FILE.backup" "$AGENT_DIR/$CONFIG_FILE"
     fi
     
-    # Install Python dependencies
-    print_message "Installing Python dependencies"
+    # Install Python dependencies in virtual environment
+    print_message "Installing Python dependencies in virtual environment"
     if [ -f "$AGENT_DIR/requirements.txt" ]; then
-        pip3 install -r "$AGENT_DIR/requirements.txt"
+        "$INSTALL_DIR/venv/bin/pip" install -r "$AGENT_DIR/requirements.txt"
     else
         print_warning "requirements.txt not found. Installing basic dependencies."
-        pip3 install requests psutil
+        "$INSTALL_DIR/venv/bin/pip" install requests psutil
     fi
     
     return 0
@@ -234,50 +238,68 @@ download_and_install() {
 
 # Create and configure service
 setup_service() {
-    print_message "Creating system service"
+    print_message "Configurando serviço do sistema"
     
-    # Create service file
-    if [ "$DISTRO" == "debian" ] || [ "$DISTRO" == "centos" ]; then
-        cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
-[Unit]
-Description=Guardian Agent Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=$AGENT_DIR
-ExecStart=/usr/bin/python3 $AGENT_DIR/main.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
+    # Use existing service file from installation directory
+    if [ -f "$AGENT_DIR/guardiao.service" ]; then
+        print_message "Usando arquivo de serviço existente"
+        cp "$AGENT_DIR/guardiao.service" /etc/systemd/system/$SERVICE_NAME.service
+    else
+        print_error "Arquivo guardiao.service não encontrado em $AGENT_DIR"
+        return 1
     fi
     
     # Reload systemd, enable and start service
-    print_message "Enabling and starting service"
+    print_message "Ativando e iniciando serviço"
     systemctl daemon-reload
     systemctl enable $SERVICE_NAME
     
     # Check if service is already running
     if systemctl is-active --quiet $SERVICE_NAME; then
-        print_message "Restarting service..."
+        print_message "Reiniciando serviço..."
         systemctl restart $SERVICE_NAME
     else
-        print_message "Starting service..."
+        print_message "Iniciando serviço..."
         systemctl start $SERVICE_NAME
     fi
     
     # Check service status
     if systemctl is-active --quiet $SERVICE_NAME; then
-        print_message "Guard-Agent service is running"
+        print_message "Serviço Guard-Agent está em execução"
         return 0
     else
-        print_error "Service failed to start. Please check logs with: journalctl -u $SERVICE_NAME"
+        print_error "Falha ao iniciar o serviço. Verifique os logs com: journalctl -u $SERVICE_NAME"
         return 1
     fi
+}
+
+function setup_mechanic_service() {
+    print_message "Configurando serviço mecânico"
+    
+    # Use existing service file from local directory
+    if [ -f "guardiao-mecanico.service" ]; then
+        print_message "Usando arquivo de serviço mecânico existente"
+        cp guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
+    else
+        print_error "Arquivo guardiao-mecanico.service não encontrado na pasta local"
+        return 1
+    fi
+    
+    # Copy mechanic script
+    if [ -f "mechanic.py" ]; then
+        print_message "Copiando script mecânico"
+        cp mechanic.py "$INSTALL_DIR/guard-agent/"
+    else
+        print_error "Arquivo mechanic.py não encontrado na pasta local"
+        return 1
+    fi
+    
+    # Reload systemd and enable/start services
+    systemctl daemon-reload
+    systemctl enable guardiao-mecanico
+    systemctl start guardiao-mecanico
+    
+    return 0
 }
 
 # Clean up temporary files
@@ -325,3 +347,48 @@ main() {
 
 # Run main function
 main
+
+
+function setup_mechanic_service() {
+    # Copy mechanic files to installation directory
+    print_message "Setting up mechanic service"
+    
+    # Copy service files
+    cp /var/guardiao/guard-agent/guardiao-mecanico.service /etc/systemd/system/
+    cp /var/guardiao/guard-agent/guardiao.service /etc/systemd/system/
+    
+    # Reload systemd and enable/start services
+    systemctl daemon-reload
+    systemctl enable guardiao-mecanico
+    systemctl start guardiao-mecanico
+    systemctl enable guardiao
+    systemctl start guardiao
+    
+    # Ensure services are running
+    if ! systemctl is-active --quiet guardiao; then
+        print_error "Failed to start guardiao service"
+        return 1
+    fi
+    
+    if ! systemctl is-active --quiet guardiao-mecanico; then
+        print_error "Failed to start guardiao-mecanico service"
+        return 1
+    fi
+    
+    return 0
+}
+
+# In the main function, modify the service setup section:
+if setup_service; then
+    if setup_mechanic_service; then
+        print_message "Guard-Agent has been successfully installed/updated!"
+        print_message "Service name: $SERVICE_NAME"
+        print_message "You can check the status with: systemctl status $SERVICE_NAME"
+    else
+        print_error "Failed to setup mechanic service"
+        exit 1
+    fi
+else
+    print_error "Failed to setup service"
+    exit 1
+fi

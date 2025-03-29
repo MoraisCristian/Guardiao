@@ -1,0 +1,14 @@
+[Unit]
+Description=Guardian Agent Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/guardiao/guard-agent
+ExecStart=/var/guardiao/venv/bin/python3 /var/guardiao/guard-agent/main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

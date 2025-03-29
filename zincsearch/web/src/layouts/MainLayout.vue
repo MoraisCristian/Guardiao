@@ -1,6 +1,6 @@
 <template>
-  <q-layout view="hHh lpR fFf">
-    <q-header>
+  <q-layout view="hHh lpR fFf" class="bg-dark">
+    <q-header elevated class="bg-primary">
       <q-toolbar>
         <q-btn
           flat
@@ -222,6 +222,10 @@ export default {
 </script>
 
 <style lang="scss">
+.q-layout {
+  background-color: #344767;
+}
+
 @import "../styles/app.scss";
 
 .q-header .q-btn-dropdown__arrow {
