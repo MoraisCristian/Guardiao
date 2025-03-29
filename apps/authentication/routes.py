@@ -195,57 +195,42 @@ def register_ossec_agent(name, id_agente):
     ossec_http_auth = "sua_senha_secreta"
     url = f'http://{ossec_server_address}:59347/add'
     headers = {'Authorization': ossec_http_auth, 'Content-Type': 'application/json'}
-    data = {'ip': 'any', 'name': f'{name}_{id_agente}'}  # Nome do agente no OSSEC será nome_id
+    
+    # Create unique hostname for OSSEC registration
+    ossec_hostname = f"{name}_{id_agente}"
+    data = {'ip': 'any', 'name': ossec_hostname}
 
     try:
-        # Verifica se o agente já existe
+        # Check if agent already exists in OSSEC
         list_url = f'http://{ossec_server_address}:59347/list'
         response = requests.get(list_url, headers=headers)
         if response.status_code == 200:
             agents_data = response.json().get('agents', '')
             ossec_agent_id = None
 
-            # Processa a string de agentes
+            # Process agent list
             for line in agents_data.split('\n'):
-                if f'{name}_{id_agente}' in line:
-                    # Extrai o ID do OSSEC (campo após "ID: ")
+                if ossec_hostname in line:
+                    # Extract OSSEC ID
                     ossec_agent_id = line.split('ID: ')[1].split(',')[0].strip()
                     break
 
-            # Se o agente já existe, remove-o
             if ossec_agent_id:
-                delete_url = f'http://{ossec_server_address}:59347/remove/{ossec_agent_id}'
-                delete_response = requests.delete(delete_url, headers=headers)
-                if delete_response.status_code != 200:
-                    print(f'Erro ao remover agente existente: {delete_response.status_code}')
-                    return None, None
+                # Agent already exists, return existing activation key
+                return ossec_agent_id, ossec_hostname
 
-        # Registra o novo agente
+        # Register new agent
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 200:
-            # Obtém a lista de agentes novamente para encontrar o ID do novo agente
-            list_response = requests.get(list_url, headers=headers)
-            if list_response.status_code == 200:
-                agents_data = list_response.json().get('agents', '')
-                for line in agents_data.split('\n'):
-                    if f'{name}_{id_agente}' in line:
-                        # Extrai o ID do OSSEC do novo agente
-                        ossec_agent_id = line.split('ID: ')[1].split(',')[0].strip()
-                        break
+            # Extract OSSEC ID from response
+            ossec_agent_id = response.json().get('id')
+            return ossec_agent_id, ossec_hostname
 
-                if ossec_agent_id:
-                    # Extrai a chave de ativação usando o ID do OSSEC
-                    key_url = f'http://{ossec_server_address}:59347/extract-key/{ossec_agent_id}'
-                    key_response = requests.get(key_url, headers=headers)
-                    if key_response.status_code == 200:
-                        activation_key = key_response.json().get('key', '')
-                        return activation_key, ossec_agent_id  # Retorna a chave e o ID do OSSEC
-        return None, None
     except Exception as e:
-        print(f'Erro ao registrar agente no OSSEC: {e}')
-        return None, None
+        print(f"Error registering OSSEC agent: {str(e)}")
+    
+    return None, None
 
-# Rota para registro no OSSEC
 @blueprint.route('/registro-ossec', methods=['POST'])
 def registro_ossec():
     data = request.get_json()
@@ -253,24 +238,41 @@ def registro_ossec():
     id_agente = data.get('id')
     chave_ativacao = data.get('chave')
 
-    # Verifica se a chave de ativação do Guardião é válida
-    agentes = Agentes.query.all()
-    for agente in agentes:
-        if agente.chave == chave_ativacao and int(agente.id) == int(id_agente):
-            # Registra o agente no OSSEC
-            activation_key, ossec_agent_id = register_ossec_agent(name, id_agente)
-            if activation_key:
-                ossec_server_address = "ossec"
-                # Remove a atividade ossec-register da fila após o registro bem-sucedido
-                remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
-                return jsonify({
-                    'status': 'sucesso',
-                    'activation_key': activation_key,
-                    'ossec_server': ossec_server_address
-                }), 200
-            else:
-                return jsonify({'status': 'falha', 'mensagem': 'Erro ao registrar agente no OSSEC'}), 500
-    return jsonify({'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente inválido'}), 400
+    # Verify if agent is already registered in Guardian
+    agente = Agentes.query.filter_by(id=id_agente, chave=chave_ativacao).first()
+    if not agente:
+        return jsonify({'status': 'erro', 'mensagem': 'Agente não encontrado'}), 404
+
+    # If already registered in OSSEC, return existing activation key
+    if agente.ossec_registered:
+        return jsonify({
+            'status': 'sucesso',
+            'activation_key': agente.ossec_id,
+            'ossec_hostname': agente.ossec_hostname,
+            'ossec_server': "ossec"
+        }), 200
+
+    # Register agent in OSSEC
+    ossec_agent_id, ossec_hostname = register_ossec_agent(name, id_agente)
+    
+    if ossec_agent_id:
+        # Update agent record with OSSEC information
+        agente.ossec_registered = True
+        agente.ossec_id = ossec_agent_id
+        agente.ossec_hostname = ossec_hostname
+        db.session.commit()
+
+        # Remove ossec-register from queue
+        remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
+        
+        return jsonify({
+            'status': 'sucesso',
+            'activation_key': ossec_agent_id,
+            'ossec_hostname': ossec_hostname,
+            'ossec_server': "ossec"
+        }), 200
+    
+    return jsonify({'status': 'erro', 'mensagem': 'Falha ao registrar agente no OSSEC'}), 500
 
 codigos = {'registro': 1, 'ping': 2, 'upload': 3}
 

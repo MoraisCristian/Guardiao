@@ -67,6 +67,9 @@ class Agentes(db.Model):
     chave = db.Column(db.String(120), nullable=False)
     host = db.Column(db.String(120), nullable=False)
     data_ativacao = db.Column(db.DateTime, nullable=False)
+    ossec_registered = db.Column(db.Boolean, default=False, nullable=False)
+    ossec_id = db.Column(db.String(120), nullable=True)
+    ossec_hostname = db.Column(db.String(120), nullable=True)
 
     def __repr__(self):
         return '<Agente %r>' % self.id
