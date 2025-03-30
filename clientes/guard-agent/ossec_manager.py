@@ -151,12 +151,9 @@ def importar_chave_ossec(activation_key):
         
         # Execute the import command
         try:
-            # Create a temporary file with the key
-            with open('/tmp/client.keys', 'w') as f:
-                f.write(actual_key)
             
-            # Copy the key directly to the client.keys file (more reliable than manage_agents)
-            command = "sudo cp /tmp/client.keys /var/ossec/etc/client.keys"
+            command = "echo 'y' | /var/ossec/bin/manage_agents -i {key}".format(key=actual_key)
+            log_info(f"Comando a ser executado: {command}")
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -336,8 +333,8 @@ def instalar_ossec():
             if not os.path.exists('etc/preloaded-vars.conf') or os.path.getsize('etc/preloaded-vars.conf') == 0:
                 log_info("Criando arquivo preloaded-vars.conf padrão...")
                 preloaded_vars = """
-USER_LANGUAGE="en"
-USER_NO_STOP="y"
+USER_LANGUAGE="pt"
+USER_NO_STOP="s"
 USER_INSTALL_TYPE="agent"
 USER_DIR="/var/ossec"
 USER_ENABLE_ACTIVE_RESPONSE="y"
