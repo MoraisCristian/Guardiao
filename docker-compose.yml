@@ -26,6 +26,7 @@ services:
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
     volumes:
       - ./ossec-data:/root/  # Volume único para persistir dados do OSSEC
+      - ./ossec-docker/conector:/opt/conector  # Add this line to mirror the API files
     networks:
       - app-network
     environment:

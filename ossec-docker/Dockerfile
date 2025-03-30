@@ -6,7 +6,7 @@ ADD ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
 ADD ossec-docker/data_dirs.env /data_dirs.env
 ADD ossec-docker/init.sh /init.sh
 ADD ossec-docker/ossec-server.sh /ossec-server.sh
-ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
+# ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
 
 ENV DEBIAN_FRONTEND=noninteractive
 
