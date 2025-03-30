@@ -28,6 +28,13 @@ def add_agent():
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
                                   capture_output=True, text=True)
         
+        if list_result.returncode != 0:
+            return jsonify({
+                "error": "Failed to list agents",
+                "details": list_result.stderr,
+                "line": 30  # Line number where error occurred
+            }), 500
+        
         # Procura pelo agente existente
         match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
         if match:
@@ -39,18 +46,19 @@ def add_agent():
                 text=True
             )
             
-            if extract_result.returncode == 0:
-                return jsonify({
-                    "status": "success",
-                    "id": agent_id,
-                    "key": extract_result.stdout.strip(),
-                    "message": "Agent already exists"
-                }), 200
-            else:
+            if extract_result.returncode != 0:
                 return jsonify({
                     "error": "Failed to extract key for existing agent",
-                    "details": extract_result.stderr
+                    "details": extract_result.stderr,
+                    "line": 45  # Line number where error occurred
                 }), 500
+
+            return jsonify({
+                "status": "success",
+                "id": agent_id,
+                "key": extract_result.stdout.strip(),
+                "message": "Agent already exists"
+            }), 200
 
         # Se o agente não existe, adiciona novo agente
         add_result = subprocess.run(
@@ -62,15 +70,27 @@ def add_agent():
         if add_result.returncode != 0:
             return jsonify({
                 "error": "Failed to add new agent",
-                "details": add_result.stderr
+                "details": add_result.stderr,
+                "line": 63  # Line number where error occurred
             }), 500
 
         # Extrai o ID do novo agente
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
                                    capture_output=True, text=True)
+        
+        if list_result.returncode != 0:
+            return jsonify({
+                "error": "Failed to list agents after adding",
+                "details": list_result.stderr,
+                "line": 72  # Line number where error occurred
+            }), 500
+
         match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
         if not match:
-            return jsonify({"error": "Failed to get new agent ID"}), 500
+            return jsonify({
+                "error": "Failed to get new agent ID",
+                "line": 76  # Line number where error occurred
+            }), 500
 
         agent_id = match.group(1)
         
@@ -84,7 +104,8 @@ def add_agent():
         if extract_result.returncode != 0:
             return jsonify({
                 "error": "Failed to extract key for new agent",
-                "details": extract_result.stderr
+                "details": extract_result.stderr,
+                "line": 87  # Line number where error occurred
             }), 500
 
         return jsonify({
@@ -95,7 +116,13 @@ def add_agent():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        tb = traceback.format_exc()
+        return jsonify({
+            "error": str(e),
+            "traceback": tb,
+            "line": "Unknown"  # General exception catch
+        }), 500
 
 @app.route('/list', methods=['GET'])
 def list_agents():
