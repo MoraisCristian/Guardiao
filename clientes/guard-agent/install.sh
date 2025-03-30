@@ -42,69 +42,6 @@ CONFIG_FILE="$AGENT_DIR/guard_config.json"
 SERVICE_NAME="guardiao"
 MD5_FILE="$INSTALL_DIR/guardiao.md5"
 
-CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guard_config.json"
-    print_message "Downloading configuration from $CONFIG_URL"
-    
-    if curl -s -f -o "$INSTALL_DIR/$CONFIG_FILE" "$CONFIG_URL"; then
-        print_message "Configuration file downloaded successfully to $INSTALL_DIR/$CONFIG_FILE"
-        # Read server information from the downloaded config
-        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-        print_message "Using server: ${SERVER_IP}:${SERVER_PORT}"
-        return 0
-    else
-        print_warning "Failed to download configuration file from server"
-        return 1
-    fi
-
-# Remove this line that's causing problems
-# cd $INSTALL_DIR  # This line should be removed
-
-# Detect distribution
-if [ -f /etc/debian_version ]; then
-    DISTRO="debian"
-    print_message "Detected Debian-based system"
-elif [ -f /etc/redhat-release ]; then
-    DISTRO="centos"
-    print_message "Detected CentOS/RHEL-based system"
-else
-    print_warning "Could not determine Linux distribution. Assuming Debian-based."
-    DISTRO="debian"
-fi
-
-# Install required packages
-install_dependencies() {
-    print_message "Installing required packages"
-    
-    # Detect distribution
-    if [ -f /etc/debian_version ]; then
-        DISTRO="debian"
-        print_message "Detected Debian/Ubuntu system"
-        
-        # Only update packages if we need to install the agent
-        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
-            print_message "Update needed, updating package lists..."
-            apt-get update -y
-            apt-get install -y python3 python3-pip python3-venv curl tar
-        else
-            print_message "Agent already installed and up to date, skipping package updates"
-        fi
-    elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
-        DISTRO="centos"
-        print_message "Detected CentOS/RHEL system"
-        
-        # Only update packages if we need to install the agent
-        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
-            print_message "Update needed, updating packages..."
-            yum update -y
-            yum install -y python3 python3-pip python3-virtualenv curl tar 
-        else
-            print_message "Agent already installed and up to date, skipping package updates"
-        fi
-    fi
-}
-
-# Download configuration file
 download_config() {
     print_message "Downloading configuration file from server"
     
