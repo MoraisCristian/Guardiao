@@ -211,33 +211,28 @@ def register_ossec_agent(name, id_agente):
     }
 
     try:
-        # Log request details
-        print(f"Preparing OSSEC registration request for {ossec_hostname}")
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-        print(f"Request Body: {data}")
-
         # Register new agent
         response = requests.post(url, headers=headers, json=data)
         
-        # Log response details
-        print(f"Response Status: {response.status_code}")
-        print(f"Response Body: {response.text}")
-
         if response.status_code == 200:
             response_data = response.json()
             if response_data.get('status') == 'success':
                 ossec_agent_id = str(response_data.get('id'))
-                if ossec_agent_id:
-                    print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
-                    return ossec_agent_id, ossec_hostname
+                key_response = response_data.get('key', '')
+                
+                # Extract the actual key from the response
+                key_match = re.search(r"Agent key information for '\d+':\s+(\S+)", key_response)
+                activation_key = key_match.group(1) if key_match else key_response
+                
+                print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
+                return ossec_agent_id, ossec_hostname, activation_key
 
         print(f"Failed to register OSSEC agent. Status: {response.status_code}")
-        return None, None
+        return None, None, None
 
     except Exception as e:
         print(f"Exception occurred during OSSEC registration: {str(e)}")
-        return None, None
+        return None, None, None
 
 @blueprint.route('/registro-ossec', methods=['POST'])
 def registro_ossec():
@@ -257,28 +252,28 @@ def registro_ossec():
         # Register agent in OSSEC
         ossec_agent_id, ossec_hostname, activation_key = register_ossec_agent(name, id_agente)
         
-        if ossec_agent_id:
-            # Update agent record with OSSEC information
-            agente.ossec_registered = True
-            agente.ossec_id = ossec_agent_id
-            agente.ossec_hostname = ossec_hostname
-            db.session.commit()
+        if not all([ossec_agent_id, ossec_hostname, activation_key]):
+            error_msg = "Failed to register OSSEC agent"
+            print(error_msg)
+            return jsonify({'status': 'erro', 'mensagem': error_msg}), 500
+            
+        # Update agent record with OSSEC information
+        agente.ossec_registered = True
+        agente.ossec_id = ossec_agent_id
+        agente.ossec_hostname = ossec_hostname
+        db.session.commit()
 
-            # Remove ossec-register from queue
-            remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
-            
-            success_msg = f"Successfully registered OSSEC agent. ID: {ossec_agent_id}, Hostname: {ossec_hostname}"
-            print(success_msg)
-            return jsonify({
-                'status': 'sucesso',
-                'activation_key': activation_key,
-                'ossec_hostname': ossec_hostname,
-                'ossec_server': "ossec"
-            }), 200
-            
-        error_msg = "Failed to register OSSEC agent"
-        print(error_msg)
-        return jsonify({'status': 'erro', 'mensagem': error_msg}), 500
+        # Remove ossec-register from queue
+        remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
+        
+        success_msg = f"Successfully registered OSSEC agent. ID: {ossec_agent_id}, Hostname: {ossec_hostname}"
+        print(success_msg)
+        return jsonify({
+            'status': 'sucesso',
+            'activation_key': activation_key,
+            'ossec_hostname': ossec_hostname,
+            'ossec_server': "ossec"
+        }), 200
         
     except Exception as e:
         db.session.rollback()
