@@ -213,6 +213,9 @@ def register_ossec_agent(name, id_agente):
     try:
         # Register new agent
         response = requests.post(url, headers=headers, json=data)
+        print(response.text)
+        print(response.status_code)
+        print(response.headers)
         
         if response.status_code == 200:
             response_data = response.json()
