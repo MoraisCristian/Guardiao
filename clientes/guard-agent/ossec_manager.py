@@ -134,31 +134,35 @@ def reiniciar_ossec():
 def importar_chave_ossec(activation_key):
     """Import OSSEC key"""
     try:
-        # Extract the actual key from the response
-        key_match = re.search(r"Agent key information for '\d+':\s+(\S+)", activation_key)
+        # Extract the actual key and ID from the response
+        key_match = re.search(r"Agent key information for '(\d+)':\s+(\S+)", activation_key)
         if key_match:
-            actual_key = key_match.group(1).strip()
+            agent_id = key_match.group(1).strip()
+            actual_key = key_match.group(2).strip()
         else:
             # If regex fails, try to get the last line that looks like a key
             lines = activation_key.split('\n')
             actual_key = lines[-1].strip() if lines else ''
+            # Try to extract agent ID from the key (first component)
+            agent_id = actual_key.split(' ')[0] if actual_key else ''
         
-        if not actual_key:
-            log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
+        if not actual_key or not agent_id:
+            log_error("Chave de ativação do OSSEC está vazia ou inválida. Não é possível importar.")
             return False
         
-        log_debug(f"Chave a ser importada: {actual_key}")
+        log_debug(f"Chave a ser importada para agente {agent_id}: {actual_key}")
         
-        # Execute the import command
+        # Execute the import command with agent ID
         try:
-            process = subprocess.Popen(['/var/ossec/bin/manage_agents', '-i'],
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     text=True)
+            command = ['/var/ossec/bin/manage_agents', '-i', agent_id]
+            process = subprocess.Popen(command,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True)
             
-            # Send 'y' and the key to the process
-            output, error = process.communicate(input=f"y\n{actual_key}\n")
+            # Send the key to the process
+            output, error = process.communicate(input=f"{actual_key}\ny\n")
             
             if process.returncode != 0:
                 log_error(f"Erro ao importar a chave: {error}")
