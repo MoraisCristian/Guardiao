@@ -108,6 +108,13 @@ def os_install(package):
             'centos': 'systemd-devel',
             'redhat': 'systemd-devel',
             'darwin': 'systemd'
+        },
+        'libevent-dev': {
+            'debian': 'libevent-dev',
+            'ubuntu': 'libevent-dev',
+            'centos': 'libevent-devel',
+           'redhat': 'libevent-devel',
+            'darwin': 'libevent'
         }
     }
     
