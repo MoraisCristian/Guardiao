@@ -80,7 +80,7 @@ def configurar_ossec():
 def verificar_ossec_instalado():
     """Check if OSSEC is already installed"""
     try:
-        installed = os.path.exists('/var/ossec/bin/ossec-agentd')
+        installed = os.path.exists('/var/ossec/bin/ossec-control')
         log_debug(f'Verificação de instalação do OSSEC: {installed}')
         return installed
     except Exception as e:
