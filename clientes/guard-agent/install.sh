@@ -190,6 +190,47 @@ check_for_update() {
 }
 
 # Download and install/update the package
+# Add a new function to download and install OSSEC configuration
+download_ossec_config() {
+    print_message "Downloading OSSEC configuration file"
+    
+    # Create OSSEC configuration directory if it doesn't exist
+    if [ ! -d "/var/ossec/etc" ]; then
+        print_message "Creating OSSEC configuration directory"
+        mkdir -p "/var/ossec/etc"
+    fi
+    
+    # Download OSSEC configuration file
+    OSSEC_CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/ossec.conf"
+    print_message "Downloading OSSEC configuration from $OSSEC_CONFIG_URL"
+    
+    if curl -s -f -o "/var/ossec/etc/ossec.conf" "$OSSEC_CONFIG_URL"; then
+        print_message "OSSEC configuration file downloaded successfully"
+        # Set proper permissions
+        chmod 640 "/var/ossec/etc/ossec.conf"
+        if [ -d "/var/ossec" ]; then
+            chown root:ossec "/var/ossec/etc/ossec.conf" 2>/dev/null || true
+        fi
+        return 0
+    else
+        print_warning "Failed to download OSSEC configuration file from server"
+        
+        # Check if we have a local copy in the agent directory
+        if [ -f "$AGENT_DIR/ossec.conf" ]; then
+            print_message "Using local OSSEC configuration file"
+            cp "$AGENT_DIR/ossec.conf" "/var/ossec/etc/ossec.conf"
+            chmod 640 "/var/ossec/etc/ossec.conf"
+            if [ -d "/var/ossec" ]; then
+                chown root:ossec "/var/ossec/etc/ossec.conf" 2>/dev/null || true
+            fi
+            return 0
+        fi
+        
+        return 1
+    fi
+}
+
+# Modify the download_and_install function to include OSSEC configuration
 download_and_install() {
     # Create installation directory if it doesn't exist
     if [ ! -d "$INSTALL_DIR" ]; then
@@ -247,13 +288,21 @@ download_and_install() {
         "$AGENT_DIR/venv/bin/pip" install requests psutil
     fi
     
+    # Download and install OSSEC configuration
+    download_ossec_config
+    
     return 0
 }
 
-# Create and configure service
-# Fix the setup_service function
+# Also add OSSEC configuration check to the setup_service function
 setup_service() {
     print_message "Configurando serviço do sistema"
+    
+    # Check if OSSEC configuration exists
+    if [ ! -f "/var/ossec/etc/ossec.conf" ]; then
+        print_warning "OSSEC configuration file not found, attempting to download"
+        download_ossec_config
+    fi
     
     # Use existing service file from agent directory
     if [ -f "$AGENT_DIR/guardiao.service" ]; then
