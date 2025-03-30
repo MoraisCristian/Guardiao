@@ -39,9 +39,8 @@ fi
 INSTALL_DIR="/var/guardiao"
 AGENT_DIR="$INSTALL_DIR/guard-agent"
 CONFIG_FILE="$AGENT_DIR/guard_config.json"
-MD5_FILE="$INSTALL_DIR/guardiao.md5"
 SERVICE_NAME="guardiao"
-MD5_FILE="/var/guardiao/guardiao.md5"
+MD5_FILE="$INSTALL_DIR/guardiao.md5"
 
 # Detect distribution
 if [ -f /etc/debian_version ]; then
@@ -252,15 +251,16 @@ download_and_install() {
 }
 
 # Create and configure service
+# Fix the setup_service function
 setup_service() {
     print_message "Configurando serviço do sistema"
     
-    # Use existing service file from local directory
-    if [ -f "guardiao.service" ]; then
+    # Use existing service file from agent directory
+    if [ -f "$AGENT_DIR/guardiao.service" ]; then
         print_message "Usando arquivo de serviço existente"
-        cp /var/guardiao/guard-agent/guardiao.service /etc/systemd/system/$SERVICE_NAME.service
+        cp "$AGENT_DIR/guardiao.service" /etc/systemd/system/$SERVICE_NAME.service
     else
-        print_error "Arquivo guard-agent/guardiao.service não encontrado na pasta local"
+        print_error "Arquivo guardiao.service não encontrado no diretório do agente"
         return 1
     fi
     
@@ -288,26 +288,6 @@ setup_service() {
     fi
 }
 
-function setup_mechanic_service() {
-    print_message "Configurando serviço mecânico"
-    
-    # Use existing service file from local directory
-    if [ -f "guardiao-mecanico.service" ]; then
-        print_message "Usando arquivo de serviço mecânico existente"
-        cp guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
-    else
-        print_error "Arquivo guardiao-mecanico.service não encontrado na pasta local"
-        return 1
-    fi
-    
-    # Reload systemd and enable/start services
-    systemctl daemon-reload
-    systemctl enable guardiao-mecanico
-    systemctl start guardiao-mecanico
-    
-    return 0
-}
-
 # Clean up temporary files
 cleanup() {
     print_message "Cleaning up temporary files"
@@ -317,6 +297,7 @@ cleanup() {
 }
 
 # Main function
+# Fix the main function to include mechanic service setup
 main() {
     print_message "Starting Guard-Agent installation/update process"
     
@@ -332,9 +313,15 @@ main() {
         if download_and_install; then
             # Setup service
             if setup_service; then
-                print_message "Guard-Agent has been successfully installed/updated!"
-                print_message "Service name: $SERVICE_NAME"
-                print_message "You can check the status with: systemctl status $SERVICE_NAME"
+                # Setup mechanic service
+                if setup_mechanic_service; then
+                    print_message "Guard-Agent has been successfully installed/updated!"
+                    print_message "Service name: $SERVICE_NAME"
+                    print_message "You can check the status with: systemctl status $SERVICE_NAME"
+                else
+                    print_error "Failed to setup mechanic service"
+                    exit 1
+                fi
             else
                 print_error "Failed to setup service"
                 exit 1
@@ -351,31 +338,25 @@ main() {
     cleanup
 }
 
-# Run main function
-main
-
-
+# Define setup_mechanic_service before main
 function setup_mechanic_service() {
     # Copy mechanic files to installation directory
     print_message "Setting up mechanic service"
     
     # Copy service files
-    cp /var/guardiao/guard-agent/guardiao-mecanico.service /etc/systemd/system/
-    cp /var/guardiao/guard-agent/guardiao.service /etc/systemd/system/
+    if [ -f "$AGENT_DIR/guardiao-mecanico.service" ]; then
+        cp "$AGENT_DIR/guardiao-mecanico.service" /etc/systemd/system/
+    else
+        print_error "Arquivo guardiao-mecanico.service não encontrado no diretório do agente"
+        return 1
+    fi
     
     # Reload systemd and enable/start services
     systemctl daemon-reload
     systemctl enable guardiao-mecanico
     systemctl start guardiao-mecanico
-    systemctl enable guardiao
-    systemctl start guardiao
     
     # Ensure services are running
-    if ! systemctl is-active --quiet guardiao; then
-        print_error "Failed to start guardiao service"
-        return 1
-    fi
-    
     if ! systemctl is-active --quiet guardiao-mecanico; then
         print_error "Failed to start guardiao-mecanico service"
         return 1
@@ -384,17 +365,7 @@ function setup_mechanic_service() {
     return 0
 }
 
-# In the main function, modify the service setup section:
-if setup_service; then
-    if setup_mechanic_service; then
-        print_message "Guard-Agent has been successfully installed/updated!"
-        print_message "Service name: $SERVICE_NAME"
-        print_message "You can check the status with: systemctl status $SERVICE_NAME"
-    else
-        print_error "Failed to setup mechanic service"
-        exit 1
-    fi
-else
-    print_error "Failed to setup service"
-    exit 1
-fi
+# Run main function
+main
+
+# Remove the duplicate setup_mechanic_service function and the code after main
