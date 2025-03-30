@@ -290,8 +290,8 @@ def instalar_ossec():
             # Prepare install config
             with open('/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf', 'w') as f:
                 f.write("""
-USER_LANGUAGE="en"
-USER_NO_STOP="y"
+USER_LANGUAGE="pt"
+USER_NO_STOP="s"
 USER_INSTALL_TYPE="agent"
 USER_DIR="/var/ossec"
 USER_DELETE_DIR="n"
@@ -300,7 +300,7 @@ USER_ENABLE_SYSCHECK="y"
 USER_ENABLE_ROOTCHECK="y"
 USER_UPDATE="n"
 USER_UPDATE_RULES="y"
-USER_BINARYINSTALL="n"
+USER_BINARYINSTALL="y"
                 """)
     
             # Run install script
