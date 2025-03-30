@@ -130,8 +130,8 @@ check_for_update() {
     REMOTE_MD5=$(cat /tmp/guardiao.md5)
     
     # Check if local installation exists and get its MD5
-    if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/$MD5_FILE" ]; then
-        LOCAL_MD5=$(cat "$INSTALL_DIR/$MD5_FILE")
+    if [ -d "$INSTALL_DIR" ] && [ -f "$MD5_FILE" ]; then  # Changed to use MD5_FILE variable
+        LOCAL_MD5=$(cat "$MD5_FILE")  # Changed to use MD5_FILE variable
         print_message "Current version MD5: $LOCAL_MD5"
         print_message "Available version MD5: $REMOTE_MD5"
         
