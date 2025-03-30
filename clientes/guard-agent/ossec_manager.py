@@ -231,61 +231,92 @@ def verificar_ossec_running():
 
 def instalar_ossec():
     """Install OSSEC"""
-    # Verifica se o OSSEC já está instalado
-    if verificar_ossec_instalado():
-        log_info("OSSEC já está instalado. Pulando a instalação.")
-        return True
-    
-    # Baixa o pacote de instalação do OSSEC
     try:
-        log_info("Baixando pacote de instalação do OSSEC...")
-        url = f'{SERVER_URL}/download/ossec-agent.deb'
-        response = requests.get(url)
-        
-        if response.status_code != 200:
-            log_error("Falha ao baixar o pacote de instalação do OSSEC.")
+        # Verifica se o OSSEC já está instalado
+        if verificar_ossec_instalado():
+            log_info("OSSEC já está instalado. Pulando a instalação.")
+            return True
+    
+        # Detecta a distribuição do sistema
+        distro = detect_os_distribution()
+        if not distro:
+            log_error("Não foi possível detectar a distribuição do sistema.")
             return False
+    
+        # Instala dependências necessárias
+        if distro == "debian":
+            dependencies = ["build-essential", "make", "gcc", "libevent-dev", "libpcre2-dev", 
+                          "libssl-dev", "zlib1g-dev", "wget", "tar"]
             
-        # Salva o pacote localmente
-        with open('ossec-agent.deb', 'wb') as f:
-            f.write(response.content)
-            
-        log_info("Pacote de instalação do OSSEC baixado com sucesso.")
-        
-        # Instala o pacote
-        log_info("Instalando OSSEC...")
-        comando = ['dpkg', '-i', 'ossec-agent.deb']
-        
-        # Verifica se precisa usar sudo
-        if os.geteuid() != 0 and verificar_sudo_disponivel():
-            comando.insert(0, 'sudo')
-            
-        resultado = subprocess.run(comando, capture_output=True, text=True)
-        
-        if resultado.returncode != 0:
-            log_error(f"Erro durante a instalação do OSSEC: {resultado.stderr}")
-            # Tenta resolver dependências se a instalação falhar
-            if "você pode querer executar 'apt-get -f install'" in resultado.stderr or "dependency problems" in resultado.stderr:
-                log_info("Tentando resolver dependências...")
-                fix_cmd = ['apt-get', '-f', 'install', '-y']
-                if os.geteuid() != 0 and verificar_sudo_disponivel():
-                    fix_cmd.insert(0, 'sudo')
-                fix_result = subprocess.run(fix_cmd, capture_output=True, text=True)
-                if fix_result.returncode != 0:
-                    log_error(f"Falha ao resolver dependências: {fix_result.stderr}")
-                    return False
-                # Tenta instalar novamente
-                log_info("Tentando instalar OSSEC novamente...")
-                retry_result = subprocess.run(comando, capture_output=True, text=True)
-                if retry_result.returncode != 0:
-                    log_error(f"Falha na segunda tentativa de instalação: {retry_result.stderr}")
-                    return False
-            else:
+            # Update package list
+            if not os_update():
+                log_error("Falha ao atualizar lista de pacotes.")
                 return False
+    
+            # Install dependencies
+            if not os_install(dependencies):
+                log_error("Falha ao instalar dependências.")
+                return False
+    
+        # Download OSSEC source
+        log_info("Baixando OSSEC...")
+        ossec_url = f"{SERVER_URL}/download/ossec-hids-3.7.0.tar.gz"
+        try:
+            response = requests.get(ossec_url, stream=True)
+            if response.status_code == 200:
+                with open('/tmp/ossec.tar.gz', 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            else:
+                log_error(f"Falha ao baixar OSSEC. Status code: {response.status_code}")
+                return False
+        except Exception as e:
+            log_exception("Erro ao baixar OSSEC")
+            return False
+    
+        # Extract and install OSSEC
+        try:
+            log_info("Extraindo e instalando OSSEC...")
             
-        log_info("OSSEC instalado com sucesso.")
-        return True
-        
+            # Extract
+            subprocess.run(['tar', 'xzf', '/tmp/ossec.tar.gz', '-C', '/tmp'], check=True)
+            
+            # Prepare install config
+            with open('/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf', 'w') as f:
+                f.write("""
+USER_LANGUAGE="en"
+USER_NO_STOP="y"
+USER_INSTALL_TYPE="agent"
+USER_DIR="/var/ossec"
+USER_DELETE_DIR="n"
+USER_ENABLE_ACTIVE_RESPONSE="y"
+USER_ENABLE_SYSCHECK="y"
+USER_ENABLE_ROOTCHECK="y"
+USER_UPDATE="n"
+USER_UPDATE_RULES="y"
+USER_BINARYINSTALL="n"
+                """)
+    
+            # Run install script
+            os.chdir('/tmp/ossec-hids-3.7.0')
+            subprocess.run(['./install.sh'], check=True)
+    
+            log_info("OSSEC instalado com sucesso.")
+            return True
+    
+        except subprocess.CalledProcessError as e:
+            log_error(f"Erro durante a instalação do OSSEC: {str(e)}")
+            return False
+        except Exception as e:
+            log_exception("Erro inesperado durante a instalação do OSSEC")
+            return False
+        finally:
+            # Cleanup
+            try:
+                os.remove('/tmp/ossec.tar.gz')
+                subprocess.run(['rm', '-rf', '/tmp/ossec-hids-3.7.0'])
+            except:
+                pass
     except Exception as e:
         log_exception("Erro durante a instalação do OSSEC")
         return False
