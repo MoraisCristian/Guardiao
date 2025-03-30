@@ -154,24 +154,34 @@ def importar_chave_ossec(activation_key):
         try:
             usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
             
-            # Write key to a temporary file
-            with open('/tmp/ossec.key', 'w') as f:
-                f.write(actual_key)
-            
-            # Import the key using manage_agents with full path
-            command = ['/var/ossec/bin/manage_agents', '-i', '/tmp/ossec.key']
+            # Prepare the command
+            command = ['/var/ossec/bin/manage_agents', '-i']
             if usar_sudo:
                 command.insert(0, 'sudo')
             
-            result = subprocess.run(command, 
-                                  capture_output=True, 
-                                  text=True)
+            log_debug(f"Executando comando: {' '.join(command)}")
             
-            # Clean up
-            os.remove('/tmp/ossec.key')
+            # Execute command with input
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
             
-            if result.returncode != 0:
-                log_error(f"Erro ao importar a chave: {result.stderr}")
+            # Send the key and confirmation
+            output, error = process.communicate(input=f"{actual_key}\ny\n")
+            
+            # Log complete output for debugging
+            log_debug("=== Comando Output ===")
+            log_debug(f"STDOUT:\n{output}")
+            log_debug(f"STDERR:\n{error}")
+            log_debug("=== Fim do Output ===")
+            
+            if process.returncode != 0:
+                log_error(f"Erro ao importar a chave. Retorno: {process.returncode}")
+                log_error(f"Erro detalhado: {error}")
                 return False
                 
             # Verify if the key was actually written to client.keys
@@ -183,7 +193,7 @@ def importar_chave_ossec(activation_key):
             return True
             
         except Exception as e:
-            log_exception(f"Erro ao importar a chave do OSSEC")
+            log_exception(f"Erro ao importar a chave do OSSEC: {str(e)}")
             return False
             
     except Exception as e:
