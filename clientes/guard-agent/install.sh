@@ -35,9 +35,11 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Installation directory
-INSTALL_DIR="/var/guardiao/guard-agent"
-AGENT_DIR="$INSTALL_DIR"
-CONFIG_FILE="/var/guardiao/guard-agent/guard_config.json"
+# Update these variables at the top of the script
+INSTALL_DIR="/var/guardiao"
+AGENT_DIR="$INSTALL_DIR/guard-agent"
+CONFIG_FILE="$AGENT_DIR/guard_config.json"
+MD5_FILE="$INSTALL_DIR/guardiao.md5"
 SERVICE_NAME="guardiao"
 MD5_FILE="/var/guardiao/guardiao.md5"
 
@@ -196,9 +198,15 @@ download_and_install() {
         mkdir -p "$INSTALL_DIR"
     fi
     
+    # Create agent directory if it doesn't exist
+    if [ ! -d "$AGENT_DIR" ]; then
+        print_message "Creating agent directory at $AGENT_DIR"
+        mkdir -p "$AGENT_DIR"
+    fi
+    
     # Create virtual environment
     print_message "Creating Python virtual environment"
-    python3 -m venv "$INSTALL_DIR/venv"
+    python3 -m venv "$AGENT_DIR/venv"
     
     # Download the package
     DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.tar"
@@ -213,31 +221,31 @@ download_and_install() {
     curl -s -o /tmp/guardiao.md5 "$REMOTE_MD5_URL"
     
     # Backup existing configuration if this is an update
-    if [ -f "$AGENT_DIR/$CONFIG_FILE" ]; then
+    if [ -f "$CONFIG_FILE" ]; then
         print_message "Backing up existing configuration"
-        cp "$AGENT_DIR/$CONFIG_FILE" "/tmp/$CONFIG_FILE.backup"
+        cp "$CONFIG_FILE" "/tmp/guard_config.json.backup"
     fi
     
-    # Extract the package
+    # Extract the package to INSTALL_DIR
     print_message "Extracting package to $INSTALL_DIR"
     tar -xf /tmp/guardiao.tar -C "$INSTALL_DIR"
     
     # Copy MD5 file to installation directory
-    cp /tmp/guardiao.md5 "$INSTALL_DIR/$MD5_FILE"
+    cp /tmp/guardiao.md5 "$MD5_FILE"
     
     # Restore configuration if this was an update
-    if [ -f "/tmp/$CONFIG_FILE.backup" ]; then
+    if [ -f "/tmp/guard_config.json.backup" ]; then
         print_message "Restoring configuration"
-        cp "/tmp/$CONFIG_FILE.backup" "$AGENT_DIR/$CONFIG_FILE"
+        cp "/tmp/guard_config.json.backup" "$CONFIG_FILE"
     fi
     
     # Install Python dependencies in virtual environment
     print_message "Installing Python dependencies in virtual environment"
     if [ -f "$AGENT_DIR/requirements.txt" ]; then
-        "$INSTALL_DIR/venv/bin/pip" install -r "$AGENT_DIR/requirements.txt"
+        "$AGENT_DIR/venv/bin/pip" install -r "$AGENT_DIR/requirements.txt"
     else
         print_warning "requirements.txt not found. Installing basic dependencies."
-        "$INSTALL_DIR/venv/bin/pip" install requests psutil
+        "$AGENT_DIR/venv/bin/pip" install requests psutil
     fi
     
     return 0
