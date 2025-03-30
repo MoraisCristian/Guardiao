@@ -48,7 +48,12 @@ def verificar_chave_ossec_importada():
                 log_warning("Arquivo client.keys está vazio.")
                 return False
                 
-        log_info("Chave do OSSEC já importada.")
+            # Verify if the file contains a valid key entry
+            if not re.search(r'^\d+\s+\S+\s+\S+\s+\S+$', content, re.MULTILINE):
+                log_warning("Arquivo client.keys não contém uma chave válida.")
+                return False
+                
+        log_info("Chave do OSSEC já importada e válida.")
         return True
     except Exception as e:
         log_exception("Erro ao verificar chave do OSSEC")
@@ -76,27 +81,22 @@ def reiniciar_ossec():
 def importar_chave_ossec(activation_key):
     """Import OSSEC key"""
     try:
-        # Verifica se a chave é uma lista e extrai o valor correto
-        if isinstance(activation_key, list):
-            key_text = activation_key[0]
+        # Extract the actual key from the response
+        key_match = re.search(r"Agent key information for '\d+':\s+(\S+)", activation_key)
+        if key_match:
+            actual_key = key_match.group(1).strip()
         else:
-            key_text = activation_key
-        
-        # Extrai apenas a parte Base64 da chave
-        match = re.search(r'([A-Za-z0-9+/=]{20,})', key_text)
-        if not match:
-            print("Formato de chave inválido. Não foi possível extrair a chave.")
-            return False
-            
-        actual_key = match.group(1).strip()
+            # If regex fails, try to get the last line that looks like a key
+            lines = activation_key.split('\n')
+            actual_key = lines[-1].strip() if lines else ''
         
         if not actual_key:
-            print("Chave de ativação do OSSEC está vazia. Não é possível importar.")
+            log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
             return False
         
-        print(f"Chave a ser importada: {actual_key}")
+        log_debug(f"Chave a ser importada: {actual_key}")
         
-        # Executa o comando de importação
+        # Execute the import command
         try:
             process = subprocess.Popen(['/var/ossec/bin/manage_agents', '-i'],
                                      stdin=subprocess.PIPE,
@@ -104,22 +104,52 @@ def importar_chave_ossec(activation_key):
                                      stderr=subprocess.PIPE,
                                      text=True)
             
-            # Envia 'y' e a chave para o processo
+            # Send 'y' and the key to the process
             output, error = process.communicate(input=f"y\n{actual_key}\n")
             
             if process.returncode != 0:
-                print(f"Erro ao importar a chave: {error}")
+                log_error(f"Erro ao importar a chave: {error}")
                 return False
                 
-            print("Chave do OSSEC importada com sucesso.")
+            # Verify if the key was actually written to client.keys
+            if not verificar_chave_ossec_importada():
+                log_error("A chave não foi escrita corretamente no arquivo client.keys")
+                return False
+                
+            log_info("Chave do OSSEC importada com sucesso.")
             return True
             
         except Exception as e:
-            print(f"Erro ao importar a chave do OSSEC: {str(e)}")
+            log_exception(f"Erro ao importar a chave do OSSEC")
             return False
             
     except Exception as e:
-        print(f"Erro geral ao processar chave do OSSEC: {str(e)}")
+        log_exception("Erro geral ao processar chave do OSSEC")
+        return False
+
+def verificar_chave_ossec_importada():
+    """Check if OSSEC key is imported"""
+    try:
+        client_keys_path = "/var/ossec/etc/client.keys"
+        if not os.path.exists(client_keys_path):
+            log_warning("Arquivo client.keys não encontrado.")
+            return False
+            
+        with open(client_keys_path, 'r') as f:
+            content = f.read().strip()
+            if not content:
+                log_warning("Arquivo client.keys está vazio.")
+                return False
+                
+            # Verify if the file contains a valid key entry
+            if not re.search(r'^\d+\s+\S+\s+\S+\s+\S+$', content, re.MULTILINE):
+                log_warning("Arquivo client.keys não contém uma chave válida.")
+                return False
+                
+        log_info("Chave do OSSEC já importada e válida.")
+        return True
+    except Exception as e:
+        log_exception("Erro ao verificar chave do OSSEC")
         return False
 
 def verificar_ossec_running():
