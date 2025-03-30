@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/var/guardiao/guard-agent
-ExecStart=/var/guardiao/venv/bin/python3 /var/guardiao/guard-agent/mechanic.py
+ExecStart=/var/guardiao/guard-agent/venv/bin/python3 /var/guardiao/guard-agent/mechanic.py
 Restart=always
 RestartSec=10
 
