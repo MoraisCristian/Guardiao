@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-import os
+import os, re
 
 # Importações do Flask e extensões relacionadas
 from flask_restx import Resource, Api
