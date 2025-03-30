@@ -28,15 +28,8 @@ def add_agent():
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
                                   capture_output=True, text=True)
         
-        if list_result.returncode != 0:
-            return jsonify({
-                "error": "Failed to list agents",
-                "details": list_result.stderr,
-                "line": 30  # Line number where error occurred
-            }), 500
-        
         # Procura pelo agente existente
-        match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
+        match = re.search(rf'ID:\s+(\d+),\s+Name:\s+{re.escape(name)}(?:,|$)', list_result.stdout)
         if match:
             agent_id = match.group(1)
             # Se o agente já existe, extrai a chave
