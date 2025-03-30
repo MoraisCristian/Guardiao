@@ -246,12 +246,6 @@ def registro_ossec():
     id_agente = data.get('id')
     chave_ativacao = data.get('chave')
 
-    # Log incoming request
-    print(f"Received OSSEC registration request:")
-    print(f"Name: {name}")
-    print(f"Agent ID: {id_agente}")
-    print(f"Activation Key: {chave_ativacao}")
-
     # Verify if agent is already registered in Guardian
     agente = Agentes.query.filter_by(id=id_agente, chave=chave_ativacao).first()
     if not agente:
@@ -261,7 +255,7 @@ def registro_ossec():
 
     try:
         # Register agent in OSSEC
-        ossec_agent_id, ossec_hostname = register_ossec_agent(name, id_agente)
+        ossec_agent_id, ossec_hostname, activation_key = register_ossec_agent(name, id_agente)
         
         if ossec_agent_id:
             # Update agent record with OSSEC information
@@ -277,7 +271,7 @@ def registro_ossec():
             print(success_msg)
             return jsonify({
                 'status': 'sucesso',
-                'activation_key': ossec_agent_id,
+                'activation_key': activation_key,
                 'ossec_hostname': ossec_hostname,
                 'ossec_server': "ossec"
             }), 200
