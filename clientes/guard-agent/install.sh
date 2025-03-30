@@ -119,9 +119,12 @@ get_server_info() {
         # If download fails, check if config exists in current directory or install directory
         if [ -f "$CONFIG_FILE" ]; then
             print_message "Found configuration file in current directory"
-            # Create installation directory if it doesn't exist
-            mkdir -p "$INSTALL_DIR"
-            cp "$CONFIG_FILE" "$INSTALL_DIR/guard_config.json"
+            # Only copy if source and destination are different
+            if [ "$CONFIG_FILE" != "$INSTALL_DIR/guard_config.json" ]; then
+                # Create installation directory if it doesn't exist
+                mkdir -p "$INSTALL_DIR"
+                cp "$CONFIG_FILE" "$INSTALL_DIR/guard_config.json"
+            fi
             SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
             SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
         elif [ -f "$INSTALL_DIR/guard_config.json" ]; then
