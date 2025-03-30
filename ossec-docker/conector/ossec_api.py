@@ -85,7 +85,8 @@ def add_agent():
                 "line": 72  # Line number where error occurred
             }), 500
 
-        match = re.search(rf'{name}\s+\((\d+)\)', list_result.stdout)
+        # Procura pelo agente existente
+        match = re.search(rf'ID:\s+(\d+),\s+Name:\s+{re.escape(name)}(?:,|$)', list_result.stdout)
         if not match:
             return jsonify({
                 "error": "Failed to get new agent ID",
