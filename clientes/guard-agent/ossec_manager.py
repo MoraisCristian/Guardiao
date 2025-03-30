@@ -308,17 +308,29 @@ def instalar_ossec():
             # Copy the downloaded config to the installation directory
             subprocess.run(['cp', 'ossec.conf', '/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf'], check=True)
             
-            # Run install script with sudo if needed
-            install_cmd = ['./install.sh']
-            if os.geteuid() != 0 and verificar_sudo_disponivel():
-                install_cmd.insert(0, 'sudo')
-            
+            # Run install script with automatic 'n' response
             os.chdir('/tmp/ossec-hids-3.7.0')
-            subprocess.run(install_cmd, check=True)
-    
+            install_cmd = "echo 'n' | ./install.sh"
+            if os.geteuid() != 0 and verificar_sudo_disponivel():
+                install_cmd = f"echo 'n' | sudo ./install.sh"
+            
+            process = subprocess.Popen(
+                install_cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            output, error = process.communicate()
+            
+            if process.returncode != 0:
+                log_error(f"Erro durante a instalação do OSSEC: {error}")
+                return False
+                
             log_info("OSSEC instalado com sucesso.")
             return True
-    
+            
         except subprocess.CalledProcessError as e:
             log_error(f"Erro durante a instalação do OSSEC: {str(e)}")
             return False
