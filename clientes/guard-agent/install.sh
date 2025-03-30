@@ -42,6 +42,21 @@ CONFIG_FILE="$AGENT_DIR/guard_config.json"
 SERVICE_NAME="guardiao"
 MD5_FILE="$INSTALL_DIR/guardiao.md5"
 
+CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guard_config.json"
+    print_message "Downloading configuration from $CONFIG_URL"
+    
+    if curl -s -f -o "$INSTALL_DIR/$CONFIG_FILE" "$CONFIG_URL"; then
+        print_message "Configuration file downloaded successfully to $INSTALL_DIR/$CONFIG_FILE"
+        # Read server information from the downloaded config
+        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+        print_message "Using server: ${SERVER_IP}:${SERVER_PORT}"
+        return 0
+    else
+        print_warning "Failed to download configuration file from server"
+        return 1
+    fi
+
 # Remove this line that's causing problems
 # cd $INSTALL_DIR  # This line should be removed
 
@@ -97,23 +112,27 @@ download_config() {
     if [ ! -d "$INSTALL_DIR" ]; then
         print_message "Creating installation directory at $INSTALL_DIR"
         mkdir -p "$INSTALL_DIR"
+        chmod 755 "$INSTALL_DIR"
     fi
     
-    # Download configuration file
+    # Download configuration file with retry logic
     CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guard_config.json"
     print_message "Downloading configuration from $CONFIG_URL"
     
-    if curl -s -f -o "$INSTALL_DIR/$CONFIG_FILE" "$CONFIG_URL"; then
-        print_message "Configuration file downloaded successfully to $INSTALL_DIR/$CONFIG_FILE"
-        # Read server information from the downloaded config
-        SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-        SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-        print_message "Using server: ${SERVER_IP}:${SERVER_PORT}"
-        return 0
-    else
-        print_warning "Failed to download configuration file from server"
-        return 1
-    fi
+    for i in {1..3}; do
+        if curl -s -f -o "$INSTALL_DIR/guard_config.json" "$CONFIG_URL"; then
+            print_message "Configuration file downloaded successfully to $INSTALL_DIR/guard_config.json"
+            # Set proper permissions
+            chmod 644 "$INSTALL_DIR/guard_config.json"
+            return 0
+        else
+            print_warning "Attempt $i: Failed to download configuration file (will retry in 2 seconds)"
+            sleep 2
+        fi
+    done
+    
+    print_warning "Failed to download configuration file after 3 attempts"
+    return 1
 }
 
 # Get server information
@@ -245,6 +264,37 @@ download_and_install() {
     if [ ! -d "$AGENT_DIR" ]; then
         print_message "Creating agent directory at $AGENT_DIR"
         mkdir -p "$AGENT_DIR"
+    fi
+    
+    # Download the package with retry logic
+    DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.tar"
+    print_message "Downloading Guard-Agent from $DOWNLOAD_URL"
+    
+    for i in {1..3}; do
+        if curl -L -o /tmp/guardiao.tar "$DOWNLOAD_URL"; then
+            break
+        else
+            print_warning "Attempt $i: Failed to download package (will retry in 2 seconds)"
+            sleep 2
+        fi
+    done
+    
+    if [ ! -f "/tmp/guardiao.tar" ]; then
+        print_error "Failed to download Guard-Agent package after 3 attempts"
+        return 1
+    fi
+    
+    # Extract the package to INSTALL_DIR
+    print_message "Extracting package to $INSTALL_DIR"
+    if ! tar -xf /tmp/guardiao.tar -C "$INSTALL_DIR"; then
+        print_error "Failed to extract package to $INSTALL_DIR"
+        return 1
+    fi
+    
+    # Verify extraction
+    if [ ! -d "$AGENT_DIR" ]; then
+        print_error "Agent directory was not created during extraction"
+        return 1
     fi
     
     # Create virtual environment
