@@ -345,8 +345,66 @@ cleanup() {
     rm -f "/tmp/$CONFIG_FILE.backup"
 }
 
-# Main function
-# Fix the main function to include mechanic service setup
+# Move the install_dependencies function definition up
+install_dependencies() {
+    print_message "Installing required packages"
+    
+    # Detect distribution
+    if [ -f /etc/debian_version ]; then
+        DISTRO="debian"
+        print_message "Detected Debian/Ubuntu system"
+        
+        # Only update packages if we need to install the agent
+        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
+            print_message "Update needed, updating package lists..."
+            apt-get update -y
+            apt-get install -y python3 python3-pip python3-venv curl tar
+        else
+            print_message "Agent already installed and up to date, skipping package updates"
+        fi
+    elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
+        DISTRO="centos"
+        print_message "Detected CentOS/RHEL system"
+        
+        # Only update packages if we need to install the agent
+        if [ ! -d "$INSTALL_DIR" ] || check_for_update; then
+            print_message "Update needed, updating packages..."
+            yum update -y
+            yum install -y python3 python3-pip python3-virtualenv curl tar 
+        else
+            print_message "Agent already installed and up to date, skipping package updates"
+        fi
+    fi
+}
+
+# Define setup_mechanic_service before main
+function setup_mechanic_service() {
+    # Copy mechanic files to installation directory
+    print_message "Setting up mechanic service"
+    
+    # Copy service files
+    if [ -f "$AGENT_DIR/guardiao-mecanico.service" ]; then
+        cp "$AGENT_DIR/guardiao-mecanico.service" /etc/systemd/system/
+    else
+        print_error "Arquivo guardiao-mecanico.service não encontrado no diretório do agente"
+        return 1
+    fi
+    
+    # Reload systemd and enable/start services
+    systemctl daemon-reload
+    systemctl enable guardiao-mecanico
+    systemctl start guardiao-mecanico
+    
+    # Ensure services are running
+    if ! systemctl is-active --quiet guardiao-mecanico; then
+        print_error "Failed to start guardiao-mecanico service"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Run main function
 main() {
     print_message "Starting Guard-Agent installation/update process"
     
@@ -387,34 +445,6 @@ main() {
     cleanup
 }
 
-# Define setup_mechanic_service before main
-function setup_mechanic_service() {
-    # Copy mechanic files to installation directory
-    print_message "Setting up mechanic service"
-    
-    # Copy service files
-    if [ -f "$AGENT_DIR/guardiao-mecanico.service" ]; then
-        cp "$AGENT_DIR/guardiao-mecanico.service" /etc/systemd/system/
-    else
-        print_error "Arquivo guardiao-mecanico.service não encontrado no diretório do agente"
-        return 1
-    fi
-    
-    # Reload systemd and enable/start services
-    systemctl daemon-reload
-    systemctl enable guardiao-mecanico
-    systemctl start guardiao-mecanico
-    
-    # Ensure services are running
-    if ! systemctl is-active --quiet guardiao-mecanico; then
-        print_error "Failed to start guardiao-mecanico service"
-        return 1
-    fi
-    
-    return 0
-}
-
 # Run main function
 main
 
-# Remove the duplicate setup_mechanic_service function and the code after main
