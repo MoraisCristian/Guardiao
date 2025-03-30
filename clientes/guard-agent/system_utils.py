@@ -113,8 +113,15 @@ def os_install(package):
             'debian': 'libevent-dev',
             'ubuntu': 'libevent-dev',
             'centos': 'libevent-devel',
-           'redhat': 'libevent-devel',
+            'redhat': 'libevent-devel',
             'darwin': 'libevent'
+        },
+        'wget': {
+            'debian': 'wget',
+            'ubuntu': 'wget',
+            'centos': 'wget',
+            'redhat': 'wget',
+            'darwin': 'wget'
         }
     }
     
