@@ -258,7 +258,7 @@ setup_service() {
     # Use existing service file from local directory
     if [ -f "guardiao.service" ]; then
         print_message "Usando arquivo de serviço existente"
-        cp guard-agent/guardiao.service /etc/systemd/system/$SERVICE_NAME.service
+        cp /var/guardiao/guard-agent/guardiao.service /etc/systemd/system/$SERVICE_NAME.service
     else
         print_error "Arquivo guard-agent/guardiao.service não encontrado na pasta local"
         return 1
