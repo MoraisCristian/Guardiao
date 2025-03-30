@@ -6,9 +6,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/var/guardiao/guard-agent
-ExecStart=/var/guardiao/venv/bin/python3 /var/guardiao/guard-agent/main.py
+ExecStart=/var/guardiao/guard-agent/venv/bin/python3 /var/guardiao/guard-agent/main.py
 Restart=always
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

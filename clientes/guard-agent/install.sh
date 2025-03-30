@@ -234,9 +234,15 @@ download_and_install() {
         return 1
     fi
     
-    # Create virtual environment
+    # Create virtual environment - ensure we're using the correct path
     print_message "Creating Python virtual environment"
     python3 -m venv "$AGENT_DIR/venv"
+    
+    # Verify virtual environment was created
+    if [ ! -f "$AGENT_DIR/venv/bin/python3" ]; then
+        print_error "Failed to create virtual environment"
+        return 1
+    fi
     
     # Download the package
     DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.tar"
@@ -298,19 +304,22 @@ download_and_install() {
 setup_service() {
     print_message "Configurando serviço do sistema"
     
+    # Check if service file exists in agent directory
+    if [ -f "$AGENT_DIR/guardiao.service" ]; then
+        print_message "Copiando arquivo de serviço para /etc/systemd/system/"
+        cp "$AGENT_DIR/guardiao.service" "/etc/systemd/system/$SERVICE_NAME.service"
+        
+        # Reload systemd to pick up changes
+        systemctl daemon-reload
+    else
+        print_error "Arquivo guardiao.service não encontrado em $AGENT_DIR"
+        return 1
+    fi
+    
     # Check if OSSEC configuration exists
     if [ ! -f "/var/ossec/etc/ossec.conf" ]; then
         print_warning "OSSEC configuration file not found, attempting to download"
         download_ossec_config
-    fi
-    
-    # Use existing service file from agent directory
-    if [ -f "$AGENT_DIR/guardiao.service" ]; then
-        print_message "Usando arquivo de serviço existente"
-        cp "$AGENT_DIR/guardiao.service" /etc/systemd/system/$SERVICE_NAME.service
-    else
-        print_error "Arquivo guardiao.service não encontrado no diretório do agente"
-        return 1
     fi
     
     # Reload systemd, enable and start service
