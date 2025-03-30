@@ -42,6 +42,9 @@ CONFIG_FILE="$AGENT_DIR/guard_config.json"
 SERVICE_NAME="guardiao"
 MD5_FILE="$INSTALL_DIR/guardiao.md5"
 
+# Remove this line that's causing problems
+# cd $INSTALL_DIR  # This line should be removed
+
 # Detect distribution
 if [ -f /etc/debian_version ]; then
     DISTRO="debian"
@@ -266,9 +269,19 @@ download_and_install() {
         cp "$CONFIG_FILE" "/tmp/guard_config.json.backup"
     fi
     
-    # Extract the package to INSTALL_DIR
+    # Extract the package to INSTALL_DIR - ensure we're using absolute paths
     print_message "Extracting package to $INSTALL_DIR"
     tar -xf /tmp/guardiao.tar -C "$INSTALL_DIR"
+    
+    # Verify extraction was successful
+    if [ $? -ne 0 ]; then
+        print_error "Failed to extract package to $INSTALL_DIR"
+        return 1
+    fi
+    
+    # List contents to verify
+    print_message "Verifying extraction:"
+    ls -la "$INSTALL_DIR"
     
     # Copy MD5 file to installation directory
     cp /tmp/guardiao.md5 "$MD5_FILE"
