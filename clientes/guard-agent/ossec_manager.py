@@ -134,7 +134,7 @@ def reiniciar_ossec():
 def importar_chave_ossec(activation_key):
     """Import OSSEC key"""
     try:
-        # Extract the actual key and ID from the response
+        # Extract the actual key from the response
         key_match = re.search(r"Agent key information for '(\d+)':\s+(\S+)", activation_key)
         if key_match:
             agent_id = key_match.group(1).strip()
@@ -143,29 +143,36 @@ def importar_chave_ossec(activation_key):
             # If regex fails, try to get the last line that looks like a key
             lines = activation_key.split('\n')
             actual_key = lines[-1].strip() if lines else ''
-            # Try to extract agent ID from the key (first component)
-            agent_id = actual_key.split(' ')[0] if actual_key else ''
         
-        if not actual_key or not agent_id:
-            log_error("Chave de ativação do OSSEC está vazia ou inválida. Não é possível importar.")
+        if not actual_key:
+            log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
             return False
         
-        log_debug(f"Chave a ser importada para agente {agent_id}: {actual_key}")
+        log_debug(f"Chave a ser importada: {actual_key}")
         
-        # Execute the import command with agent ID
+        # Execute the import command
         try:
-            command = ['/var/ossec/bin/manage_agents', '-i', agent_id]
-            process = subprocess.Popen(command,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True)
+            usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
             
-            # Send the key to the process
-            output, error = process.communicate(input=f"{actual_key}\ny\n")
+            # Write key to a temporary file
+            with open('/tmp/ossec.key', 'w') as f:
+                f.write(actual_key)
             
-            if process.returncode != 0:
-                log_error(f"Erro ao importar a chave: {error}")
+            # Import the key using manage_agents
+            command = ['manage_agents', '-i', '/tmp/ossec.key']
+            if usar_sudo:
+                command.insert(0, 'sudo')
+            
+            result = subprocess.run(command, 
+                                  capture_output=True, 
+                                  text=True,
+                                  cwd='/var/ossec/bin')
+            
+            # Clean up
+            os.remove('/tmp/ossec.key')
+            
+            if result.returncode != 0:
+                log_error(f"Erro ao importar a chave: {result.stderr}")
                 return False
                 
             # Verify if the key was actually written to client.keys
@@ -291,25 +298,21 @@ def instalar_ossec():
             # Extract
             subprocess.run(['tar', 'xzf', '/tmp/ossec.tar.gz', '-C', '/tmp'], check=True)
             
-            # Prepare install config
-            with open('/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf', 'w') as f:
-                f.write("""
-USER_LANGUAGE="pt"
-USER_NO_STOP="s"
-USER_INSTALL_TYPE="agent"
-USER_DIR="/var/ossec"
-USER_DELETE_DIR="n"
-USER_ENABLE_ACTIVE_RESPONSE="y"
-USER_ENABLE_SYSCHECK="y"
-USER_ENABLE_ROOTCHECK="y"
-USER_UPDATE="n"
-USER_UPDATE_RULES="y"
-USER_BINARYINSTALL="y"
-                """)
-    
-            # Run install script
+            # Download and use the configuration file
+            if not baixar_ossec_conf():
+                log_error("Falha ao baixar arquivo de configuração do OSSEC")
+                return False
+
+            # Copy the downloaded config to the installation directory
+            subprocess.run(['cp', 'ossec.conf', '/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf'], check=True)
+            
+            # Run install script with sudo if needed
+            install_cmd = ['./install.sh']
+            if os.geteuid() != 0 and verificar_sudo_disponivel():
+                install_cmd.insert(0, 'sudo')
+            
             os.chdir('/tmp/ossec-hids-3.7.0')
-            subprocess.run(['./install.sh'], check=True)
+            subprocess.run(install_cmd, check=True)
     
             log_info("OSSEC instalado com sucesso.")
             return True
