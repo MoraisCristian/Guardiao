@@ -119,13 +119,15 @@ get_server_info() {
         # If download fails, check if config exists in current directory or install directory
         if [ -f "$CONFIG_FILE" ]; then
             print_message "Found configuration file in current directory"
-            cp "$CONFIG_FILE" "$INSTALL_DIR/$CONFIG_FILE"
-            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
-            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4)
-        elif [ -f "$INSTALL_DIR/$CONFIG_FILE" ]; then
+            # Create installation directory if it doesn't exist
+            mkdir -p "$INSTALL_DIR"
+            cp "$CONFIG_FILE" "$INSTALL_DIR/guard_config.json"
+            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
+            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
+        elif [ -f "$INSTALL_DIR/guard_config.json" ]; then
             print_message "Found configuration file in installation directory"
-            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
-            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/$CONFIG_FILE" | cut -d'"' -f4)
+            SERVER_IP=$(grep -o '"server_ip": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
+            SERVER_PORT=$(grep -o '"server_port": "[^"]*' "$INSTALL_DIR/guard_config.json" | cut -d'"' -f4)
         else
             print_warning "Configuration file not found. Using embedded server information."
             # If SERVER_IP is still the placeholder, prompt for input
@@ -134,8 +136,10 @@ get_server_info() {
                 read -p "Server IP: " SERVER_IP
                 read -p "Server Port: " SERVER_PORT
                 
+                # Create installation directory if it doesn't exist
+                mkdir -p "$INSTALL_DIR"
                 # Create a basic config file
-                cat > "$INSTALL_DIR/$CONFIG_FILE" << EOF
+                cat > "$INSTALL_DIR/guard_config.json" << EOF
 {
     "server_ip": "$SERVER_IP",
     "server_port": "$SERVER_PORT"
