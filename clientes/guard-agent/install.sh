@@ -35,11 +35,11 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Installation directory
-INSTALL_DIR="/var/guardiao"
-AGENT_DIR="$INSTALL_DIR/guard-agent"
-CONFIG_FILE="guard_config.json"
+INSTALL_DIR="/var/guardiao/guard-agent"
+AGENT_DIR="$INSTALL_DIR"
+CONFIG_FILE="/var/guardiao/guard-agent/guard_config.json"
 SERVICE_NAME="guardiao"
-MD5_FILE="guardiao.md5"
+MD5_FILE="/var/guardiao/guardiao.md5"
 
 # Detect distribution
 if [ -f /etc/debian_version ]; then
@@ -243,7 +243,7 @@ setup_service() {
     # Use existing service file from local directory
     if [ -f "guardiao.service" ]; then
         print_message "Usando arquivo de serviço existente"
-        cp guard-agent/guardiao.service /etc/systemd/system/$SERVICE_NAME.service
+        cp guardiao.service /etc/systemd/system/$SERVICE_NAME.service
     else
         print_error "Arquivo guardiao.service não encontrado na pasta local"
         return 1
@@ -279,18 +279,9 @@ function setup_mechanic_service() {
     # Use existing service file from local directory
     if [ -f "guardiao-mecanico.service" ]; then
         print_message "Usando arquivo de serviço mecânico existente"
-        cp guard-agent/guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
+        cp guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
     else
         print_error "Arquivo guardiao-mecanico.service não encontrado na pasta local"
-        return 1
-    fi
-    
-    # Copy mechanic script
-    if [ -f "mechanic.py" ]; then
-        print_message "Copiando script mecânico"
-        cp mechanic.py "$INSTALL_DIR/guard-agent/"
-    else
-        print_error "Arquivo mechanic.py não encontrado na pasta local"
         return 1
     fi
     
