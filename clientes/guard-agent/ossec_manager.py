@@ -143,6 +143,8 @@ def importar_chave_ossec(activation_key):
             # If regex fails, try to get the last line that looks like a key
             lines = activation_key.split('\n')
             actual_key = lines[-1].strip() if lines else ''
+
+        print(f"Chave do OSSEC: {actual_key}")
         
         if not actual_key:
             log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
