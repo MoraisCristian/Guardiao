@@ -155,8 +155,8 @@ def importar_chave_ossec(activation_key):
             with open('/tmp/client.keys', 'w') as f:
                 f.write(actual_key)
             
-            # Import the key using echo and pipe
-            command = f"echo 'y' | sudo /var/ossec/bin/manage_agents -i {actual_key}"
+            # Copy the key directly to the client.keys file (more reliable than manage_agents)
+            command = "sudo cp /tmp/client.keys /var/ossec/etc/client.keys"
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -166,6 +166,10 @@ def importar_chave_ossec(activation_key):
             )
             
             output, error = process.communicate()
+            
+            # Set proper permissions
+            subprocess.run("sudo chmod 640 /var/ossec/etc/client.keys", shell=True)
+            subprocess.run("sudo chown root:ossec /var/ossec/etc/client.keys", shell=True)
             
             log_info("=== Import Command Output ===")
             log_info(f"Command executed: {command}")
@@ -249,7 +253,19 @@ def instalar_ossec():
         if verificar_ossec_instalado():
             log_info("OSSEC já está instalado. Pulando a instalação.")
             return True
-    
+
+        # Download agent configuration first
+        log_info("Baixando configuração do agente OSSEC...")
+        if not baixar_ossec_conf():
+            log_error("Falha ao baixar configuração do agente OSSEC")
+            return False
+
+        # First, clean any existing OSSEC installation
+        if os.path.exists('/var/ossec'):
+            log_info("Removendo instalação anterior do OSSEC...")
+            cleanup_cmd = "sudo rm -rf /var/ossec"
+            subprocess.run(cleanup_cmd, shell=True, check=True)
+
         # Detecta a distribuição do sistema
         distro = detect_os_distribution()
         if not distro:
@@ -300,19 +316,43 @@ def instalar_ossec():
             # Extract
             subprocess.run(['tar', 'xzf', '/tmp/ossec.tar.gz', '-C', '/tmp'], check=True)
             
-            # Download and use the configuration file
-            if not baixar_ossec_conf():
-                log_error("Falha ao baixar arquivo de configuração do OSSEC")
-                return False
-
-            # Copy the downloaded config to the installation directory
-            subprocess.run(['cp', 'ossec.conf', '/tmp/ossec-hids-3.7.0/etc/preloaded-vars.conf'], check=True)
+            # Get current directory to return later
+            current_dir = os.getcwd()
             
-            # Run install script with automatic 'n' response
+            # Prepare agent installation configuration
             os.chdir('/tmp/ossec-hids-3.7.0')
-            install_cmd = "echo 'n' | ./install.sh"
-            if os.geteuid() != 0 and verificar_sudo_disponivel():
-                install_cmd = f"echo 'n' | sudo ./install.sh"
+            
+            # Ensure the downloaded config is properly copied to the installation directory
+            log_info("Copiando configuração do agente para o diretório de instalação...")
+            try:
+                # Copy the downloaded config file to the preloaded-vars.conf location
+                subprocess.run(['cp', f'{current_dir}/ossec.conf', 'etc/preloaded-vars.conf'], check=True)
+                log_info("Arquivo de configuração copiado com sucesso.")
+            except Exception as e:
+                log_error(f"Erro ao copiar arquivo de configuração: {str(e)}")
+                return False
+            
+            # Create a proper preloaded-vars.conf if it doesn't exist or is empty
+            if not os.path.exists('etc/preloaded-vars.conf') or os.path.getsize('etc/preloaded-vars.conf') == 0:
+                log_info("Criando arquivo preloaded-vars.conf padrão...")
+                preloaded_vars = """
+USER_LANGUAGE="en"
+USER_NO_STOP="y"
+USER_INSTALL_TYPE="agent"
+USER_DIR="/var/ossec"
+USER_ENABLE_ACTIVE_RESPONSE="y"
+USER_ENABLE_SYSCHECK="y"
+USER_ENABLE_ROOTCHECK="y"
+USER_UPDATE="n"
+"""
+                with open('etc/preloaded-vars.conf', 'w') as f:
+                    f.write(preloaded_vars)
+            
+            # Run install script with automated responses
+            log_info("Iniciando instalação do agente OSSEC...")
+            install_cmd = "sudo ./install.sh"
+            if os.geteuid() == 0:  # If already root
+                install_cmd = "./install.sh"
             
             process = subprocess.Popen(
                 install_cmd,
@@ -324,11 +364,19 @@ def instalar_ossec():
             
             output, error = process.communicate()
             
+            log_info("=== Installation Output ===")
+            log_info(f"STDOUT:\n{output}")
+            log_info(f"STDERR:\n{error}")
+            log_info("=========================")
+            
             if process.returncode != 0:
                 log_error(f"Erro durante a instalação do OSSEC: {error}")
                 return False
+            
+            # Return to original directory
+            os.chdir(current_dir)
                 
-            log_info("OSSEC instalado com sucesso.")
+            log_info("OSSEC instalado com sucesso como agente.")
             return True
             
         except subprocess.CalledProcessError as e:
