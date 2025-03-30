@@ -245,6 +245,7 @@ setup_service() {
         print_message "Usando arquivo de serviço existente"
         cp guardiao.service /etc/systemd/system/$SERVICE_NAME.service
     else
+        pwd
         print_error "Arquivo guardiao.service não encontrado na pasta local"
         return 1
     fi
