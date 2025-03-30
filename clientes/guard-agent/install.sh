@@ -243,9 +243,8 @@ setup_service() {
     # Use existing service file from local directory
     if [ -f "guardiao.service" ]; then
         print_message "Usando arquivo de serviço existente"
-        cp guardiao.service /etc/systemd/system/$SERVICE_NAME.service
+        cp guard-agent/guardiao.service /etc/systemd/system/$SERVICE_NAME.service
     else
-        pwd
         print_error "Arquivo guardiao.service não encontrado na pasta local"
         return 1
     fi
@@ -280,7 +279,7 @@ function setup_mechanic_service() {
     # Use existing service file from local directory
     if [ -f "guardiao-mecanico.service" ]; then
         print_message "Usando arquivo de serviço mecânico existente"
-        cp guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
+        cp guard-agent/guardiao-mecanico.service /etc/systemd/system/guardiao-mecanico.service
     else
         print_error "Arquivo guardiao-mecanico.service não encontrado na pasta local"
         return 1
