@@ -246,7 +246,7 @@ def instalar_ossec():
         # Instala dependências necessárias
         if distro == "debian":
             dependencies = ["build-essential",  # includes make, gcc, and other build tools
-                          "libevent-dev",    # changed from libevent-dev
+                          "libevent-2.1-7t64",    # changed from libevent-dev
                           "libpcre2-dev", 
                           "libssl-dev",
                           "zlib1g-dev",
