@@ -93,7 +93,6 @@ def registrar_ossec(id_agente):
             log_debug(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
             
             if dados_resposta.get('status') == 'sucesso':
-                print(dados_resposta)
                 activation_key = dados_resposta.get('activation_key')
                 ossec_server = dados_resposta.get('ossec_server')
                 log_info(f'Registro no OSSEC bem-sucedido!')

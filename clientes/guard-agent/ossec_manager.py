@@ -5,7 +5,7 @@ import re
 import sys
 from system_utils import os_update, os_install, detect_os_distribution, verificar_sudo_disponivel
 from config import SERVER_URL
-from logger import log_info, log_warning, log_error, log_debug, log_critical, log_exception
+from logger import log_info, log_warning, log_error, log_info, log_critical, log_exception
 
 def baixar_ossec_conf():
     """Download OSSEC configuration file"""
@@ -47,7 +47,7 @@ def configurar_ossec():
         if usar_sudo:
             comando.insert(0, 'sudo')
             
-        log_debug(f"Executando comando: {' '.join(comando)}")
+        log_info(f"Executando comando: {' '.join(comando)}")
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
         if resultado.returncode != 0:
@@ -81,7 +81,7 @@ def verificar_ossec_instalado():
     """Check if OSSEC is already installed"""
     try:
         installed = os.path.exists('/var/ossec/bin/ossec-control')
-        log_debug(f'Verificação de instalação do OSSEC: {installed}')
+        log_info(f'Verificação de instalação do OSSEC: {installed}')
         return installed
     except Exception as e:
         log_exception('Erro ao verificar instalação do OSSEC')
@@ -140,57 +140,48 @@ def importar_chave_ossec(activation_key):
             agent_id = key_match.group(1).strip()
             actual_key = key_match.group(2).strip()
         else:
-            # If regex fails, try to get the last line that looks like a key
             lines = activation_key.split('\n')
             actual_key = lines[-1].strip() if lines else ''
-
-        print(f"Chave do OSSEC: {actual_key}")
         
         if not actual_key:
             log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
             return False
         
-        log_debug(f"Chave a ser importada: {actual_key}")
+        log_info(f"Chave a ser importada: {actual_key}")
         
         # Execute the import command
         try:
-            usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+            # Create a temporary file with the key
+            with open('/tmp/client.keys', 'w') as f:
+                f.write(actual_key)
             
-            # Prepare the command
-            command = ['/var/ossec/bin/manage_agents', '-i']
-            if usar_sudo:
-                command.insert(0, 'sudo')
-            
-            log_debug(f"Executando comando: {' '.join(command)}")
-            
-            # Execute command with input
+            # Import the key using echo and pipe
+            command = f"echo 'y' | sudo /var/ossec/bin/manage_agents -i {actual_key}"
             process = subprocess.Popen(
                 command,
-                stdin=subprocess.PIPE,
+                shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
             
-            # Send the key and confirmation
-            output, error = process.communicate(input=f"{actual_key}\ny\n")
+            output, error = process.communicate()
             
-            # Log complete output for debugging
-            log_debug("=== Comando Output ===")
-            log_debug(f"STDOUT:\n{output}")
-            log_debug(f"STDERR:\n{error}")
-            log_debug("=== Fim do Output ===")
+            log_info("=== Import Command Output ===")
+            log_info(f"Command executed: {command}")
+            log_info(f"STDOUT:\n{output}")
+            log_info(f"STDERR:\n{error}")
+            log_info("=========================")
             
             if process.returncode != 0:
                 log_error(f"Erro ao importar a chave. Retorno: {process.returncode}")
                 log_error(f"Erro detalhado: {error}")
                 return False
-                
-            # Verify if the key was actually written to client.keys
+            
             if not verificar_chave_ossec_importada():
                 log_error("A chave não foi escrita corretamente no arquivo client.keys")
                 return False
-                
+            
             log_info("Chave do OSSEC importada com sucesso.")
             return True
             
@@ -373,7 +364,7 @@ def configurar_ossec():
         if usar_sudo:
             comando.insert(0, 'sudo')
             
-        log_debug(f"Executando comando: {' '.join(comando)}")
+        log_info(f"Executando comando: {' '.join(comando)}")
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
         if resultado.returncode != 0:
