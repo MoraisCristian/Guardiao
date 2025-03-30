@@ -158,15 +158,14 @@ def importar_chave_ossec(activation_key):
             with open('/tmp/ossec.key', 'w') as f:
                 f.write(actual_key)
             
-            # Import the key using manage_agents
-            command = ['manage_agents', '-i', '/tmp/ossec.key']
+            # Import the key using manage_agents with full path
+            command = ['/var/ossec/bin/manage_agents', '-i', '/tmp/ossec.key']
             if usar_sudo:
                 command.insert(0, 'sudo')
             
             result = subprocess.run(command, 
                                   capture_output=True, 
-                                  text=True,
-                                  cwd='/var/ossec/bin')
+                                  text=True)
             
             # Clean up
             os.remove('/tmp/ossec.key')
