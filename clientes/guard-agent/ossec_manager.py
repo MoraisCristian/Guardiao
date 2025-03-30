@@ -229,6 +229,7 @@ def configurar_ossec():
             
         # Move o arquivo de configuração para o diretório correto
         comando = ['mv', 'preloaded-vars.conf', '/var/ossec/etc/preloaded-vars.conf']
+        comando = ['cp', '/var/ossec/etc/preloaded-vars.conf', '/var/ossec/etc/ossec.conf']
         
         # Verifica se precisa usar sudo
         if os.geteuid() != 0 and verificar_sudo_disponivel():

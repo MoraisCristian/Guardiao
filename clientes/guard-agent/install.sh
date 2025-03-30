@@ -240,12 +240,12 @@ download_and_install() {
 setup_service() {
     print_message "Configurando serviço do sistema"
     
-    # Use existing service file from installation directory
-    if [ -f "$AGENT_DIR/guardiao.service" ]; then
+    # Use existing service file from local directory
+    if [ -f "guardiao.service" ]; then
         print_message "Usando arquivo de serviço existente"
-        cp "$AGENT_DIR/guardiao.service" /etc/systemd/system/$SERVICE_NAME.service
+        cp guardiao.service /etc/systemd/system/$SERVICE_NAME.service
     else
-        print_error "Arquivo guardiao.service não encontrado em $AGENT_DIR"
+        print_error "Arquivo guardiao.service não encontrado na pasta local"
         return 1
     fi
     
