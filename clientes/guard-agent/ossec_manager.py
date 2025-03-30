@@ -13,7 +13,7 @@ def baixar_ossec_conf():
         url = f'{SERVER_URL}/download/ossec.conf'
         resposta = requests.get(url)
         if resposta.status_code == 200:
-            with open('preloaded-vars.conf', 'wb') as file:
+            with open('ossec.conf', 'wb') as file:
                 file.write(resposta.content)
             log_info('Arquivo de configuração do OSSEC baixado com sucesso.')
             return True
@@ -22,6 +22,59 @@ def baixar_ossec_conf():
             return False
     except Exception as e:
         log_exception('Erro ao baixar configuração do OSSEC')
+        return False
+
+def configurar_ossec():
+    """Configure OSSEC"""
+    try:
+        # Baixa o arquivo de configuração
+        if not baixar_ossec_conf():
+            log_error("Falha ao baixar arquivo de configuração do OSSEC")
+            return False
+            
+        # Move o arquivo de configuração para o diretório correto
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        
+        # Primeiro, verifica se o diretório existe
+        if not os.path.exists('/var/ossec/etc'):
+            log_warning("Diretório /var/ossec/etc não encontrado")
+            return False
+        
+        # Copia o arquivo para o local correto
+        comando = ['cp', 'ossec.conf', '/var/ossec/etc/ossec.conf']
+        
+        # Verifica se precisa usar sudo
+        if usar_sudo:
+            comando.insert(0, 'sudo')
+            
+        log_debug(f"Executando comando: {' '.join(comando)}")
+        resultado = subprocess.run(comando, capture_output=True, text=True)
+        
+        if resultado.returncode != 0:
+            log_error(f"Erro ao copiar arquivo de configuração: {resultado.stderr}")
+            return False
+            
+        # Verifica se o arquivo foi copiado corretamente
+        if not os.path.exists('/var/ossec/etc/ossec.conf'):
+            log_error("Arquivo ossec.conf não foi copiado corretamente")
+            return False
+            
+        # Ajusta as permissões do arquivo
+        chmod_cmd = ['chmod', '640', '/var/ossec/etc/ossec.conf']
+        chown_cmd = ['chown', 'root:ossec', '/var/ossec/etc/ossec.conf']
+        
+        if usar_sudo:
+            chmod_cmd.insert(0, 'sudo')
+            chown_cmd.insert(0, 'sudo')
+            
+        subprocess.run(chmod_cmd, check=False)
+        subprocess.run(chown_cmd, check=False)
+        
+        log_info("Configuração do OSSEC concluída com sucesso.")
+        return True
+        
+    except Exception as e:
+        log_exception("Erro durante a configuração do OSSEC")
         return False
 
 def verificar_ossec_instalado():
@@ -180,27 +233,27 @@ def instalar_ossec():
     """Install OSSEC"""
     # Verifica se o OSSEC já está instalado
     if verificar_ossec_instalado():
-        print("OSSEC já está instalado. Pulando a instalação.")
+        log_info("OSSEC já está instalado. Pulando a instalação.")
         return True
     
     # Baixa o pacote de instalação do OSSEC
     try:
-        print("Baixando pacote de instalação do OSSEC...")
+        log_info("Baixando pacote de instalação do OSSEC...")
         url = f'{SERVER_URL}/download/ossec-agent.deb'
         response = requests.get(url)
         
         if response.status_code != 200:
-            print("Falha ao baixar o pacote de instalação do OSSEC.")
+            log_error("Falha ao baixar o pacote de instalação do OSSEC.")
             return False
             
         # Salva o pacote localmente
         with open('ossec-agent.deb', 'wb') as f:
             f.write(response.content)
             
-        print("Pacote de instalação do OSSEC baixado com sucesso.")
+        log_info("Pacote de instalação do OSSEC baixado com sucesso.")
         
         # Instala o pacote
-        print("Instalando OSSEC...")
+        log_info("Instalando OSSEC...")
         comando = ['dpkg', '-i', 'ossec-agent.deb']
         
         # Verifica se precisa usar sudo
@@ -210,66 +263,127 @@ def instalar_ossec():
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
         if resultado.returncode != 0:
-            print(f"Erro durante a instalação do OSSEC: {resultado.stderr}")
-            return False
+            log_error(f"Erro durante a instalação do OSSEC: {resultado.stderr}")
+            # Tenta resolver dependências se a instalação falhar
+            if "você pode querer executar 'apt-get -f install'" in resultado.stderr or "dependency problems" in resultado.stderr:
+                log_info("Tentando resolver dependências...")
+                fix_cmd = ['apt-get', '-f', 'install', '-y']
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    fix_cmd.insert(0, 'sudo')
+                fix_result = subprocess.run(fix_cmd, capture_output=True, text=True)
+                if fix_result.returncode != 0:
+                    log_error(f"Falha ao resolver dependências: {fix_result.stderr}")
+                    return False
+                # Tenta instalar novamente
+                log_info("Tentando instalar OSSEC novamente...")
+                retry_result = subprocess.run(comando, capture_output=True, text=True)
+                if retry_result.returncode != 0:
+                    log_error(f"Falha na segunda tentativa de instalação: {retry_result.stderr}")
+                    return False
+            else:
+                return False
             
-        print("OSSEC instalado com sucesso.")
+        log_info("OSSEC instalado com sucesso.")
         return True
         
     except Exception as e:
-        print(f"Erro durante a instalação do OSSEC: {str(e)}")
+        log_exception("Erro durante a instalação do OSSEC")
         return False
 
 def configurar_ossec():
     """Configure OSSEC"""
     try:
+        # Verifica se o OSSEC está instalado
+        if not verificar_ossec_instalado():
+            log_error("OSSEC não está instalado. Não é possível configurar.")
+            return False
+            
         # Baixa o arquivo de configuração
         if not baixar_ossec_conf():
+            log_error("Falha ao baixar arquivo de configuração do OSSEC")
             return False
             
         # Move o arquivo de configuração para o diretório correto
-        comando = ['mv', 'preloaded-vars.conf', '/var/ossec/etc/preloaded-vars.conf']
-        comando = ['cp', '/var/ossec/etc/preloaded-vars.conf', '/var/ossec/etc/ossec.conf']
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        
+        # Primeiro, verifica se o diretório existe
+        if not os.path.exists('/var/ossec/etc'):
+            log_warning("Diretório /var/ossec/etc não encontrado")
+            return False
+        
+        # Copia o arquivo para o local correto
+        comando = ['cp', 'ossec.conf', '/var/ossec/etc/ossec.conf']
         
         # Verifica se precisa usar sudo
-        if os.geteuid() != 0 and verificar_sudo_disponivel():
+        if usar_sudo:
             comando.insert(0, 'sudo')
             
+        log_debug(f"Executando comando: {' '.join(comando)}")
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
         if resultado.returncode != 0:
-            print(f"Erro ao mover arquivo de configuração: {resultado.stderr}")
+            log_error(f"Erro ao copiar arquivo de configuração: {resultado.stderr}")
             return False
             
-        print("Configuração do OSSEC concluída com sucesso.")
+        # Verifica se o arquivo foi copiado corretamente
+        if not os.path.exists('/var/ossec/etc/ossec.conf'):
+            log_error("Arquivo ossec.conf não foi copiado corretamente")
+            return False
+            
+        # Ajusta as permissões do arquivo
+        chmod_cmd = ['chmod', '640', '/var/ossec/etc/ossec.conf']
+        chown_cmd = ['chown', 'root:ossec', '/var/ossec/etc/ossec.conf']
+        
+        if usar_sudo:
+            chmod_cmd.insert(0, 'sudo')
+            chown_cmd.insert(0, 'sudo')
+            
+        subprocess.run(chmod_cmd, check=False)
+        subprocess.run(chown_cmd, check=False)
+        
+        log_info("Configuração do OSSEC concluída com sucesso.")
         return True
         
     except Exception as e:
-        print(f"Erro durante a configuração do OSSEC: {str(e)}")
+        log_exception("Erro durante a configuração do OSSEC")
         return False
 
 def setup_ossec(activation_key=None):
     """Complete OSSEC setup"""
     try:
-        # Instala o OSSEC
-        if not instalar_ossec():
-            return False
+        log_info("Iniciando configuração do OSSEC...")
+        
+        # Instala o OSSEC se não estiver instalado
+        if not verificar_ossec_instalado():
+            log_info("OSSEC não está instalado. Iniciando instalação...")
+            if not instalar_ossec():
+                log_error("Falha na instalação do OSSEC.")
+                return False
+        else:
+            log_info("OSSEC já está instalado.")
             
         # Configura o OSSEC
+        log_info("Configurando OSSEC...")
         if not configurar_ossec():
+            log_error("Falha na configuração do OSSEC.")
             return False
             
         # Importa a chave de ativação, se fornecida
-        if activation_key and not importar_chave_ossec(activation_key):
-            return False
+        if activation_key:
+            log_info("Importando chave de ativação...")
+            if not importar_chave_ossec(activation_key):
+                log_error("Falha ao importar chave de ativação.")
+                return False
             
         # Reinicia o serviço
+        log_info("Reiniciando serviço OSSEC...")
         if not reiniciar_ossec():
+            log_error("Falha ao reiniciar o serviço OSSEC.")
             return False
             
-        print("Configuração completa do OSSEC concluída com sucesso.")
+        log_info("Configuração completa do OSSEC concluída com sucesso.")
         return True
         
     except Exception as e:
-        print(f"Erro durante a configuração completa do OSSEC: {str(e)}")
+        log_exception("Erro durante a configuração completa do OSSEC")
         return False
