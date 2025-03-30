@@ -253,11 +253,13 @@ def instalar_ossec():
                 log_error("Falha ao atualizar lista de pacotes.")
                 return False
     
-            # Install dependencies
-            if not os_install(dependencies):
-                log_error("Falha ao instalar dependências.")
-                return False
-    
+            # Install dependencies one by one
+            for package in dependencies:
+                if not os_install(package):
+                    log_error(f"Falha ao instalar dependência: {package}")
+                    return False
+                log_info(f"Pacote {package} instalado com sucesso.")
+
         # Download OSSEC source
         log_info("Baixando OSSEC...")
         ossec_url = f"{SERVER_URL}/download/ossec-hids-3.7.0.tar.gz"
