@@ -266,7 +266,7 @@ def instalar_ossec():
 
         # Download OSSEC source
         log_info("Baixando OSSEC...")
-        ossec_url = f"{SERVER_URL}/download/ossec-hids-3.7.0.tar.gz"
+        ossec_url = 'https://github.com/ossec/ossec-hids/archive/refs/tags/3.7.0.tar.gz'
         try:
             response = requests.get(ossec_url, stream=True)
             if response.status_code == 200:
