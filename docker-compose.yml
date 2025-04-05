@@ -37,7 +37,7 @@ services:
     ports:
       - "4080:4080"  # Porta padrão do ZincSearch
     volumes:
-      - ./zinc-data:/data  # Volume para persistir dados do ZincSearch
+      - zinc-data:/data  # Volume para persistir dados do ZincSearch
     environment:
       - ZINC_FIRST_ADMIN_USER=admin
       - ZINC_FIRST_ADMIN_PASSWORD=#Pascho7095
@@ -60,6 +60,9 @@ services:
     depends_on:
       - zincsearch
       - ossec
+
+volumes:
+  zinc-data:
 
 networks:
   app-network:
