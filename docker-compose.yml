@@ -14,7 +14,7 @@ services:
       - FLASK_APP=app.py
     networks:
       - app-network
-      - bw-services
+      #- bw-services
 
   ossec:
     image: ossec
@@ -44,7 +44,7 @@ services:
       - ZINC_DATA_PATH=/data
     networks:
       - app-network
-      - bw-services
+      #- bw-services
     restart: unless-stopped
 
   ossec-to-zinc:
@@ -64,5 +64,5 @@ services:
 networks:
   app-network:
     driver: bridge
-  bw-services:
-    external: true
+  #bw-services:
+  #  external: true
