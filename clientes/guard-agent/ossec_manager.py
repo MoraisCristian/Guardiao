@@ -276,7 +276,8 @@ def instalar_ossec():
                           "libpcre2-dev", 
                           "libssl-dev",
                           "zlib1g-dev",
-                          "wget"]
+                          "wget",
+                          "libsystemd-dev"]
             
             # Update package list
             if not os_update():

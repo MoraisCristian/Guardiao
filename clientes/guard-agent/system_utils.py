@@ -122,6 +122,13 @@ def os_install(package):
             'centos': 'wget',
             'redhat': 'wget',
             'darwin': 'wget'
+        },
+        'libsystemd-dev': {
+            'debian': 'libsystemd-dev',
+            'ubuntu': 'libsystemd-dev',
+            'centos': 'libsystemd-dev',
+           'redhat': 'libsystemd-dev',
+            'darwin': 'libsystemd'
         }
     }
     
