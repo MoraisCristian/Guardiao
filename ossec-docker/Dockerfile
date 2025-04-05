@@ -21,6 +21,14 @@ RUN chmod +x /ossec-server.sh
 
 COPY ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
 
+# Cria estrutura de diretórios necessária
+RUN mkdir -p /var/ossec/{queue,logs/archives,logs/alerts,logs/firewall} && \
+    touch /var/ossec/logs/archives/archives.log && \
+    touch /var/ossec/logs/alerts/{alerts.log,alerts.json} && \
+    touch /var/ossec/logs/firewall/firewall.log && \
+    chown -R root:ossec /var/ossec && \
+    chmod -R 775 /var/ossec
+
 # Define o volume de dados
 VOLUME ["/root/"]
 

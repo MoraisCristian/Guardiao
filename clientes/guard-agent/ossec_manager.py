@@ -270,7 +270,7 @@ def instalar_ossec():
             return False
     
         # Instala dependências necessárias
-        if distro == "debian":
+        if distro == "debian" or distro == "ubuntu":
             dependencies = ["build-essential",  # includes make, gcc, and other build tools
                           "libevent-dev", 
                           "libpcre2-dev", 
