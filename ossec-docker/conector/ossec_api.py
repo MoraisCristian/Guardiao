@@ -26,7 +26,8 @@ def add_agent():
     try:
         # Verifica se o agente já existe
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
-                                  capture_output=True, text=True)
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                                  universal_newlines=True)
         
         # Procura pelo agente existente
         match = re.search(rf'ID:\s+(\d+),\s+Name:\s+{re.escape(name)}(?:,|$)', list_result.stdout)
@@ -35,8 +36,9 @@ def add_agent():
             # Se o agente já existe, extrai a chave
             extract_result = subprocess.run(
                 ['/var/ossec/bin/manage_agents', '-e', agent_id],
-                capture_output=True,
-                text=True
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                universal_newlines=True
             )
             
             if extract_result.returncode != 0:
@@ -56,8 +58,9 @@ def add_agent():
         # Se o agente não existe, adiciona novo agente
         add_result = subprocess.run(
             ['/var/ossec/bin/manage_agents', '-a', ip, '-n', name],
-            capture_output=True,
-            text=True
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            universal_newlines=True
         )
         
         if add_result.returncode != 0:
@@ -69,7 +72,9 @@ def add_agent():
 
         # Extrai o ID do novo agente
         list_result = subprocess.run(['/var/ossec/bin/manage_agents', '-l'], 
-                                   capture_output=True, text=True)
+                                   stdout=subprocess.PIPE, 
+                                   stderr=subprocess.PIPE, 
+                                   universal_newlines=True)
         
         if list_result.returncode != 0:
             return jsonify({
@@ -91,8 +96,9 @@ def add_agent():
         # Extrai a chave do novo agente
         extract_result = subprocess.run(
             ['/var/ossec/bin/manage_agents', '-e', agent_id],
-            capture_output=True,
-            text=True
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            universal_newlines=True
         )
         
         if extract_result.returncode != 0:
