@@ -53,7 +53,7 @@ services:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
       - ./zincsearch/check_zinc.py:/app/check_zinc.py
       - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
-      - ossec-data/alerts/alerts.json:/ossec/alerts.json
+      - ossec-data:/ossec/
     command: bash /app/ossec_to_zinc.sh
     networks:
       - app-network
