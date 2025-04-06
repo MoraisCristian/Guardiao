@@ -25,7 +25,7 @@ services:
       - "1514:1514/udp"  # Porta para receber logs dos agentes
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
     volumes:
-      - ./ossec-data:/root/  # Volume único para persistir dados do OSSEC
+      - ossec-data:/var/ossec/data  # Volume único para persistir dados do OSSEC
       - ./ossec-docker/conector:/opt/conector  # Add this line to mirror the API files
     networks:
       - app-network
@@ -53,7 +53,7 @@ services:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
       - ./zincsearch/check_zinc.py:/app/check_zinc.py
       - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
-      - ./ossec-data/alerts.json:/ossec/alerts.json
+      - ossec-data/alerts/alerts.json:/ossec/alerts.json
     command: bash /app/ossec_to_zinc.sh
     networks:
       - app-network
@@ -63,6 +63,7 @@ services:
 
 volumes:
   zinc-data:
+  ossec-data:
 
 networks:
   app-network:
