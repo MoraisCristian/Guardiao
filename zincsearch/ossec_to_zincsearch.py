@@ -7,7 +7,7 @@ import traceback
 from datetime import datetime
 
 # Configurações
-OSSEC_LOG_PATH = "/ossec/alerts/alerts.json"
+OSSEC_LOG_PATH = "/ossec/logs/alerts/alerts.json"
 ZINCSEARCH_BASE_URL = "http://zincsearch:4080"
 ZINCSEARCH_INDEX_URL = f"{ZINCSEARCH_BASE_URL}/api/index"
 ZINCSEARCH_BULK_URL = f"{ZINCSEARCH_BASE_URL}/api/_bulk"
