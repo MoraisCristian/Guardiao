@@ -12,22 +12,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Instala dependências
 RUN apt-get update 
-RUN apt-get install -y wget sudo postfix python3 python3-pip 
+RUN echo "1" | apt-get install -y wget sudo postfix python3 python3-pip 
 RUN wget -q -O - https://updates.atomicorp.com/installers/atomic | bash  
 RUN apt-get update 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" ossec-hids-server 
 RUN pip3 install flask 
 RUN chmod +x /ossec-server.sh
 
-COPY ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
-
-# Cria estrutura de diretórios necessária
-RUN mkdir -p /var/ossec/{queue,logs/archives,logs/alerts,logs/firewall} && \
-    touch /var/ossec/logs/archives/archives.log && \
-    touch /var/ossec/logs/alerts/{alerts.log,alerts.json} && \
-    touch /var/ossec/logs/firewall/firewall.log && \
-    chown -R root:ossec /var/ossec && \
-    chmod -R 775 /var/ossec
+## Cria estrutura de diretórios necessária
+#RUN mkdir -p /var/ossec/{queue,logs/archives,logs/alerts,logs/firewall} && \
+#    touch /var/ossec/logs/archives/archives.log && \
+#    touch /var/ossec/logs/alerts/{alerts.log,alerts.json} && \
+#    touch /var/ossec/logs/firewall/firewall.log && \
+#    chown -R root:ossec /var/ossec && \
+#    chmod -R 775 /var/ossec
 
 # Define o volume de dados
 VOLUME ["/root/"]
