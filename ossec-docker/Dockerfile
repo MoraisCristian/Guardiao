@@ -19,11 +19,10 @@ RUN dnf -y update && \
     chmod +x /ossec-server.sh && \
     dnf clean all
 
-# Define o volume de dados
-VOLUME ["/root/"]
-
 # Expõe as portas necessárias
 EXPOSE 1514/udp 1515/tcp 59347/tcp
+
+VOLUME [ "/var/ossec" ]
 
 # Define o comando padrão
 ENTRYPOINT ["/ossec-server.sh"]

@@ -25,7 +25,7 @@ services:
       - "1514:1514/udp"  # Porta para receber logs dos agentes
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
     volumes:
-      - ossec-data:/var/ossec/data  # Volume único para persistir dados do OSSEC
+      - ossec-data:/var/ossec/  # Volume único para persistir dados do OSSEC
       - ./ossec-docker/conector:/opt/conector  # Add this line to mirror the API files
     networks:
       - app-network
