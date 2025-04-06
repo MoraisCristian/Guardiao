@@ -1,4 +1,4 @@
-FROM centos:7
+FROM almalinux:8
 
 # Adiciona arquivos necessários
 ADD ossec-docker/default_agent /var/ossec/default_agent
@@ -9,15 +9,15 @@ ADD ossec-docker/ossec-server.sh /ossec-server.sh
 ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
 
 # Instala dependências
-RUN yum -y update && \
-    yum -y install epel-release && \
-    yum -y install wget sudo postfix python3 python3-pip && \
+RUN dnf -y update && \
+    dnf -y install epel-release && \
+    dnf -y install wget sudo python3 python3-pip && \
     wget -q -O - https://updates.atomicorp.com/installers/atomic | bash && \
-    yum -y update && \
-    yum -y install ossec-hids-server && \
+    dnf -y update && \
+    dnf -y install ossec-hids-server && \
     pip3 install flask && \
     chmod +x /ossec-server.sh && \
-    yum clean all
+    dnf clean all
 
 # Define o volume de dados
 VOLUME ["/root/"]
