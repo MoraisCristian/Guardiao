@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM centos:7
 
 # Adiciona arquivos necessários
 ADD ossec-docker/default_agent /var/ossec/default_agent
@@ -6,26 +6,18 @@ ADD ossec-docker/ossec.conf /var/ossec/etc/ossec.conf
 ADD ossec-docker/data_dirs.env /data_dirs.env
 ADD ossec-docker/init.sh /init.sh
 ADD ossec-docker/ossec-server.sh /ossec-server.sh
-# ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
-
-ENV DEBIAN_FRONTEND=noninteractive
+ADD ossec-docker/conector/ossec_api.py /opt/conector/ossec_api.py
 
 # Instala dependências
-RUN apt-get update 
-RUN echo "1" | apt-get install -y wget sudo postfix python3 python3-pip 
-RUN wget -q -O - https://updates.atomicorp.com/installers/atomic | bash  
-RUN apt-get update 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" ossec-hids-server 
-RUN pip3 install flask 
-RUN chmod +x /ossec-server.sh
-
-## Cria estrutura de diretórios necessária
-#RUN mkdir -p /var/ossec/{queue,logs/archives,logs/alerts,logs/firewall} && \
-#    touch /var/ossec/logs/archives/archives.log && \
-#    touch /var/ossec/logs/alerts/{alerts.log,alerts.json} && \
-#    touch /var/ossec/logs/firewall/firewall.log && \
-#    chown -R root:ossec /var/ossec && \
-#    chmod -R 775 /var/ossec
+RUN yum -y update && \
+    yum -y install epel-release && \
+    yum -y install wget sudo postfix python3 python3-pip && \
+    wget -q -O - https://updates.atomicorp.com/installers/atomic | bash && \
+    yum -y update && \
+    yum -y install ossec-hids-server && \
+    pip3 install flask && \
+    chmod +x /ossec-server.sh && \
+    yum clean all
 
 # Define o volume de dados
 VOLUME ["/root/"]
