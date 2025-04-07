@@ -12,9 +12,31 @@ services:
       - "5002:5000"  # Expõe a API do Flask para o host
     environment:
       - FLASK_APP=app.py
+      - DB_ENGINE=mysql+pymysql
+      - DB_USERNAME=guardiao
+      - DB_PASS=guardiao_password
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=guardiao_db
     networks:
       - app-network
-      - bw-services
+    depends_on:
+      - mariadb
+
+  mariadb:
+    image: mariadb:10.6
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=guardiao_db
+      - MYSQL_USER=guardiao
+      - MYSQL_PASSWORD=guardiao_password
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
 
   ossec:
     image: ossec
@@ -44,7 +66,6 @@ services:
       - ZINC_DATA_PATH=/data
     networks:
       - app-network
-      - bw-services
     restart: unless-stopped
 
   ossec-to-zinc:
@@ -64,9 +85,8 @@ services:
 volumes:
   zinc-data:
   ossec-data:
+  mariadb-data:  # Add this new volume for MariaDB data persistence
 
 networks:
   app-network:
     driver: bridge
-  bw-services:
-    external: true
