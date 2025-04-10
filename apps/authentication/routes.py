@@ -545,3 +545,77 @@ def download_script(id_agente, script_name):
         return send_file(caminho, as_attachment=True)
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
+
+
+# ... existing code ...
+
+@blueprint.route('/remove_agent/<int:id_agente>')
+def remove_agent(id_agente):
+    """
+    Exibe a página de confirmação para remoção de um agente
+    """
+    if not current_user.is_authenticated:
+        return redirect(url_for('authentication_blueprint.login'))
+    
+    # Buscar informações do agente
+    agente = Agentes.query.filter_by(id=id_agente).first()
+    if not agente:
+        return render_template('home/page-404.html'), 404
+    
+    # Buscar informações detalhadas do agente
+    agent_info = Infos.query.filter_by(id_agente=id_agente).first()
+    if not agent_info:
+        # Se não houver informações detalhadas, criar um objeto com valores padrão
+        class DefaultInfo:
+            def __init__(self):
+                self.hostname = f"Agente {id_agente}"
+                self.os_info = "Informação não disponível"
+        agent_info = DefaultInfo()
+    
+    return render_template('home/remove_agent.html', agent=agente, agent_info=agent_info)
+
+@blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
+def confirm_remove_agent(id_agente):
+    """
+    Processa a confirmação de remoção do agente
+    """
+    if not current_user.is_authenticated:
+        return redirect(url_for('authentication_blueprint.login'))
+    
+    # Verificar se o agente existe
+    agente = Agentes.query.filter_by(id=id_agente).first()
+    if not agente:
+        return render_template('home/page-404.html'), 404
+    
+    # Buscar informações detalhadas do agente
+    agent_info = Infos.query.filter_by(id_agente=id_agente).first()
+    if not agent_info:
+        # Se não houver informações detalhadas, criar um objeto com valores padrão
+        class DefaultInfo:
+            def __init__(self):
+                self.hostname = f"Agente {id_agente}"
+                self.os_info = "Informação não disponível"
+        agent_info = DefaultInfo()
+    
+    # Verificar a confirmação
+    confirmation = request.form.get('confirmation')
+    if not confirmation or confirmation != agent_info.hostname:
+        return render_template('home/remove_agent.html', 
+                              agent=agente, 
+                              agent_info=agent_info, 
+                              error="O hostname digitado não corresponde. Por favor, tente novamente.")
+    
+    # Remover o agente
+    success, message = remover_agente(id_agente)
+    
+    if success:
+        return render_template('home/index.html', 
+                              segment='index',
+                              success_msg=f"Agente {agent_info.hostname} (ID: {id_agente}) removido com sucesso.")
+    else:
+        return render_template('home/remove_agent.html', 
+                              agent=agente, 
+                              agent_info=agent_info, 
+                              error=message)
+
+    return jsonify({'status': 'sucesso'}), 200

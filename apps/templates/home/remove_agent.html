@@ -1,0 +1,57 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Remover Agente {% endblock title %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>Confirmação de Remoção de Agente</h6>
+        </div>
+        <div class="card-body px-4 pt-0 pb-2">
+          <div class="alert alert-danger text-white" role="alert">
+            <strong>ATENÇÃO!</strong> A remoção do agente é definitiva e não pode ser desfeita.
+            <ul>
+              <li>Todos os dados de vulnerabilidades relacionados a este agente serão removidos.</li>
+              <li>Todo o histórico do agente no Guardião será excluído do banco de dados.</li>
+              <li>O Guardião perderá a comunicação com o ambiente.</li>
+              <li>Reinstalar o agente gerará um novo ID e os dados deletados não retornarão.</li>
+            </ul>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <h5>Informações do Agente</h5>
+                <p><strong>ID:</strong> {{ agent.id }}</p>
+                <p><strong>Hostname:</strong> {{ agent_info.hostname }}</p>
+                <p><strong>Sistema Operacional:</strong> {{ agent_info.os_info }}</p>
+                <p><strong>Data de Ativação:</strong> {{ agent.data_ativacao.strftime('%d/%m/%Y %H:%M:%S') }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <form method="POST" action="/confirm_remove_agent/{{ agent.id }}">
+            <div class="form-group">
+              <label for="confirmation">Para confirmar a remoção, digite o hostname do agente ({{ agent_info.hostname }}):</label>
+              <input type="text" class="form-control" id="confirmation" name="confirmation" required>
+            </div>
+            <div class="row mt-4">
+              <div class="col-6">
+                <a href="/perfil_agente/{{ agent.id }}" class="btn bg-gradient-secondary w-100">Cancelar</a>
+              </div>
+              <div class="col-6">
+                <button type="submit" class="btn bg-gradient-danger w-100">Confirmar Remoção</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

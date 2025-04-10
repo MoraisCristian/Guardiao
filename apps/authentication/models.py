@@ -233,6 +233,37 @@ def salvar_no_banco(nova_atividade):
     db.session.merge(nova_atividade)
     db.session.commit()
 
+def remover_agente(id_agente):
+    """
+    Remove um agente e todos os seus dados relacionados do banco de dados
+    """
+    try:
+        # Remover registros de vulnerabilidades
+        Vulnerabilidades.query.filter_by(id_agente=id_agente).delete()
+        
+        # Remover registros de softwares
+        Softwares.query.filter_by(id_agente=id_agente).delete()
+        
+        # Remover registros de atividades
+        Atividades.query.filter_by(id_agente=id_agente).delete()
+        
+        # Remover registros da fila
+        Fila.query.filter_by(id_agente=id_agente).delete()
+        
+        # Remover informações do agente
+        Infos.query.filter_by(id_agente=id_agente).delete()
+        
+        # Finalmente, remover o agente
+        agente = Agentes.query.filter_by(id=id_agente).first()
+        if agente:
+            db.session.delete(agente)
+            
+        db.session.commit()
+        return True, "Agente removido com sucesso"
+    except Exception as e:
+        db.session.rollback()
+        return False, f"Erro ao remover agente: {str(e)}"
+
 @login_manager.user_loader
 def user_loader(id):
     return Users.query.filter_by(id=id).first()
