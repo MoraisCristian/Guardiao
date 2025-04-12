@@ -291,14 +291,21 @@ def instalar_ossec():
             log_error("Falha ao baixar configuração do agente OSSEC")
             return False
             
-        # Instead of downloading preloaded-vars.conf, copy the ossec.conf file
-        log_info("Copiando ossec.conf para preloaded-vars.conf...")
+        # Download preloaded-vars.conf from server
+        log_info("Baixando preloaded-vars.conf do servidor...")
         try:
-            # Copy the downloaded ossec.conf to preloaded-vars.conf
-            subprocess.run(['cp', 'ossec.conf', 'preloaded-vars.conf'], check=True)
-            log_info('Arquivo preloaded-vars.conf criado com sucesso a partir de ossec.conf.')
+            url = f'{SERVER_URL}/download/preloaded-vars.conf'
+            log_info(f"Baixando de: {url}")
+            resposta = requests.get(url)
+            if resposta.status_code == 200:
+                with open('preloaded-vars.conf', 'wb') as file:
+                    file.write(resposta.content)
+                log_info('Arquivo preloaded-vars.conf baixado com sucesso.')
+            else:
+                log_error(f'Falha ao baixar preloaded-vars.conf. Status: {resposta.status_code}')
+                return False
         except Exception as e:
-            log_exception('Erro ao criar preloaded-vars.conf a partir de ossec.conf')
+            log_exception('Erro ao baixar preloaded-vars.conf')
             return False
 
         # First, clean any existing OSSEC installation
