@@ -154,6 +154,9 @@ def reiniciar_ossec():
         comando_base.insert(0, 'sudo')
     
     try:
+        # Fix working directory issues before restarting
+        fix_ossec_working_directory()
+        
         log_info("Reiniciando serviço do OSSEC...")
         subprocess.run(comando_base, check=True)
         log_info("Serviço do OSSEC reiniciado com sucesso.")
@@ -452,6 +455,63 @@ def configurar_ossec_pos_instalacao():
                 log_error("Falha ao baixar arquivo de configuração do OSSEC")
                 return False
         
+        # Fix the configuration file to remove duplicated directories
+        log_info("Corrigindo possíveis problemas na configuração do OSSEC...")
+        try:
+            with open('ossec.conf', 'r') as f:
+                content = f.read()
+            
+            # Check if it's XML format
+            if "<ossec_config>" in content:
+                # Parse and fix XML content to remove duplicated directories
+                import xml.etree.ElementTree as ET
+                from io import StringIO
+                
+                # Fix potential XML issues
+                if "<syscheck>" in content:
+                    # Simple approach to fix duplicated directories
+                    # Create a new clean syscheck configuration
+                    dirs_to_monitor = ['/etc', '/usr/bin', '/usr/sbin', '/bin', '/sbin', '/boot']
+                    dirs_to_ignore = [
+                        '/etc/mtab', '/etc/hosts.deny', '/etc/mail/statistics', 
+                        '/etc/random-seed', '/etc/random.seed', '/etc/adjtime',
+                        '/etc/httpd/logs', '/etc/utmpx', '/etc/wtmpx',
+                        '/etc/cups/certs', '/etc/dumpdates', '/etc/svc/volatile'
+                    ]
+                    
+                    # Create a clean syscheck section
+                    clean_syscheck = """
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>43200</frequency>
+    <scan_on_start>yes</scan_on_start>
+
+    <!-- Files/directories to monitor -->"""
+                    
+                    # Add each directory only once
+                    for dir in dirs_to_monitor:
+                        clean_syscheck += f"\n    <directories check_all=\"yes\">{dir}</directories>"
+                    
+                    clean_syscheck += "\n\n    <!-- Files/directories to ignore -->"
+                    for dir in dirs_to_ignore:
+                        clean_syscheck += f"\n    <ignore>{dir}</ignore>"
+                    
+                    clean_syscheck += "\n  </syscheck>"
+                    
+                    # Replace the existing syscheck section
+                    import re
+                    content = re.sub(r'<syscheck>.*?</syscheck>', clean_syscheck, content, flags=re.DOTALL)
+            
+            # Write the fixed configuration back
+            with open('ossec.conf', 'w') as f:
+                f.write(content)
+            
+            log_info("Configuração do OSSEC corrigida com sucesso.")
+        except Exception as e:
+            log_warning(f"Erro ao corrigir configuração do OSSEC: {str(e)}")
+            # Continue anyway, as we'll still try to use the original config
+        
+        # Rest of the function remains the same
         # Baixa outros arquivos de configuração necessários
         arquivos_config = ['internal_options.conf', 'local_internal_options.conf']
         for arquivo in arquivos_config:
@@ -634,4 +694,47 @@ def setup_ossec(activation_key=None):
         
     except Exception as e:
         log_exception("Erro durante a configuração completa do OSSEC")
+        return False
+
+def fix_ossec_working_directory():
+    """Fix OSSEC working directory issues"""
+    try:
+        log_info("Corrigindo problemas de diretório de trabalho do OSSEC...")
+        
+        # Ensure the OSSEC directories exist and have correct permissions
+        directories = [
+            '/var/ossec/tmp',
+            '/var/ossec/queue',
+            '/var/ossec/queue/ossec',
+            '/var/ossec/queue/alerts',
+            '/var/ossec/queue/diff',
+            '/var/ossec/queue/syscheck',
+            '/var/ossec/queue/rids'
+        ]
+        
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        
+        for directory in directories:
+            # Create directory if it doesn't exist
+            mkdir_cmd = ['mkdir', '-p', directory]
+            if usar_sudo:
+                mkdir_cmd.insert(0, 'sudo')
+            
+            subprocess.run(mkdir_cmd, check=True)
+            
+            # Set correct permissions
+            chown_cmd = ['chown', 'root:ossec', directory]
+            chmod_cmd = ['chmod', '770', directory]
+            
+            if usar_sudo:
+                chown_cmd.insert(0, 'sudo')
+                chmod_cmd.insert(0, 'sudo')
+            
+            subprocess.run(chown_cmd, check=True)
+            subprocess.run(chmod_cmd, check=True)
+        
+        log_info("Diretórios de trabalho do OSSEC corrigidos com sucesso.")
+        return True
+    except Exception as e:
+        log_exception(f"Erro ao corrigir diretórios de trabalho do OSSEC: {str(e)}")
         return False
