@@ -587,6 +587,7 @@ def remove_agent_route(agent_id):
         return render_template('home/page-500.html', 
                               error=f"Erro ao remover agente: {str(e)}"), 500
 
+# Remove this duplicate route definition (around line 600-630)
 @blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
 def confirm_remove_agent(id_agente):
     """
@@ -640,170 +641,7 @@ def confirm_remove_agent(id_agente):
                             segment='index',
                             error_msg=f"Erro ao processar a remoção do agente (ID: {id_agente}): {str(e)}")
 
-# Add these new routes for agent actions
-
-@blueprint.route('/scan_on_demand/<int:id_agente>', methods=['GET', 'POST'])
-def scan_on_demand(id_agente):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-            
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=id_agente).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', error="Agente não encontrado"), 404
-        
-        # Get agent info
-        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-        
-        # Check if there's already a scan in the queue
-        scan_na_fila = Fila.query.filter_by(id_agente=id_agente, fila='vuln-scan').first() is not None
-        
-        # Get the last scan activity
-        ultimo_scan = Atividades.query.filter_by(
-            id_agente=id_agente, 
-            atividade='Scan de vulnerabilidades concluído'
-        ).order_by(Atividades.data_contato.desc()).first()
-        
-        # Check if the last scan was recent (less than 5 minutes ago)
-        scan_recente = False
-        if ultimo_scan:
-            diff = datetime.now() - ultimo_scan.data_contato
-            scan_recente = diff.total_seconds() < 300  # 5 minutes
-        
-        if request.method == 'POST':
-            # If there's already a scan in the queue and not forcing, show warning
-            if scan_na_fila and 'force' not in request.form:
-                return render_template('home/scan_on_demand.html', 
-                                      id=id_agente,
-                                      scan_na_fila=scan_na_fila,
-                                      ultimo_scan=ultimo_scan,
-                                      scan_recente=scan_recente)
-            
-            # Add the agent to the vulnerability scan queue
-            data_registro = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Remove existing scan from queue if forcing
-            if 'force' in request.form and scan_na_fila:
-                Fila.query.filter_by(id_agente=id_agente, fila='vuln-scan').delete()
-                db.session.commit()
-            
-            # Add new scan to queue
-            fila = Fila(id_agente=id_agente, chave=agent.chave, fila='vuln-scan', data_registro=data_registro)
-            db.session.add(fila)
-            db.session.commit()
-            
-            # Log the activity
-            nova_atividade = Atividades(
-                id_agente=id_agente,
-                chave=agent.chave,
-                data_contato=datetime.now(),
-                atividade="Scan de vulnerabilidades solicitado manualmente"
-            )
-            db.session.add(nova_atividade)
-            db.session.commit()
-            
-            # Redirect back to the scan page with updated status
-            return redirect(url_for('authentication_blueprint.scan_on_demand', id_agente=id_agente))
-        
-        # If GET request, show the scan page
-        return render_template('home/scan_on_demand.html', 
-                              id=id_agente,
-                              scan_na_fila=scan_na_fila,
-                              ultimo_scan=ultimo_scan,
-                              scan_recente=scan_recente)
-            
-    except Exception as e:
-        print(f"Erro ao solicitar scan: {str(e)}")
-        return render_template('home/page-500.html', error=f"Erro ao solicitar scan: {str(e)}"), 500
-
-@blueprint.route('/run_script/<int:id_agente>', methods=['GET', 'POST'])
-def run_script(id_agente):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-            
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=id_agente).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', error="Agente não encontrado"), 404
-        
-        if request.method == 'POST':
-            # Get script name and content from form
-            script_name = request.form.get('script_name')
-            script_content = request.form.get('script')
-            
-            if not script_name or not script_content:
-                flash('Nome do script e conteúdo são obrigatórios', 'danger')
-                return redirect(url_for('authentication_blueprint.run_script', id_agente=id_agente))
-            
-            # Add the agent to the script execution queue
-            data_registro = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            fila = Fila(
-                id_agente=id_agente, 
-                chave=agent.chave, 
-                fila='run-script', 
-                script_name=script_name, 
-                data_registro=data_registro
-            )
-            db.session.add(fila)
-            
-            # Save script content to a temporary location or database field
-            # This depends on how your agent retrieves the script
-            # For now, we'll assume there's a way to pass it
-            
-            db.session.commit()
-            
-            # Log the activity
-            nova_atividade = Atividades(
-                id_agente=id_agente,
-                chave=agent.chave,
-                data_contato=datetime.now(),
-                atividade=f"Execução de script '{script_name}' solicitada manualmente"
-            )
-            db.session.add(nova_atividade)
-            db.session.commit()
-            
-            flash(f"Execução do script '{script_name}' solicitada com sucesso", 'success')
-            return redirect(url_for('home_blueprint.index'))
-        
-        # If GET request, show the form
-        return render_template('home/run_script.html')
-            
-    except Exception as e:
-        print(f"Erro ao solicitar execução de script: {str(e)}")
-        return render_template('home/page-500.html', error=f"Erro ao solicitar execução de script: {str(e)}"), 500
-
-@blueprint.route('/remove_agent/<int:id_agente>', methods=['GET', 'POST'])
-def remove_agent(id_agente):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-            
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=id_agente).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', error="Agente não encontrado"), 404
-        
-        # Get agent info for display
-        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-        
-        if not agent_info:
-            return render_template('home/page-404.html', error="Informações do agente não encontradas"), 404
-        
-        # Show confirmation page
-        return render_template('home/remove_agent.html', agent=agent, agent_info=agent_info)
-            
-    except Exception as e:
-        print(f"Erro ao preparar remoção do agente: {str(e)}")
-        return render_template('home/page-500.html', error=f"Erro ao preparar remoção do agente: {str(e)}"), 500
-
+# Keep only this implementation (around line 840-870)
 @blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
 def confirm_remove_agent(id_agente):
     try:
@@ -811,6 +649,7 @@ def confirm_remove_agent(id_agente):
         if not current_user.is_authenticated:
             return redirect(url_for('authentication_blueprint.login'))
         
+        # Rest of the function remains unchanged
         # Get the agent from database
         agent = Agentes.query.filter_by(id=id_agente).first()
         
