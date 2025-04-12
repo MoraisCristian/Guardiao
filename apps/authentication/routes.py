@@ -546,30 +546,46 @@ def download_script(id_agente, script_name):
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
-@blueprint.route('/remove_agent/<int:id_agente>')
-def remove_agent(id_agente):
-    """
-    Exibe a página de confirmação para remoção de um agente
-    """
-    if not current_user.is_authenticated:
-        return redirect(url_for('authentication_blueprint.login'))
-    
-    # Buscar informações do agente
-    agente = Agentes.query.filter_by(id=id_agente).first()
-    if not agente:
-        return render_template('home/page-404.html'), 404
-    
-    # Buscar informações detalhadas do agente
-    agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-    if not agent_info:
-        # Se não houver informações detalhadas, criar um objeto com valores padrão
-        class DefaultInfo:
-            def __init__(self):
-                self.hostname = f"Agente {id_agente}"
-                self.os_info = "Informação não disponível"
-        agent_info = DefaultInfo()
-    
-    return render_template('home/remove_agent.html', agent=agente, agent_info=agent_info)
+@blueprint.route('/remove_agent/<int:agent_id>', methods=['GET'])
+def remove_agent_route(agent_id):
+    try:
+        # Check if user is authenticated
+        if not current_user.is_authenticated:
+            return redirect(url_for('authentication_blueprint.login'))
+            
+        # Get the agent from database
+        agent = Agentes.query.filter_by(id=agent_id).first()
+        
+        if not agent:
+            return render_template('home/page-404.html', 
+                                  error="Agente não encontrado"), 404
+        
+        # Call the remover_agente function that was imported
+        success = remover_agente(agent_id)
+        
+        if success:
+            # Log the activity
+            nova_atividade = Atividades(
+                agente_id=agent_id,
+                tipo="remocao",
+                descricao=f"Agente {agent.hostname} removido manualmente",
+                data=datetime.utcnow()
+            )
+            db.session.add(nova_atividade)
+            db.session.commit()
+            
+            # Redirect to the agents list with success message
+            return redirect(url_for('home_blueprint.agentes', 
+                                   msg="Agente removido com sucesso"))
+        else:
+            # If removal failed, redirect with error message
+            return redirect(url_for('home_blueprint.agentes', 
+                                   error="Falha ao remover o agente"))
+            
+    except Exception as e:
+        print(f"Erro ao remover agente: {str(e)}")
+        return render_template('home/page-500.html', 
+                              error=f"Erro ao remover agente: {str(e)}"), 500
 
 @blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
 def confirm_remove_agent(id_agente):
