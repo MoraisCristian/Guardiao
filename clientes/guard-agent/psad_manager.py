@@ -82,12 +82,35 @@ def configurar_psad():
     
     try:
         # Habilitar logging do iptables
-        print("Habilitando logging do iptables...")
-        comandos_iptables = [
-            ['iptables', '-A', 'INPUT', '-j', 'LOG'],
-            ['iptables', '-A', 'FORWARD', '-j', 'LOG']
-        ]
+        print("Verificando e habilitando logging do iptables...")
         
+        # Função para verificar se uma regra já existe
+        def regra_existe(chain, action):
+            cmd = ['iptables', '-L', chain, '--line-numbers']
+            if usar_sudo:
+                cmd.insert(0, 'sudo')
+            
+            resultado = subprocess.run(cmd, capture_output=True, text=True)
+            return f"LOG" in resultado.stdout
+        
+        # Comandos para adicionar regras de LOG, apenas se não existirem
+        comandos_iptables = []
+        
+        # Verifica e adiciona regra para INPUT se necessário
+        if not regra_existe('INPUT', 'LOG'):
+            comandos_iptables.append(['iptables', '-A', 'INPUT', '-j', 'LOG'])
+            print("Regra de LOG para INPUT será adicionada.")
+        else:
+            print("Regra de LOG para INPUT já existe, pulando.")
+            
+        # Verifica e adiciona regra para FORWARD se necessário
+        if not regra_existe('FORWARD', 'LOG'):
+            comandos_iptables.append(['iptables', '-A', 'FORWARD', '-j', 'LOG'])
+            print("Regra de LOG para FORWARD será adicionada.")
+        else:
+            print("Regra de LOG para FORWARD já existe, pulando.")
+        
+        # Aplica as regras necessárias
         for comando in comandos_iptables:
             if usar_sudo:
                 comando.insert(0, 'sudo')
@@ -97,6 +120,7 @@ def configurar_psad():
             except subprocess.CalledProcessError as e:
                 print(f"Erro ao executar comando iptables: {str(e)}")
         
+        # Resto do código permanece igual
         # Determinar qual arquivo de configuração baixar com base na estrutura do sistema
         arquivo_config = "psad-syslog.conf" if os.path.exists('/var/log/syslog') else "psad.conf"
         print(f"Detectado sistema com {'syslog' if os.path.exists('/var/log/syslog') else 'messages'}, baixando {arquivo_config}...")

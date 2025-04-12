@@ -337,10 +337,10 @@ def main():
                 
                 # Wait before next ping
                 log_debug("Aguardando próximo ciclo")
-                time.sleep(15)
+                time.sleep(10)
             except Exception as e:
                 log_exception(f"Erro no loop principal")
-                time.sleep(15)
+                time.sleep(60)
     except Exception as e:
         log_critical("Erro fatal na inicialização do agente", exc_info=e)
 
