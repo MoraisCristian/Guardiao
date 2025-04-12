@@ -59,4 +59,6 @@ rm -f /tmp/guardiao.tar
 rm -f /tmp/guardiao.md5
 rm -f /tmp/guard_config.json.backup
 
+apt remove -y psad
+
 print_message "Guard-Agent has been completely uninstalled!"

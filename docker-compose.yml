@@ -38,6 +38,20 @@ services:
     networks:
       - app-network
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD=root_password
+    networks:
+      - app-network
+    depends_on:
+      - mariadb
+
   ossec:
     image: ossec
     build:
