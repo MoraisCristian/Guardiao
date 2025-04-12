@@ -26,7 +26,7 @@ while True:
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         logger.info("Aguardando conclusão da instalação...")
-        time.sleep(300)
+        time.sleep(900)
         
         # Restart OSSEC
         logger.info("Reiniciando OSSEC...")
@@ -38,8 +38,8 @@ while True:
         subprocess.run(["sudo", "systemctl", "restart", "guardiao"], check=True)
         subprocess.run(["sudo", "systemctl", "restart", "guardiao-mecanico"], check=True)
         
-        logger.info("Verificação concluída. Próxima verificação em 5 minutos.")
-        time.sleep(300)
+        logger.info("Verificação concluída. Próxima verificação em 15 minutos.")
+        time.sleep(900)
     except Exception as e:
         logger.error(f"Erro durante a execução: {str(e)}")
         logger.info("Tentando novamente em 1 minuto...")
