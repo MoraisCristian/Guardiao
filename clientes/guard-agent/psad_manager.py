@@ -82,43 +82,55 @@ def configurar_psad():
     
     try:
         # Habilitar logging do iptables
-        print("Verificando e habilitando logging do iptables...")
+        print("Verificando e configurando logging do iptables...")
         
-        # Função para verificar se uma regra já existe
-        def regra_existe(chain, action):
-            cmd = ['iptables', '-L', chain, '--line-numbers']
+        # Função para verificar se uma regra já existe e remover duplicatas
+        def limpar_regras_log(chain):
+            # Primeiro, verifica se existem regras LOG
+            cmd_check = ['iptables', '-L', chain, '--line-numbers']
             if usar_sudo:
-                cmd.insert(0, 'sudo')
+                cmd_check.insert(0, 'sudo')
             
-            resultado = subprocess.run(cmd, capture_output=True, text=True)
-            return f"LOG" in resultado.stdout
-        
-        # Comandos para adicionar regras de LOG, apenas se não existirem
-        comandos_iptables = []
-        
-        # Verifica e adiciona regra para INPUT se necessário
-        if not regra_existe('INPUT', 'LOG'):
-            comandos_iptables.append(['iptables', '-A', 'INPUT', '-j', 'LOG'])
-            print("Regra de LOG para INPUT será adicionada.")
-        else:
-            print("Regra de LOG para INPUT já existe, pulando.")
+            resultado = subprocess.run(cmd_check, capture_output=True, text=True)
             
-        # Verifica e adiciona regra para FORWARD se necessário
-        if not regra_existe('FORWARD', 'LOG'):
-            comandos_iptables.append(['iptables', '-A', 'FORWARD', '-j', 'LOG'])
-            print("Regra de LOG para FORWARD será adicionada.")
-        else:
-            print("Regra de LOG para FORWARD já existe, pulando.")
+            # Conta quantas regras LOG existem
+            log_rules = [line for line in resultado.stdout.split('\n') if "LOG" in line]
+            
+            if len(log_rules) > 1:
+                print(f"Detectadas {len(log_rules)} regras LOG duplicadas na chain {chain}. Removendo duplicatas...")
+                
+                # Remove todas as regras LOG, começando da última para não afetar os índices
+                for i in range(len(log_rules)):
+                    # Pega o número da linha da regra LOG
+                    line_num = log_rules[-(i+1)].split()[0]
+                    if line_num.isdigit():
+                        cmd_del = ['iptables', '-D', chain, line_num]
+                        if usar_sudo:
+                            cmd_del.insert(0, 'sudo')
+                        subprocess.run(cmd_del, check=True)
+                
+                # Agora adiciona uma única regra LOG
+                cmd_add = ['iptables', '-A', chain, '-j', 'LOG']
+                if usar_sudo:
+                    cmd_add.insert(0, 'sudo')
+                subprocess.run(cmd_add, check=True)
+                print(f"Regras LOG na chain {chain} corrigidas.")
+                return True
+            elif len(log_rules) == 1:
+                print(f"Uma regra LOG já existe na chain {chain}. Mantendo como está.")
+                return True
+            else:
+                print(f"Nenhuma regra LOG encontrada na chain {chain}. Adicionando...")
+                cmd_add = ['iptables', '-A', chain, '-j', 'LOG']
+                if usar_sudo:
+                    cmd_add.insert(0, 'sudo')
+                subprocess.run(cmd_add, check=True)
+                print(f"Regra LOG adicionada à chain {chain}.")
+                return True
         
-        # Aplica as regras necessárias
-        for comando in comandos_iptables:
-            if usar_sudo:
-                comando.insert(0, 'sudo')
-            try:
-                subprocess.run(comando, check=True)
-                print(f"Comando executado com sucesso: {' '.join(comando)}")
-            except subprocess.CalledProcessError as e:
-                print(f"Erro ao executar comando iptables: {str(e)}")
+        # Limpa e configura regras LOG para INPUT e FORWARD
+        limpar_regras_log('INPUT')
+        limpar_regras_log('FORWARD')
         
         # Resto do código permanece igual
         # Determinar qual arquivo de configuração baixar com base na estrutura do sistema
