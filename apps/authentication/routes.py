@@ -546,9 +546,6 @@ def download_script(id_agente, script_name):
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
-
-# ... existing code ...
-
 @blueprint.route('/remove_agent/<int:id_agente>')
 def remove_agent(id_agente):
     """
@@ -617,5 +614,3 @@ def confirm_remove_agent(id_agente):
                               agent=agente, 
                               agent_info=agent_info, 
                               error=message)
-
-    return jsonify({'status': 'sucesso'}), 200
