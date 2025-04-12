@@ -21,7 +21,9 @@ def baixar_ossec_conf():
             # Verificar se o arquivo contém a configuração do servidor
             with open('ossec.conf', 'r') as file:
                 content = file.read()
-                if "<server-ip>" not in content and "<server>" not in content:
+                # Verifica tanto o formato XML quanto o formato de variáveis
+                if ("<server-ip>" not in content and "<server>" not in content and 
+                    "USER_AGENT_SERVER_IP=" not in content):
                     log_warning("Arquivo de configuração não contém configuração de servidor válida!")
                     return False
             return True
@@ -86,7 +88,8 @@ def configurar_ossec():
         # Verifica se o arquivo contém a configuração do servidor
         with open('/var/ossec/etc/ossec.conf', 'r') as f:
             content = f.read()
-            if "<server-ip>" not in content and "<server>" not in content:
+            if ("<server-ip>" not in content and "<server>" not in content and 
+                "USER_AGENT_SERVER_IP=" not in content):
                 log_warning("Configuração do OSSEC não contém servidor válido!")
                 return False
             
@@ -488,17 +491,31 @@ def configurar_ossec_pos_instalacao():
         # Verifica se o arquivo contém a configuração do servidor
         with open('ossec.conf', 'r') as f:
             content = f.read()
-            if "<server-ip>" not in content and "<server>" not in content:
+            if ("<server-ip>" not in content and "<server>" not in content and 
+                "USER_AGENT_SERVER_IP=" not in content):
                 log_warning("Configuração do OSSEC não contém servidor válido!")
                 # Tenta corrigir adicionando um servidor padrão
                 log_info("Tentando adicionar configuração de servidor padrão...")
                 with open('ossec.conf', 'w') as f:
-                    # Adiciona a tag <server-ip> se não existir
-                    if "<client>" in content and "</client>" in content:
-                        content = content.replace("</client>", "  <server-ip>ossec</server-ip>\n  </client>")
-                    else:
-                        content = f"<ossec_config>\n  <client>\n    <server-ip>ossec</server-ip>\n  </client>\n{content}</ossec_config>"
-                    f.write(content)
+                    # Adiciona a configuração no formato apropriado
+                    if "USER_LANGUAGE=" in content:
+                        # Parece ser o formato de variáveis
+                        if "USER_AGENT_SERVER_IP=" not in content:
+                            # Adiciona a linha USER_AGENT_SERVER_IP
+                            lines = content.split('\n')
+                            new_lines = []
+                            for line in lines:
+                                new_lines.append(line)
+                                if line.startswith("USER_AGENT_CONFIG_PROFILE=") or line.startswith("# USER_AGENT_CONFIG_PROFILE"):
+                                    new_lines.append('USER_AGENT_SERVER_IP="ossec"')
+                            content = '\n'.join(new_lines)
+                        else:
+                            # Tenta o formato XML
+                            if "<client>" in content and "</client>" in content:
+                                content = content.replace("</client>", "  <server-ip>ossec</server-ip>\n  </client>")
+                            else:
+                                content = f"<ossec_config>\n  <client>\n    <server-ip>ossec</server-ip>\n  </client>\n{content}</ossec_config>"
+                        f.write(content)
         
         # Copia o arquivo para o local correto com sudo
         usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
