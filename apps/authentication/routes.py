@@ -587,61 +587,7 @@ def remove_agent_route(agent_id):
         return render_template('home/page-500.html', 
                               error=f"Erro ao remover agente: {str(e)}"), 500
 
-# Remove this duplicate route definition (around line 600-630)
-@blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
-def confirm_remove_agent(id_agente):
-    """
-    Processa a confirmação de remoção do agente
-    """
-    if not current_user.is_authenticated:
-        return redirect(url_for('authentication_blueprint.login'))
-    
-    # Verificar se o agente existe
-    agente = Agentes.query.filter_by(id=id_agente).first()
-    if not agente:
-        return render_template('home/page-404.html'), 404
-    
-    # Buscar informações detalhadas do agente
-    try:
-        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-        if not agent_info:
-            # Se não houver informações detalhadas, criar um objeto com valores padrão
-            class DefaultInfo:
-                def __init__(self):
-                    self.hostname = f"Agente {id_agente}"
-                    self.os_info = "Informação não disponível"
-            agent_info = DefaultInfo()
-        
-        # Armazenar o hostname antes de remover o agente
-        hostname = agent_info.hostname
-        
-        # Verificar a confirmação
-        confirmation = request.form.get('confirmation')
-        if not confirmation or confirmation != hostname:
-            return render_template('home/remove_agent.html', 
-                                agent=agente, 
-                                agent_info=agent_info, 
-                                error="O hostname digitado não corresponde. Por favor, tente novamente.")
-        
-        # Remover o agente
-        success, message = remover_agente(id_agente)
-        
-        if success:
-            return render_template('home/index.html', 
-                                segment='index',
-                                success_msg=f"Agente {hostname} (ID: {id_agente}) removido com sucesso.")
-        else:
-            return render_template('home/remove_agent.html', 
-                                agent=agente, 
-                                agent_info=agent_info, 
-                                error=message)
-    except Exception as e:
-        # Em caso de erro, fornecer uma mensagem amigável
-        return render_template('home/index.html', 
-                            segment='index',
-                            error_msg=f"Erro ao processar a remoção do agente (ID: {id_agente}): {str(e)}")
 
-# Keep only this implementation (around line 840-870)
 @blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
 def confirm_remove_agent(id_agente):
     try:
