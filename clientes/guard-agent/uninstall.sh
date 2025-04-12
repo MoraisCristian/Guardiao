@@ -49,8 +49,8 @@ rm -rf $INSTALL_DIR
 
 # Remove OSSEC related files
 print_message "Removing OSSEC related files..."
-rm -f /var/ossec/*
-rm -f /var/ossec/
+rm -rf /var/ossec/*
+rm -rf /var/ossec/
 
 
 # Remove any remaining temporary files
