@@ -585,32 +585,41 @@ def confirm_remove_agent(id_agente):
         return render_template('home/page-404.html'), 404
     
     # Buscar informações detalhadas do agente
-    agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-    if not agent_info:
-        # Se não houver informações detalhadas, criar um objeto com valores padrão
-        class DefaultInfo:
-            def __init__(self):
-                self.hostname = f"Agente {id_agente}"
-                self.os_info = "Informação não disponível"
-        agent_info = DefaultInfo()
-    
-    # Verificar a confirmação
-    confirmation = request.form.get('confirmation')
-    if not confirmation or confirmation != agent_info.hostname:
-        return render_template('home/remove_agent.html', 
-                              agent=agente, 
-                              agent_info=agent_info, 
-                              error="O hostname digitado não corresponde. Por favor, tente novamente.")
-    
-    # Remover o agente
-    success, message = remover_agente(id_agente)
-    
-    if success:
+    try:
+        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
+        if not agent_info:
+            # Se não houver informações detalhadas, criar um objeto com valores padrão
+            class DefaultInfo:
+                def __init__(self):
+                    self.hostname = f"Agente {id_agente}"
+                    self.os_info = "Informação não disponível"
+            agent_info = DefaultInfo()
+        
+        # Armazenar o hostname antes de remover o agente
+        hostname = agent_info.hostname
+        
+        # Verificar a confirmação
+        confirmation = request.form.get('confirmation')
+        if not confirmation or confirmation != hostname:
+            return render_template('home/remove_agent.html', 
+                                agent=agente, 
+                                agent_info=agent_info, 
+                                error="O hostname digitado não corresponde. Por favor, tente novamente.")
+        
+        # Remover o agente
+        success, message = remover_agente(id_agente)
+        
+        if success:
+            return render_template('home/index.html', 
+                                segment='index',
+                                success_msg=f"Agente {hostname} (ID: {id_agente}) removido com sucesso.")
+        else:
+            return render_template('home/remove_agent.html', 
+                                agent=agente, 
+                                agent_info=agent_info, 
+                                error=message)
+    except Exception as e:
+        # Em caso de erro, fornecer uma mensagem amigável
         return render_template('home/index.html', 
-                              segment='index',
-                              success_msg=f"Agente {agent_info.hostname} (ID: {id_agente}) removido com sucesso.")
-    else:
-        return render_template('home/remove_agent.html', 
-                              agent=agente, 
-                              agent_info=agent_info, 
-                              error=message)
+                            segment='index',
+                            error_msg=f"Erro ao processar a remoção do agente (ID: {id_agente}): {str(e)}")

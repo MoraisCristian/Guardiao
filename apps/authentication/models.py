@@ -238,6 +238,11 @@ def remover_agente(id_agente):
     Remove um agente e todos os seus dados relacionados do banco de dados
     """
     try:
+        # Primeiro, obter as informações do agente antes de excluí-lo
+        agente = Agentes.query.filter_by(id=id_agente).first()
+        if not agente:
+            return False, "Agente não encontrado"
+        
         # Remover registros de vulnerabilidades
         Vulnerabilidades.query.filter_by(id_agente=id_agente).delete()
         
@@ -254,11 +259,9 @@ def remover_agente(id_agente):
         Infos.query.filter_by(id_agente=id_agente).delete()
         
         # Finalmente, remover o agente
-        agente = Agentes.query.filter_by(id=id_agente).first()
-        if agente:
-            db.session.delete(agente)
-            
+        db.session.delete(agente)
         db.session.commit()
+        
         return True, "Agente removido com sucesso"
     except Exception as e:
         db.session.rollback()
