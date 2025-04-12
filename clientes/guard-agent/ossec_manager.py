@@ -287,6 +287,23 @@ def instalar_ossec():
         if not baixar_ossec_conf():
             log_error("Falha ao baixar configuração do agente OSSEC")
             return False
+            
+        # Download preloaded-vars.conf from server
+        log_info("Baixando preloaded-vars.conf do servidor...")
+        try:
+            url = f'{SERVER_URL}/download/preloaded-vars.conf'
+            log_info(f"Baixando de: {url}")
+            resposta = requests.get(url)
+            if resposta.status_code == 200:
+                with open('preloaded-vars.conf', 'wb') as file:
+                    file.write(resposta.content)
+                log_info('Arquivo preloaded-vars.conf baixado com sucesso.')
+            else:
+                log_error(f'Falha ao baixar preloaded-vars.conf. Status: {resposta.status_code}')
+                return False
+        except Exception as e:
+            log_exception('Erro ao baixar preloaded-vars.conf')
+            return False
 
         # First, clean any existing OSSEC installation
         if os.path.exists('/var/ossec'):
@@ -351,31 +368,15 @@ def instalar_ossec():
             # Prepare agent installation configuration
             os.chdir('/tmp/ossec-hids-3.7.0')
             
-            # Ensure the downloaded config is properly copied to the installation directory
-            log_info("Copiando configuração do agente para o diretório de instalação...")
+            # Copy the downloaded preloaded-vars.conf to the correct location
+            log_info("Copiando preloaded-vars.conf para o diretório de instalação...")
             try:
-                # Copy the downloaded config file to the preloaded-vars.conf location
-                subprocess.run(['cp', f'{current_dir}/ossec.conf', 'etc/preloaded-vars.conf'], check=True)
-                log_info("Arquivo de configuração copiado com sucesso.")
+                # Copy the downloaded file to the installation directory
+                subprocess.run(['cp', f'{current_dir}/preloaded-vars.conf', 'etc/preloaded-vars.conf'], check=True)
+                log_info("preloaded-vars.conf copiado com sucesso.")
             except Exception as e:
-                log_error(f"Erro ao copiar arquivo de configuração: {str(e)}")
+                log_error(f"Erro ao copiar preloaded-vars.conf: {str(e)}")
                 return False
-            
-            # Create a proper preloaded-vars.conf if it doesn't exist or is empty
-            if not os.path.exists('etc/preloaded-vars.conf') or os.path.getsize('etc/preloaded-vars.conf') == 0:
-                log_info("Criando arquivo preloaded-vars.conf padrão...")
-                preloaded_vars = """
-USER_LANGUAGE="pt"
-USER_NO_STOP="s"
-USER_INSTALL_TYPE="agent"
-USER_DIR="/var/ossec"
-USER_ENABLE_ACTIVE_RESPONSE="y"
-USER_ENABLE_SYSCHECK="y"
-USER_ENABLE_ROOTCHECK="y"
-USER_UPDATE="n"
-"""
-                with open('etc/preloaded-vars.conf', 'w') as f:
-                    f.write(preloaded_vars)
             
             # Run install script with automated responses
             log_info("Iniciando instalação do agente OSSEC...")
@@ -404,6 +405,12 @@ USER_UPDATE="n"
             
             # Return to original directory
             os.chdir(current_dir)
+            
+            # Immediately configure OSSEC after installation
+            log_info("Instalação concluída. Configurando OSSEC imediatamente...")
+            if not configurar_ossec_pos_instalacao():
+                log_error("Falha na configuração pós-instalação do OSSEC")
+                return False
                 
             log_info("OSSEC instalado com sucesso como agente.")
             return True
@@ -425,53 +432,92 @@ USER_UPDATE="n"
         log_exception("Erro durante a instalação do OSSEC")
         return False
 
-def configurar_ossec():
-    """Configure OSSEC"""
+def configurar_ossec_pos_instalacao():
+    """Configure OSSEC immediately after installation to ensure proper setup"""
     try:
-        # Verifica se o OSSEC está instalado
-        if not verificar_ossec_instalado():
-            log_error("OSSEC não está instalado. Não é possível configurar.")
-            return False
-            
-        # Baixa o arquivo de configuração
-        if not baixar_ossec_conf():
-            log_error("Falha ao baixar arquivo de configuração do OSSEC")
-            return False
-            
-        # Move o arquivo de configuração para o diretório correto
-        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        log_info("Configurando OSSEC após instalação...")
         
-        # Primeiro, verifica se o diretório existe
+        # Verifica se o diretório existe
         if not os.path.exists('/var/ossec/etc'):
-            log_warning("Diretório /var/ossec/etc não encontrado")
+            log_error("Diretório /var/ossec/etc não encontrado após instalação")
             return False
         
-        # Copia o arquivo para o local correto
-        comando = ['cp', 'ossec.conf', '/var/ossec/etc/ossec.conf']
+        # Verifica se o arquivo ossec.conf foi baixado anteriormente
+        if not os.path.exists('ossec.conf'):
+            log_info("Arquivo ossec.conf não encontrado, baixando novamente...")
+            if not baixar_ossec_conf():
+                log_error("Falha ao baixar arquivo de configuração do OSSEC")
+                return False
         
-        # Verifica se precisa usar sudo
+        # Baixa outros arquivos de configuração necessários
+        arquivos_config = ['internal_options.conf', 'local_internal_options.conf']
+        for arquivo in arquivos_config:
+            log_info(f"Baixando {arquivo} do servidor...")
+            try:
+                url = f'{SERVER_URL}/download/{arquivo}'
+                resposta = requests.get(url)
+                if resposta.status_code == 200:
+                    with open(arquivo, 'wb') as file:
+                        file.write(resposta.content)
+                    log_info(f'Arquivo {arquivo} baixado com sucesso.')
+                    
+                    # Copia o arquivo para o local correto
+                    usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+                    comando = ['cp', arquivo, f'/var/ossec/etc/{arquivo}']
+                    if usar_sudo:
+                        comando.insert(0, 'sudo')
+                    
+                    subprocess.run(comando, check=True)
+                    log_info(f"Arquivo {arquivo} copiado para /var/ossec/etc/{arquivo}")
+                    
+                    # Ajusta as permissões
+                    chmod_cmd = ['chmod', '640', f'/var/ossec/etc/{arquivo}']
+                    chown_cmd = ['chown', 'root:ossec', f'/var/ossec/etc/{arquivo}']
+                    
+                    if usar_sudo:
+                        chmod_cmd.insert(0, 'sudo')
+                        chown_cmd.insert(0, 'sudo')
+                    
+                    subprocess.run(chmod_cmd, check=True)
+                    subprocess.run(chown_cmd, check=True)
+                else:
+                    log_warning(f'Não foi possível baixar {arquivo}. Status: {resposta.status_code}')
+            except Exception as e:
+                log_warning(f'Erro ao baixar/configurar {arquivo}: {str(e)}')
+        
+        # Verifica se o arquivo contém a configuração do servidor
+        with open('ossec.conf', 'r') as f:
+            content = f.read()
+            if "<server-ip>" not in content and "<server>" not in content:
+                log_warning("Configuração do OSSEC não contém servidor válido!")
+                # Tenta corrigir adicionando um servidor padrão
+                log_info("Tentando adicionar configuração de servidor padrão...")
+                with open('ossec.conf', 'w') as f:
+                    # Adiciona a tag <server-ip> se não existir
+                    if "<client>" in content and "</client>" in content:
+                        content = content.replace("</client>", "  <server-ip>ossec</server-ip>\n  </client>")
+                    else:
+                        content = f"<ossec_config>\n  <client>\n    <server-ip>ossec</server-ip>\n  </client>\n{content}</ossec_config>"
+                    f.write(content)
+        
+        # Copia o arquivo para o local correto com sudo
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        comando = ['cp', 'ossec.conf', '/var/ossec/etc/ossec.conf']
         if usar_sudo:
             comando.insert(0, 'sudo')
-            
-        log_info(f"Executando comando: {' '.join(comando)}")
+        
+        log_info(f"Copiando configuração para /var/ossec/etc/ossec.conf: {' '.join(comando)}")
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
         if resultado.returncode != 0:
             log_error(f"Erro ao copiar arquivo de configuração: {resultado.stderr}")
             return False
-            
+        
         # Verifica se o arquivo foi copiado corretamente
         if not os.path.exists('/var/ossec/etc/ossec.conf'):
             log_error("Arquivo ossec.conf não foi copiado corretamente")
             return False
-            
-        # Verifica se o arquivo contém a configuração do servidor
-        with open('/var/ossec/etc/ossec.conf', 'r') as f:
-            content = f.read()
-            if "<server-ip>" not in content and "<server>" not in content:
-                log_warning("Configuração do OSSEC não contém servidor válido!")
-                return False
-            
+        
         # Ajusta as permissões do arquivo
         chmod_cmd = ['chmod', '640', '/var/ossec/etc/ossec.conf']
         chown_cmd = ['chown', 'root:ossec', '/var/ossec/etc/ossec.conf']
@@ -479,15 +525,25 @@ def configurar_ossec():
         if usar_sudo:
             chmod_cmd.insert(0, 'sudo')
             chown_cmd.insert(0, 'sudo')
-            
+        
+        log_info("Ajustando permissões do arquivo de configuração...")
         subprocess.run(chmod_cmd, check=True)
         subprocess.run(chown_cmd, check=True)
         
-        log_info("Configuração do OSSEC concluída com sucesso.")
+        # Verifica o conteúdo final do arquivo
+        log_info("Verificando conteúdo final do arquivo de configuração...")
+        cat_cmd = ['cat', '/var/ossec/etc/ossec.conf']
+        if usar_sudo:
+            cat_cmd.insert(0, 'sudo')
+        
+        resultado = subprocess.run(cat_cmd, capture_output=True, text=True)
+        log_info(f"Conteúdo do arquivo ossec.conf:\n{resultado.stdout}")
+        
+        log_info("Configuração pós-instalação do OSSEC concluída com sucesso.")
         return True
         
     except Exception as e:
-        log_exception("Erro durante a configuração do OSSEC")
+        log_exception(f"Erro durante a configuração pós-instalação do OSSEC: {str(e)}")
         return False
 
 def setup_ossec(activation_key=None):
@@ -504,7 +560,7 @@ def setup_ossec(activation_key=None):
         else:
             log_info("OSSEC já está instalado.")
             
-        # Configura o OSSEC
+        # Configura o OSSEC novamente para garantir que a configuração esteja correta
         log_info("Configurando OSSEC...")
         if not configurar_ossec():
             log_error("Falha na configuração do OSSEC.")
@@ -516,6 +572,12 @@ def setup_ossec(activation_key=None):
             if not importar_chave_ossec(activation_key):
                 log_error("Falha ao importar chave de ativação.")
                 return False
+                
+            # Verifica novamente a configuração após importar a chave
+            log_info("Verificando configuração após importação da chave...")
+            if not configurar_ossec():
+                log_error("Falha na configuração do OSSEC após importação da chave.")
+                return False
             
         # Reinicia o serviço
         log_info("Reiniciando serviço OSSEC...")
@@ -524,11 +586,29 @@ def setup_ossec(activation_key=None):
             
             # Verifica se o problema é falta de configuração de servidor
             log_info("Verificando problemas na configuração...")
-            with open('/var/ossec/etc/ossec.conf', 'r') as f:
-                content = f.read()
-                if "<server-ip>" not in content and "<server>" not in content:
-                    log_error("Configuração do OSSEC não contém servidor válido!")
-                    return False
+            try:
+                with open('/var/ossec/etc/ossec.conf', 'r') as f:
+                    content = f.read()
+                    if "<server-ip>" not in content and "<server>" not in content:
+                        log_error("Configuração do OSSEC não contém servidor válido!")
+                        
+                        # Tenta corrigir o problema
+                        log_info("Tentando corrigir configuração do servidor...")
+                        with open('/var/ossec/etc/ossec.conf', 'w') as f:
+                            if "<client>" in content and "</client>" in content:
+                                content = content.replace("</client>", "  <server-ip>ossec</server-ip>\n  </client>")
+                            else:
+                                content = f"<ossec_config>\n  <client>\n    <server-ip>ossec</server-ip>\n  </client>\n{content}</ossec_config>"
+                            f.write(content)
+                        
+                        # Tenta reiniciar novamente
+                        log_info("Tentando reiniciar OSSEC após correção...")
+                        if not reiniciar_ossec():
+                            log_error("Falha ao reiniciar o serviço OSSEC após correção.")
+                            return False
+            except Exception as e:
+                log_exception(f"Erro ao verificar/corrigir configuração: {str(e)}")
+                return False
             
             return False
             
