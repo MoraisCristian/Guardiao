@@ -19,7 +19,7 @@ from flask_dance.contrib.github import github
 from apps import db, login_manager
 from apps.authentication import blueprint
 from apps.authentication.forms import LoginForm, CreateAccountForm
-from apps.authentication.models import Vulnerabilidades, Atividades, Softwares, Agentes, Chaves, Users, Infos, Fila, registrar_agente, salvar_no_banco, remove_da_fila
+from apps.authentication.models import Vulnerabilidades, Atividades, Softwares, Agentes, Chaves, Users, Infos, Fila, registrar_agente, salvar_no_banco, remove_da_fila, remover_agente
 from apps.authentication.util import verify_pass, generate_token
 
 # Inicialização da API Flask
