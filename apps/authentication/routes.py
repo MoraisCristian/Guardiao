@@ -388,6 +388,7 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
     elif tipo == 'vuln-scan':
         # Decodifica o payload
         dados_vuln = json.loads(payload)
+        data_atualizacao = datetime.now()
 
         # Itera sobre os resultados do scan
         for result in dados_vuln.get('Results', []):
@@ -423,25 +424,49 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
                     else:
                         last_modified_date = None
 
-                    # Cria uma nova entrada no banco de dados
-                    nova_vulnerabilidade = Vulnerabilidades(
-                        chave=chave_ativacao,
+                    # Verifica se a vulnerabilidade já existe para este agente
+                    vuln_existente = Vulnerabilidades.query.filter_by(
                         id_agente=id_agente,
                         cve_id=cve_id,
-                        target=target,
-                        status=status,
-                        installed_version=installed_version,
-                        fixed_version=fixed_version,
-                        severity=severity,
-                        title=title,
-                        description=description,
-                        cwe_ids=cwe_ids,
-                        cvss=cvss,
-                        references=references,
-                        published_date=published_date,
-                        last_modified_date=last_modified_date
-                    )
-                    salvar_no_banco(nova_vulnerabilidade)
+                        target=target
+                    ).first()
+                    
+                    if vuln_existente:
+                        # Atualiza a vulnerabilidade existente
+                        vuln_existente.status = status
+                        vuln_existente.installed_version = installed_version
+                        vuln_existente.fixed_version = fixed_version
+                        vuln_existente.severity = severity
+                        vuln_existente.title = title
+                        vuln_existente.description = description
+                        vuln_existente.cwe_ids = cwe_ids
+                        vuln_existente.cvss = cvss
+                        vuln_existente.references = references
+                        vuln_existente.published_date = published_date
+                        vuln_existente.last_modified_date = last_modified_date
+                        vuln_existente.data_atualizacao = data_atualizacao
+                        db.session.commit()
+                    else:
+                        # Cria uma nova entrada no banco de dados
+                        nova_vulnerabilidade = Vulnerabilidades(
+                            chave=chave_ativacao,
+                            id_agente=id_agente,
+                            cve_id=cve_id,
+                            target=target,
+                            status=status,
+                            installed_version=installed_version,
+                            fixed_version=fixed_version,
+                            severity=severity,
+                            title=title,
+                            description=description,
+                            cwe_ids=cwe_ids,
+                            cvss=cvss,
+                            references=references,
+                            published_date=published_date,
+                            last_modified_date=last_modified_date,
+                            data_atualizacao=data_atualizacao
+                        )
+                        salvar_no_banco(nova_vulnerabilidade)
 
         remove_da_fila(id_agente, chave_ativacao, tipo)
 

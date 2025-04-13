@@ -158,10 +158,29 @@ class CpeHml(db.Model):
         self.cpe = data['cpe']
         self.hml = data['hml']
 
+# Add this to the Vulnerabilidades class if it doesn't already exist
 class Vulnerabilidades(db.Model):
     __tablename__ = 'vulnerabilidades'
 
     id = db.Column(db.Integer, primary_key=True)
+    chave = db.Column(db.String(120), nullable=False)
+    id_agente = db.Column(db.String(120), nullable=False)
+    cve_id = db.Column(db.String(120), nullable=False)
+    target = db.Column(db.String(250), nullable=True)
+    status = db.Column(db.String(120), nullable=True)
+    installed_version = db.Column(db.String(120), nullable=True)
+    fixed_version = db.Column(db.String(120), nullable=True)
+    severity = db.Column(db.String(120), nullable=True)
+    title = db.Column(db.String(250), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    cwe_ids = db.Column(JSON, nullable=True)
+    cvss = db.Column(JSON, nullable=True)
+    references = db.Column(JSON, nullable=True)
+    published_date = db.Column(db.DateTime, nullable=True)
+    last_modified_date = db.Column(db.DateTime, nullable=True)
+    data_atualizacao = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    
+    # Rest of the class...
     chave = db.Column(db.String(120), nullable=False)  # Chave de ativação do agente
     id_agente = db.Column(db.String(120), nullable=False)  # ID do agente
     cve_id = db.Column(db.String(50), nullable=False)  # ID da CVE (ex: CVE-2022-29526)
