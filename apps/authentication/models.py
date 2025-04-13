@@ -197,6 +197,8 @@ class Vulnerabilidades(db.Model):
     references = db.Column(db.JSON)  # Lista de referências (ex: URLs)
     published_date = db.Column(db.DateTime)  # Data de publicação da CVE
     last_modified_date = db.Column(db.DateTime)  # Data da última modificação da CVE
+    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow)  # Data de atualização da tabela
+
 
     def __init__(self, chave, id_agente, cve_id, target, status, installed_version, fixed_version, severity, title, description, cwe_ids, cvss, references, published_date, last_modified_date):
         self.chave = chave
