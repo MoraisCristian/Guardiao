@@ -162,26 +162,6 @@ class Vulnerabilidades(db.Model):
     __tablename__ = 'vulnerabilidades'
 
     id = db.Column(db.Integer, primary_key=True)
-    chave = db.Column(db.String(120), nullable=False)
-    id_agente = db.Column(db.String(120), nullable=False)
-    cve_id = db.Column(db.String(120), nullable=False)
-    target = db.Column(db.String(250), nullable=True)
-    status = db.Column(db.String(120), nullable=True)
-    installed_version = db.Column(db.String(120), nullable=True)
-    fixed_version = db.Column(db.String(120), nullable=True)
-    severity = db.Column(db.String(120), nullable=True)
-    title = db.Column(db.String(250), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    cwe_ids = db.Column(JSON, nullable=True)
-    cvss = db.Column(JSON, nullable=True)
-    references = db.Column(JSON, nullable=True)
-    published_date = db.Column(db.DateTime, nullable=True)
-    last_modified_date = db.Column(db.DateTime, nullable=True)
-    data_atualizacao = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
-    
-    def __init__(self, **kwargs):
-        for property, value in kwargs.items():
-            setattr(self, property, value)
     chave = db.Column(db.String(120), nullable=False)  # Chave de ativação do agente
     id_agente = db.Column(db.String(120), nullable=False)  # ID do agente
     cve_id = db.Column(db.String(50), nullable=False)  # ID da CVE (ex: CVE-2022-29526)
@@ -199,23 +179,9 @@ class Vulnerabilidades(db.Model):
     last_modified_date = db.Column(db.DateTime)  # Data da última modificação da CVE
     data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow)  # Data de atualização da tabela
 
-
-    def __init__(self, chave, id_agente, cve_id, target, status, installed_version, fixed_version, severity, title, description, cwe_ids, cvss, references, published_date, last_modified_date):
-        self.chave = chave
-        self.id_agente = id_agente
-        self.cve_id = cve_id
-        self.target = target
-        self.status = status
-        self.installed_version = installed_version
-        self.fixed_version = fixed_version
-        self.severity = severity
-        self.title = title
-        self.description = description
-        self.cwe_ids = cwe_ids
-        self.cvss = cvss
-        self.references = references
-        self.published_date = published_date
-        self.last_modified_date = last_modified_date
+    def __init__(self, **kwargs):
+        for property, value in kwargs.items():
+            setattr(self, property, value)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
