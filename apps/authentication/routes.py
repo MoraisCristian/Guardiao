@@ -613,6 +613,34 @@ def remove_agent_route(agent_id):
                               error=f"Erro ao remover agente: {str(e)}"), 500
 
 
+# Add these routes for agent removal workflow
+
+@blueprint.route('/remove_agent/<int:id_agente>', methods=['GET'])
+def remove_agent(id_agente):
+    try:
+        # Check if user is authenticated
+        if not current_user.is_authenticated:
+            return redirect(url_for('authentication_blueprint.login'))
+            
+        # Get the agent from database
+        agent = Agentes.query.filter_by(id=id_agente).first()
+        
+        if not agent:
+            return render_template('home/page-404.html', error="Agente não encontrado"), 404
+        
+        # Get agent info for display
+        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
+        
+        if not agent_info:
+            return render_template('home/page-404.html', error="Informações do agente não encontradas"), 404
+        
+        # Show confirmation page
+        return render_template('home/remove_agent.html', agent=agent, agent_info=agent_info)
+            
+    except Exception as e:
+        print(f"Erro ao preparar remoção do agente: {str(e)}")
+        return render_template('home/page-500.html', error=f"Erro ao preparar remoção do agente: {str(e)}"), 500
+
 @blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
 def confirm_remove_agent(id_agente):
     try:
@@ -620,7 +648,6 @@ def confirm_remove_agent(id_agente):
         if not current_user.is_authenticated:
             return redirect(url_for('authentication_blueprint.login'))
         
-        # Rest of the function remains unchanged
         # Get the agent from database
         agent = Agentes.query.filter_by(id=id_agente).first()
         
