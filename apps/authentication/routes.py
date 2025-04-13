@@ -427,12 +427,12 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
                     # Verifica se a vulnerabilidade já existe para este agente
                     vuln_existente = Vulnerabilidades.query.filter_by(
                         id_agente=id_agente,
-                        cve_id=cve_id,
-                        target=target
+                        cve_id=cve_id
                     ).first()
                     
                     if vuln_existente:
                         # Atualiza a vulnerabilidade existente
+                        vuln_existente.target = target
                         vuln_existente.status = status
                         vuln_existente.installed_version = installed_version
                         vuln_existente.fixed_version = fixed_version
@@ -448,30 +448,6 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
                         db.session.commit()
                     else:
                         # Cria uma nova entrada no banco de dados
-                        # In the salvar_dados_db function, modify the code that creates new vulnerabilities:
-                        
-                        # Replace this:
-                        nova_vulnerabilidade = Vulnerabilidades(
-                            chave=chave_ativacao,
-                            id_agente=id_agente,
-                            cve_id=cve_id,
-                            target=target,
-                            status=status,
-                            installed_version=installed_version,
-                            fixed_version=fixed_version,
-                            severity=severity,
-                            title=title,
-                            description=description,
-                            cwe_ids=cwe_ids,
-                            cvss=cvss,
-                            references=references,
-                            published_date=published_date,
-                            last_modified_date=last_modified_date,
-                            data_atualizacao=data_atualizacao
-                        )
-                        salvar_no_banco(nova_vulnerabilidade)
-                        
-                        # With this:
                         nova_vulnerabilidade = Vulnerabilidades()
                         nova_vulnerabilidade.chave = chave_ativacao
                         nova_vulnerabilidade.id_agente = id_agente
