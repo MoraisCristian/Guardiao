@@ -158,7 +158,6 @@ class CpeHml(db.Model):
         self.cpe = data['cpe']
         self.hml = data['hml']
 
-# Add this to the Vulnerabilidades class if it doesn't already exist
 class Vulnerabilidades(db.Model):
     __tablename__ = 'vulnerabilidades'
 
@@ -180,7 +179,9 @@ class Vulnerabilidades(db.Model):
     last_modified_date = db.Column(db.DateTime, nullable=True)
     data_atualizacao = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     
-    # Rest of the class...
+    def __init__(self, **kwargs):
+        for property, value in kwargs.items():
+            setattr(self, property, value)
     chave = db.Column(db.String(120), nullable=False)  # Chave de ativação do agente
     id_agente = db.Column(db.String(120), nullable=False)  # ID do agente
     cve_id = db.Column(db.String(50), nullable=False)  # ID da CVE (ex: CVE-2022-29526)

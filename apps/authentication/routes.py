@@ -448,6 +448,9 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
                         db.session.commit()
                     else:
                         # Cria uma nova entrada no banco de dados
+                        # In the salvar_dados_db function, modify the code that creates new vulnerabilities:
+                        
+                        # Replace this:
                         nova_vulnerabilidade = Vulnerabilidades(
                             chave=chave_ativacao,
                             id_agente=id_agente,
@@ -466,6 +469,26 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
                             last_modified_date=last_modified_date,
                             data_atualizacao=data_atualizacao
                         )
+                        salvar_no_banco(nova_vulnerabilidade)
+                        
+                        # With this:
+                        nova_vulnerabilidade = Vulnerabilidades()
+                        nova_vulnerabilidade.chave = chave_ativacao
+                        nova_vulnerabilidade.id_agente = id_agente
+                        nova_vulnerabilidade.cve_id = cve_id
+                        nova_vulnerabilidade.target = target
+                        nova_vulnerabilidade.status = status
+                        nova_vulnerabilidade.installed_version = installed_version
+                        nova_vulnerabilidade.fixed_version = fixed_version
+                        nova_vulnerabilidade.severity = severity
+                        nova_vulnerabilidade.title = title
+                        nova_vulnerabilidade.description = description
+                        nova_vulnerabilidade.cwe_ids = cwe_ids
+                        nova_vulnerabilidade.cvss = cvss
+                        nova_vulnerabilidade.references = references
+                        nova_vulnerabilidade.published_date = published_date
+                        nova_vulnerabilidade.last_modified_date = last_modified_date
+                        nova_vulnerabilidade.data_atualizacao = data_atualizacao
                         salvar_no_banco(nova_vulnerabilidade)
 
         remove_da_fila(id_agente, chave_ativacao, tipo)
