@@ -4,11 +4,11 @@ from time import sleep
 # Variáveis globais
 ram = {}
 nome = socket.gethostname()
-chave_ativacao = 'KOAUBDFDOEOER1EQLKZQQQ5COTTQFLO1ZI1TYHDZVPLDEDA0'
+chave_ativacao = 'LTMELEGYWMJQVVZ3RJLSXWEVIZK3M1YWS2SA7BGBS1HESASS'
 codigos = {'registro': 1, 'ping': 2, 'upload': 3, 'ossec-register': 4}
 
 def baixar_ossec_conf():
-    url = 'http://10.0.10.183:5002/download/ossec.conf'
+    url = 'http://189.84.242.87:5002/download/preloaded-vars.conf'
     resposta = requests.get(url)
     if resposta.status_code == 200:
         with open('preloaded-vars.conf', 'wb') as file:
@@ -316,7 +316,7 @@ def configurar_psad():
         print(f"Detectado sistema com {'syslog' if os.path.exists('/var/log/syslog') else 'messages'}, baixando {arquivo_config}...")
         
         # Baixar o arquivo de configuração apropriado
-        url = f'http://10.0.10.183:5002/download/{arquivo_config}'
+        url = f'http://189.84.242.87:5002/download/{arquivo_config}'
         resposta = requests.get(url)
         if resposta.status_code == 200:
             # Salvar temporariamente o arquivo
@@ -734,7 +734,7 @@ def configurar_psad():
         print(f"Detectado sistema com {'syslog' if os.path.exists('/var/log/syslog') else 'messages'}, baixando {arquivo_config}...")
         
         # Baixar o arquivo de configuração apropriado
-        url = f'http://10.0.10.183:5002/download/{arquivo_config}'
+        url = f'http://189.84.242.87:5002/download/{arquivo_config}'
         resposta = requests.get(url)
         if resposta.status_code == 200:
             # Salvar temporariamente o arquivo
@@ -889,7 +889,7 @@ def encrypt_base64(data):
 # Função para enviar mensagens ao servidor
 def enviar_mensagem(message, endpoint):
     print(message)
-    url = f'http://10.0.10.183:5002/{endpoint}'
+    url = f'http://189.84.242.87:5002/{endpoint}'
     resposta = requests.post(url, data=json.dumps(message), headers={'Content-Type': 'application/json'})
     return resposta
 
@@ -1224,7 +1224,7 @@ def baixar_e_instalar_trivy():
         print(f"Sistema operacional {sistema_operacional} não suportado.")
         return
 
-    url = f'http://10.0.10.183:5002/download/{binario}'
+    url = f'http://189.84.242.87:5002/download/{binario}'
     resposta = requests.get(url)
     if resposta.status_code == 200:
         with open(binario, 'wb') as file:
@@ -1313,7 +1313,7 @@ def vuln_scan():
 
 # Função para baixar um script
 def baixar_script(script_name):
-    url = f'http://10.0.10.183:5002/download/script/{id_agente}/{script_name}'
+    url = f'http://189.84.242.87:5002/download/script/{id_agente}/{script_name}'
     resposta = requests.get(url)
     if resposta.status_code == 200:
         # Criar diretório scripts se não existir

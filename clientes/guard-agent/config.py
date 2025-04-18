@@ -1,14 +1,8 @@
 import socket
 import json
 import os
+import sys
 from logger import log_info, log_warning, log_error, log_debug, log_exception
-
-# Default configuration values
-DEFAULT_CONFIG = {
-    "server_ip": "localhost",
-    "server_port": "5002",
-    "activation_key": "KOAUBDFDOEOER1EQLKZQQQ5COTTQFLO1ZI1TYHDZVPLDEDA0"
-}
 
 # Global configuration variables
 ram = {}
@@ -38,23 +32,35 @@ def load_config():
                 log_info("Configuration loaded successfully from file")
                 return config
         else:
-            log_warning(f"Configuration file {config_path} not found. Using default values.")
-            # Create default config file
-            with open(config_path, 'w') as config_file:
-                json.dump(DEFAULT_CONFIG, config_file, indent=4)
-            log_info(f"Default configuration file created at {config_path}")
-            return DEFAULT_CONFIG
+            log_error(f"Configuration file {config_path} not found.")
+            log_info("Please create a guard_config.json file with server_ip, server_port, and activation_key.")
+            sys.exit(1)
     except Exception as e:
         log_exception(f"Error loading configuration file")
-        return DEFAULT_CONFIG
+        log_error("Please ensure guard_config.json is properly formatted.")
+        sys.exit(1)
 
 # Load configuration
 config = load_config()
 
 # Set configuration values
-chave_ativacao = config.get("activation_key", DEFAULT_CONFIG["activation_key"])
-server_ip = config.get("server_ip", DEFAULT_CONFIG["server_ip"])
-server_port = config.get("server_port", DEFAULT_CONFIG["server_port"])
+chave_ativacao = config.get("activation_key", "")
+if not chave_ativacao:
+    log_error("No activation key found in configuration file.")
+    log_info("Please add an activation_key to guard_config.json.")
+    sys.exit(1)
+
+server_ip = config.get("server_ip", "")
+if not server_ip:
+    log_error("No server IP found in configuration file.")
+    log_info("Please add a server_ip to guard_config.json.")
+    sys.exit(1)
+
+server_port = config.get("server_port", "")
+if not server_port:
+    log_error("No server port found in configuration file.")
+    log_info("Please add a server_port to guard_config.json.")
+    sys.exit(1)
 
 # Server URL
 SERVER_URL = f'http://{server_ip}:{server_port}'
