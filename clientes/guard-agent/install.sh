@@ -150,8 +150,11 @@ check_for_update() {
 
 # Download and install/update the package
 # Add a new function to download and install OSSEC configuration
-download_ossec_config() {
-    print_message "Downloading OSSEC configuration file"
+# Remove the download_ossec_config function completely
+# And replace it with a function to download preloaded-vars.conf
+
+download_preloaded_vars() {
+    print_message "Downloading preloaded-vars.conf for OSSEC installation"
     
     # Create OSSEC configuration directory if it doesn't exist
     if [ ! -d "/var/ossec/etc" ]; then
@@ -159,37 +162,20 @@ download_ossec_config() {
         mkdir -p "/var/ossec/etc"
     fi
     
-    # Download OSSEC configuration file
-    OSSEC_CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/ossec.conf"
-    print_message "Downloading OSSEC configuration from $OSSEC_CONFIG_URL"
+    # Download preloaded-vars.conf file
+    PRELOADED_VARS_URL="http://${SERVER_IP}:${SERVER_PORT}/download/preloaded-vars.conf"
+    print_message "Downloading preloaded-vars.conf from $PRELOADED_VARS_URL"
     
-    if curl -s -f -o "/var/ossec/etc/ossec.conf" "$OSSEC_CONFIG_URL"; then
-        print_message "OSSEC configuration file downloaded successfully"
-        # Set proper permissions
-        chmod 640 "/var/ossec/etc/ossec.conf"
-        if [ -d "/var/ossec" ]; then
-            chown root:ossec "/var/ossec/etc/ossec.conf" 2>/dev/null || true
-        fi
+    if curl -s -f -o "$AGENT_DIR/preloaded-vars.conf" "$PRELOADED_VARS_URL"; then
+        print_message "preloaded-vars.conf file downloaded successfully"
         return 0
     else
-        print_warning "Failed to download OSSEC configuration file from server"
-        
-        # Check if we have a local copy in the agent directory
-        if [ -f "$AGENT_DIR/ossec.conf" ]; then
-            print_message "Using local OSSEC configuration file"
-            cp "$AGENT_DIR/ossec.conf" "/var/ossec/etc/ossec.conf"
-            chmod 640 "/var/ossec/etc/ossec.conf"
-            if [ -d "/var/ossec" ]; then
-                chown root:ossec "/var/ossec/etc/ossec.conf" 2>/dev/null || true
-            fi
-            return 0
-        fi
-        
+        print_warning "Failed to download preloaded-vars.conf file from server"
         return 1
     fi
 }
 
-# Modify the download_and_install function to include OSSEC configuration
+# Modify the download_and_install function
 download_and_install() {
     # Create installation directory if it doesn't exist
     if [ ! -d "$INSTALL_DIR" ]; then
@@ -294,13 +280,13 @@ download_and_install() {
         "$AGENT_DIR/venv/bin/pip" install requests psutil
     fi
     
-    # Download and install OSSEC configuration
-    download_ossec_config
+    # Download preloaded-vars.conf for OSSEC installation
+    download_preloaded_vars
     
     return 0
 }
 
-# Also add OSSEC configuration check to the setup_service function
+# Modify the setup_service function
 setup_service() {
     print_message "Configurando serviço do sistema"
     
@@ -314,12 +300,6 @@ setup_service() {
     else
         print_error "Arquivo guardiao.service não encontrado em $AGENT_DIR"
         return 1
-    fi
-    
-    # Check if OSSEC configuration exists
-    if [ ! -f "/var/ossec/etc/ossec.conf" ]; then
-        print_warning "OSSEC configuration file not found, attempting to download"
-        download_ossec_config
     fi
     
     # Reload systemd, enable and start service
