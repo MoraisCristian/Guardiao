@@ -1,25 +1,34 @@
+from math import log
 import os
 import subprocess
 import requests
 import re
+import json
+import platform
+import socket
+import uuid
+import tempfile
+from typing import Optional, Dict, Any, List, Tuple
+from network import carregar_id
 from system_utils import os_update, os_install, detect_os_distribution, verificar_sudo_disponivel
 from config import SERVER_URL
-from logger import log_info, log_warning, log_error, log_info, log_critical, log_exception
+from logger import log_info, log_warning, log_error, log_critical, log_exception
 
-def verificar_ossec_instalado():
-    """Check if OSSEC is already installed"""
+# Core Wazuh verification functions
+def verificar_wazuh_instalado() -> bool:
+    """Verify Wazuh agent installation status"""
     try:
-        installed = os.path.exists('/var/ossec/bin/ossec-control')
-        log_info(f'Verificação de instalação do OSSEC: {installed}')
+        installed = os.path.exists('/var/ossec/bin/wazuh-control') or os.path.exists('/var/ossec/bin/ossec-control')
+        log_info(f'Verificação de instalação do Wazuh: {installed}')
         return installed
     except Exception as e:
-        log_exception('Erro ao verificar instalação do OSSEC')
+        log_exception('Erro ao verificar instalação do Wazuh')
         return False
 
-def verificar_chave_ossec_importada():
-    """Check if OSSEC key is imported"""
+def verificar_chave_wazuh_importada() -> bool:
+    """Verify if Wazuh agent key is properly imported"""
+    client_keys_path = "/var/ossec/etc/client.keys"
     try:
-        client_keys_path = "/var/ossec/etc/client.keys"
         if not os.path.exists(client_keys_path):
             log_warning("Arquivo client.keys não encontrado.")
             return False
@@ -30,365 +39,481 @@ def verificar_chave_ossec_importada():
                 log_warning("Arquivo client.keys está vazio.")
                 return False
                 
-            # Verify if the file contains a valid key entry
+            # Valid key format: ID NAME IP KEY
             if not re.search(r'^\d+\s+\S+\s+\S+\s+\S+$', content, re.MULTILINE):
                 log_warning("Arquivo client.keys não contém uma chave válida.")
                 return False
                 
-        log_info("Chave do OSSEC já importada e válida.")
+        log_info("Chave do Wazuh já importada e válida.")
         return True
     except Exception as e:
-        log_exception("Erro ao verificar chave do OSSEC")
+        log_exception(f"Erro ao verificar chave do Wazuh: {str(e)}")
         return False
 
-def reiniciar_ossec():
-    """Restart OSSEC service"""
-    comando_base = ['/var/ossec/bin/ossec-control', 'restart']
-    
-    if os.geteuid() != 0 and verificar_sudo_disponivel():
-        comando_base.insert(0, 'sudo')
-    
+def reiniciar_wazuh() -> bool:
+    """Restart Wazuh service with proper error handling"""
     try:
-        # Fix working directory issues before restarting
-        fix_ossec_working_directory()
+        # Find appropriate control script
+        control_script = '/var/ossec/bin/wazuh-control'
+        if not os.path.exists(control_script):
+            control_script = '/var/ossec/bin/ossec-control'
         
-        log_info("Reiniciando serviço do OSSEC...")
-        subprocess.run(comando_base, check=True)
-        log_info("Serviço do OSSEC reiniciado com sucesso.")
+        comando_base = [control_script, 'restart']
+        
+        if os.geteuid() != 0 and verificar_sudo_disponivel():
+            comando_base.insert(0, 'sudo')
+        
+        log_info("Reiniciando serviço do Wazuh...")
+        subprocess.run(comando_base, check=True, capture_output=True)
+        log_info("Serviço do Wazuh reiniciado com sucesso.")
         return True
     except subprocess.CalledProcessError as e:
-        log_error(f"Erro ao reiniciar o serviço do OSSEC: {str(e)}")
+        log_error(f"Erro ao reiniciar o serviço do Wazuh: {str(e)}")
         return False
     except Exception as e:
-        log_exception("Erro inesperado ao reiniciar OSSEC")
+        log_exception(f"Erro inesperado ao reiniciar Wazuh: {str(e)}")
         return False
 
-def importar_chave_ossec(activation_key):
-    """Import OSSEC key"""
+def verificar_wazuh_running() -> bool:
+    """Check if Wazuh agent is currently running"""
     try:
-        # Extract the actual key from the response
-        key_match = re.search(r"Agent key information for '(\d+)':\s+(\S+)", activation_key)
-        if key_match:
-            agent_id = key_match.group(1).strip()
-            actual_key = key_match.group(2).strip()
-        else:
-            lines = activation_key.split('\n')
-            actual_key = lines[-1].strip() if lines else ''
-        
-        if not actual_key:
-            log_error("Chave de ativação do OSSEC está vazia. Não é possível importar.")
-            return False
-        
-        log_info(f"Chave a ser importada: {actual_key}")
-        
-        # Execute the import command
-        try:
+        control_script = '/var/ossec/bin/wazuh-control'
             
-            command = "echo 'y' | /var/ossec/bin/manage_agents -i {key}".format(key=actual_key)
-            log_info(f"Comando a ser executado: {command}")
-            process = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            output, error = process.communicate()
-            
-            # Set proper permissions
-            subprocess.run("sudo chmod 640 /var/ossec/etc/client.keys", shell=True)
-            subprocess.run("sudo chown root:ossec /var/ossec/etc/client.keys", shell=True)
-            
-            log_info("=== Import Command Output ===")
-            log_info(f"Command executed: {command}")
-            log_info(f"STDOUT:\n{output}")
-            log_info(f"STDERR:\n{error}")
-            log_info("=========================")
-            
-            if process.returncode != 0:
-                log_error(f"Erro ao importar a chave. Retorno: {process.returncode}")
-                log_error(f"Erro detalhado: {error}")
-                return False
-            
-            if not verificar_chave_ossec_importada():
-                log_error("A chave não foi escrita corretamente no arquivo client.keys")
-                return False
-            
-            log_info("Chave do OSSEC importada com sucesso.")
-            return True
-            
-        except Exception as e:
-            log_exception(f"Erro ao importar a chave do OSSEC: {str(e)}")
-            return False
-            
-    except Exception as e:
-        log_exception("Erro geral ao processar chave do OSSEC")
-        return False
-
-def verificar_ossec_running():
-    """Check if OSSEC is running"""
-    try:
-        # Verifica se precisa usar sudo
         usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
         
-        # Comando para verificar o status do OSSEC
-        comando = ['/var/ossec/bin/ossec-control', 'status']
+        comando = [control_script, 'status']
         if usar_sudo:
             comando.insert(0, 'sudo')
         
         resultado = subprocess.run(comando, capture_output=True, text=True)
         
-        # Verifica se o OSSEC está em execução
-        if "ossec-agentd is running" in resultado.stdout:
-            print("OSSEC está em execução.")
-            return True
+        is_running = "wazuh-agentd is running" in resultado.stdout or "ossec-agentd is running" in resultado.stdout
+        if is_running:
+            log_info("Wazuh está em execução.")
         else:
-            print("OSSEC não está em execução. Tentando reiniciar...")
-            return False
+            log_warning("Wazuh não está em execução.")
+        return is_running
     except Exception as e:
-        print(f"Erro ao verificar status do OSSEC: {str(e)}")
+        log_error(f"Erro ao verificar status do Wazuh: {str(e)}")
         return False
 
-def instalar_ossec():
-    """Install OSSEC"""
+def get_wazuh_manager_ip() -> Optional[str]:
+    """Extract Wazuh manager IP from configuration file"""
+    config_file = "/var/guardiao/guard_config.json"
     try:
-        # Verifica se o OSSEC já está instalado
-        if verificar_ossec_instalado():
-            log_info("OSSEC já está instalado. Pulando a instalação.")
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                if "server_ip" in config:
+                    log_info(f"Usando IP do servidor: {config['server_ip']}")
+                    return config['server_ip']
+        
+        log_warning("IP do servidor não encontrado no arquivo de configuração")
+        return None
+    except Exception as e:
+        log_exception(f"Erro ao obter IP do servidor: {str(e)}")
+        return None
+
+def generate_curl_command(url: str, method: str = "GET", headers: Optional[Dict] = None, data: Optional[Dict] = None) -> str:
+    """Generate curl command for debugging API requests"""
+    curl_cmd = f"curl -X {method} '{url}'"
+    
+    if headers:
+        for key, value in headers.items():
+            curl_cmd += f" -H '{key}: {value}'"
+    
+    if data:
+        json_data = json.dumps(data).replace("'", "\\'")
+        curl_cmd += f" -d '{json_data}'"
+    
+    return curl_cmd
+
+def get_system_info() -> Tuple[str, str, str, str, str]:
+    """Collect system information for agent registration"""
+    # Get hostname and IP
+    hostname = socket.gethostname()
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except:
+        ip = "any"
+    
+    # Get OS information
+    sistema = f"{platform.system()} {platform.release()}"
+    versao = "1.0"  # Agent version
+    
+    # Get MAC address
+    try:
+        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) 
+                       for elements in range(0, 8*6, 8)][::-1])
+    except:
+        mac = "00:00:00:00:00:00"
+        
+    return hostname, ip, sistema, versao, mac
+
+def get_activation_key() -> Optional[str]:
+    """Get activation key from configuration file"""
+    config_file = "/var/guardiao/guard_config.json"
+    try:
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                return config.get('activation_key')
+    except Exception as e:
+        log_warning(f"Erro ao ler chave de ativação: {str(e)}")
+    return None
+
+def instalar_wazuh(wazuh_manager: Optional[str] = None) -> bool:
+    """Install Wazuh agent with proper configuration"""
+    try:
+        if verificar_wazuh_instalado():
+            log_info("Wazuh já está instalado.")
             return True
 
-        # Download preloaded-vars.conf from server
-        log_info("Baixando preloaded-vars.conf do servidor...")
-        try:
-            url = f'{SERVER_URL}/download/preloaded-vars.conf'
-            log_info(f"Baixando de: {url}")
-            resposta = requests.get(url)
-            if resposta.status_code == 200:
-                with open('preloaded-vars.conf', 'wb') as file:
-                    file.write(resposta.content)
-                log_info('Arquivo preloaded-vars.conf baixado com sucesso.')
-            else:
-                log_error(f'Falha ao baixar preloaded-vars.conf. Status: {resposta.status_code}')
-                return False
-        except Exception as e:
-            log_exception('Erro ao baixar preloaded-vars.conf')
-            return False
-
-        # First, clean any existing OSSEC installation
-        if os.path.exists('/var/ossec'):
-            log_info("Removendo instalação anterior do OSSEC...")
-            cleanup_cmd = "sudo rm -rf /var/ossec"
-            subprocess.run(cleanup_cmd, shell=True, check=True)
-
-        # Detecta a distribuição do sistema
         distro = detect_os_distribution()
         if not distro:
-            log_error("Não foi possível detectar a distribuição do sistema.")
+            log_error("Distribuição do sistema não detectada.")
             return False
-    
-        # Instala dependências necessárias
-        if distro == "debian" or distro == "ubuntu":
-            dependencies = ["build-essential",  # includes make, gcc, and other build tools
-                          "libevent-dev", 
-                          "libpcre2-dev", 
-                          "libssl-dev",
-                          "zlib1g-dev",
-                          "wget",
-                          "libsystemd-dev"]
-            
-            # Update package list
-            if not os_update():
-                log_error("Falha ao atualizar lista de pacotes.")
-                return False
-    
-            # Install dependencies one by one
-            for package in dependencies:
-                if not os_install(package):
-                    log_error(f"Falha ao instalar dependência: {package}")
-                    return False
-                log_info(f"Pacote {package} instalado com sucesso.")
-
-        # Download OSSEC source
-        log_info("Baixando OSSEC...")
-        ossec_url = 'https://github.com/ossec/ossec-hids/archive/refs/tags/3.7.0.tar.gz'
+        
+        if not wazuh_manager:
+            wazuh_manager = get_wazuh_manager_ip()
+            if not wazuh_manager:
+                log_warning("IP do servidor não encontrado. Usando localhost.")
+                wazuh_manager = "localhost"
+        
+        # Download configuration file
+        ossec_conf_path = "/tmp/ossec.conf.downloaded"
+        ossec_conf_url = f"http://{wazuh_manager}:5002/download/ossec.conf"
+        
         try:
-            response = requests.get(ossec_url, stream=True)
+            response = requests.get(ossec_conf_url, timeout=10)
             if response.status_code == 200:
-                with open('/tmp/ossec.tar.gz', 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                with open(ossec_conf_path, 'wb') as f:
+                    f.write(response.content)
+                log_info("Arquivo ossec.conf baixado com sucesso.")
             else:
-                log_error(f"Falha ao baixar OSSEC. Status code: {response.status_code}")
-                return False
+                log_warning(f"Falha ao baixar ossec.conf: {response.status_code}")
         except Exception as e:
-            log_exception("Erro ao baixar OSSEC")
-            return False
-    
-        # Extract and install OSSEC
-        try:
-            log_info("Extraindo e instalando OSSEC...")
-            
-            # Extract
-            subprocess.run(['tar', 'xzf', '/tmp/ossec.tar.gz', '-C', '/tmp'], check=True)
-            
-            # Get current directory to return later
-            current_dir = os.getcwd()
-            
-            # Prepare agent installation configuration
-            os.chdir('/tmp/ossec-hids-3.7.0')
-            
-            # Copy the downloaded preloaded-vars.conf to the correct location
-            log_info("Copiando preloaded-vars.conf para o diretório de instalação...")
+            log_warning(f"Erro ao baixar ossec.conf: {str(e)}")
+        
+        # Install based on distribution
+        if distro in ["debian", "ubuntu"]:
             try:
-                # Copy the downloaded file to the installation directory
-                subprocess.run(['cp', f'{current_dir}/preloaded-vars.conf', 'etc/preloaded-vars.conf'], check=True)
-                log_info("preloaded-vars.conf copiado com sucesso.")
-            except Exception as e:
-                log_error(f"Erro ao copiar preloaded-vars.conf: {str(e)}")
+                # Check if installed during process
+                if verificar_wazuh_instalado():
+                    return True
+                
+                # Add GPG key
+                log_info("Adicionando chave GPG do Wazuh...")
+                gpg_cmd = "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    gpg_cmd = "sudo " + gpg_cmd
+                
+                subprocess.run(gpg_cmd, shell=True, check=True)
+                
+                if verificar_wazuh_instalado():
+                    return True
+                
+                # Add repository
+                log_info("Adicionando repositório do Wazuh...")
+                repo_cmd = 'echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee -a /etc/apt/sources.list.d/wazuh.list'
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    repo_cmd = "sudo " + repo_cmd
+                
+                subprocess.run(repo_cmd, shell=True, check=True)
+                
+                if verificar_wazuh_instalado():
+                    return True
+                
+                # Update repositories
+                log_info("Atualizando repositórios...")
+                update_cmd = "apt-get update"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    update_cmd = "sudo " + update_cmd
+                
+                subprocess.run(update_cmd, shell=True, check=True)
+                
+                if verificar_wazuh_instalado():
+                    return True
+                
+                # Install Wazuh agent
+                log_info(f"Instalando agente Wazuh com manager: {wazuh_manager}")
+                install_cmd = f'WAZUH_MANAGER="{wazuh_manager}" apt-get install -y wazuh-agent'
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    install_cmd = "sudo " + install_cmd
+                
+                subprocess.run(install_cmd, shell=True, check=True)
+                
+                # Find control script
+                control_paths = [
+                    '/var/ossec/bin/wazuh-control',
+                    '/usr/bin/wazuh-control'
+                ]
+                
+                control_script = next((path for path in control_paths if os.path.exists(path)), None)
+                
+                if not control_script:
+                    log_error("Script de controle não encontrado após instalação")
+                    return False
+                
+                # Copy downloaded config if available
+                if os.path.exists(ossec_conf_path):
+                    ossec_dest_path = "/var/ossec/etc/ossec.conf"
+                    ossec_etc_dir = "/var/ossec/etc"
+                    
+                    if os.path.exists(ossec_etc_dir):
+                        try:
+                            copy_cmd = f"cp {ossec_conf_path} {ossec_dest_path}"
+                            if os.geteuid() != 0 and verificar_sudo_disponivel():
+                                copy_cmd = "sudo " + copy_cmd
+                            
+                            subprocess.run(copy_cmd, shell=True, check=True)
+                            
+                            chmod_cmd = f"chmod 640 {ossec_dest_path}"
+                            if os.geteuid() != 0 and verificar_sudo_disponivel():
+                                chmod_cmd = "sudo " + chmod_cmd
+                            
+                            subprocess.run(chmod_cmd, shell=True, check=True)
+                            log_info("Arquivo ossec.conf configurado.")
+                        except Exception as e:
+                            log_warning(f"Erro ao configurar ossec.conf: {str(e)}")
+                
+                # Start agent
+                log_info("Iniciando agente Wazuh...")
+                activate_cmd = f"{control_script} start"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    activate_cmd = "sudo " + activate_cmd
+                
+                subprocess.run(activate_cmd, shell=True, check=True)
+                return True
+                
+            except subprocess.CalledProcessError as e:
+                log_error(f"Erro na instalação: {str(e)}")
                 return False
-            
-            # Run install script with automated responses
-            log_info("Iniciando instalação do agente OSSEC...")
-            install_cmd = "sudo ./install.sh"
-            if os.geteuid() == 0:  # If already root
-                install_cmd = "./install.sh"
-            
-            process = subprocess.Popen(
-                install_cmd,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+            except Exception as e:
+                log_exception(f"Erro inesperado: {str(e)}")
+                return False
+            finally:
+                if os.path.exists(ossec_conf_path):
+                    try:
+                        os.remove(ossec_conf_path)
+                    except:
+                        pass
+        else:
+            log_error(f"Sistema não suportado: {distro}")
+            return False
+    except Exception as e:
+        log_exception(f"Falha na instalação: {str(e)}")
+        return False
+
+def registrar_wazuh_no_guardiao(wazuh_manager: Optional[str] = None, api_token: Optional[str] = None) -> bool:
+    """Register Wazuh agent with Guardian server"""
+    try:
+        log_info("Registrando agente Wazuh no servidor Guardião...")
+        
+        if not verificar_wazuh_instalado():
+            log_error("Wazuh não instalado.")
+            return False
+        
+        if not wazuh_manager:
+            wazuh_manager = get_wazuh_manager_ip()
+            if not wazuh_manager:
+                wazuh_manager = "localhost"
+                log_warning(f"Usando IP padrão: {wazuh_manager}")
+        
+        # Get system information
+        hostname, ip, sistema, versao, mac = get_system_info()
+        
+        # Get activation key
+        activation_key = get_activation_key()
+        if not activation_key:
+            log_error("Chave de ativação não encontrada.")
+            return False
+        
+        # Prepare data payload - formato simplificado conforme especificação
+        data = {
+            "chave": activation_key,
+            "name": hostname,
+            "id": carregar_id()
+        }
+        
+        # Build server URL
+        server_url = SERVER_URL if SERVER_URL else f"http://{wazuh_manager}:5002"
+        endpoint = "/registro-ossec"
+        request_url = f"{server_url}{endpoint}"
+        
+        headers = {'Content-Type': 'application/json'}
+        if api_token:
+            headers['Authorization'] = api_token
+
+        # Gerar comando curl para debug
+        curl_cmd = generate_curl_command(request_url, method="POST", headers=headers, data=data)
+        log_info(f"CURL_DEBUG: {curl_cmd}")
+        
+        try:
+            response = requests.post(
+                request_url,
+                json=data,
+                headers=headers,
+                timeout=30
             )
             
-            output, error = process.communicate()
+            log_info(f"Resposta: Status {response.status_code}")
             
-            log_info("=== Installation Output ===")
-            log_info(f"STDOUT:\n{output}")
-            log_info(f"STDERR:\n{error}")
-            log_info("=========================")
-            
-            if process.returncode != 0:
-                log_error(f"Erro durante a instalação do OSSEC: {error}")
+            if response.status_code == 200:
+                try:
+                    response_data = response.json()
+                    
+                    if response_data.get('status') != 'sucesso':
+                        log_error(f"Erro do servidor: {response_data.get('mensagem')}")
+                        log_error(f"Comando curl: {curl_cmd}")
+                        return False
+                    
+                    agent_key = response_data.get('activation_key')
+                    if not agent_key:
+                        log_error("Chave do agente não retornada.")
+                        log_error(f"Comando curl: {curl_cmd}")
+                        return False
+                    
+                    log_info(f"Agente registrado com hostname: {response_data.get('ossec_hostname')}")
+                    return importar_chave_wazuh(agent_key)
+                    
+                except json.JSONDecodeError:
+                    log_warning(f"Resposta não é JSON válido: {response.text[:100]}...")
+                    log_error(f"Headers: {headers}")
+                    log_error(f"Dados: {data}")
+                    log_error(f"Comando curl: {curl_cmd}")
+                    return False
+            else:
+                log_error(f"Erro de registro: {response.status_code}")
+                log_error(f"Comando curl: {curl_cmd}")
                 return False
+                
+        except requests.RequestException as e:
+            log_error(f"Erro HTTP para {endpoint}: {str(e)}")
+            log_error(f"Comando curl: {curl_cmd}")
+            return False
             
-            # Return to original directory
-            os.chdir(current_dir)
-            
-            log_info("OSSEC instalado com sucesso como agente.")
+    except Exception as e:
+        log_exception(f"Erro no registro: {str(e)}")
+        return False
+
+def importar_chave_wazuh(agent_key: str) -> bool:
+    """Import Wazuh agent key"""
+    try:
+        log_info("Importando chave do agente...")
+        
+        if verificar_chave_wazuh_importada():
+            log_info("Chave já importada.")
             return True
+        
+        # Log da chave para debug
+        log_info(f"Chave a ser importada: {agent_key}")
+        
+        manage_agents = '/var/ossec/bin/manage_agents'
+        if not os.path.exists(manage_agents):
+            log_error("Script manage_agents não encontrado.")
+            return False
+        
+        # Extrai apenas a parte Base64 da chave
+        key_match = re.search(r'([A-Za-z0-9+/=]+)$', agent_key)
+        if not key_match:
+            log_error("Formato de chave inválido")
+            return False
             
-        except subprocess.CalledProcessError as e:
-            log_error(f"Erro durante a instalação do OSSEC: {str(e)}")
+        key_base64 = key_match.group(1)
+        
+        # Importa a chave usando echo
+        import_cmd = f"echo 'y' | {manage_agents} -i {key_base64}"
+        if os.geteuid() != 0 and verificar_sudo_disponivel():
+            import_cmd = f"sudo {import_cmd}"
+        
+        log_info(f"Executando: {import_cmd}")
+        result = subprocess.run(import_cmd, shell=True, capture_output=True, text=True)
+        
+        # Log completo do resultado para debug
+        log_info(f"Saída do comando: {result.stdout}")
+        if result.stderr:
+            log_warning(f"Erro do comando: {result.stderr}")
+        
+        success_indicators = ["Added successfully", "successfully added"]
+        if not any(indicator in result.stdout.lower() for indicator in success_indicators):
+            log_error(f"Erro na importação. Saída: {result.stdout}")
+            log_error(f"Erro: {result.stderr}")
             return False
-        except Exception as e:
-            log_exception("Erro inesperado durante a instalação do OSSEC")
-            return False
-        finally:
-            # Cleanup
-            try:
-                os.remove('/tmp/ossec.tar.gz')
-                subprocess.run(['rm', '-rf', '/tmp/ossec-hids-3.7.0'])
-            except:
-                pass
+        
+        log_info("Chave importada com sucesso.")
+        return reiniciar_wazuh()
+            
     except Exception as e:
-        log_exception("Erro durante a instalação do OSSEC")
+        log_exception(f"Erro na importação: {str(e)}")
         return False
 
-def configurar_ossec_pos_instalacao():
-    """Configure OSSEC immediately after installation to ensure proper setup"""
+def configurar_wazuh(wazuh_manager: Optional[str] = None) -> bool:
+    """Configure Wazuh agent with server connection"""
     try:
-        log_info("Configurando OSSEC após instalação...")
+        log_info("Configurando agente Wazuh...")
         
-        # Verifica se o diretório existe
-        if not os.path.exists('/var/ossec/etc'):
-            log_error("Diretório /var/ossec/etc não encontrado")
+        if not verificar_wazuh_instalado():
+            log_error("Wazuh não instalado.")
             return False
         
-        # Fix working directory issues
-        fix_ossec_working_directory()
+        if not wazuh_manager:
+            wazuh_manager = get_wazuh_manager_ip()
+            if not wazuh_manager:
+                wazuh_manager = "localhost"
+                log_warning(f"Usando IP padrão: {wazuh_manager}")
         
-        log_info("Configuração pós-instalação do OSSEC concluída com sucesso.")
-        return True
+        if verificar_chave_wazuh_importada():
+            log_info("Agente já registrado.")
+            
+            if not verificar_wazuh_running():
+                log_warning("Agente não está em execução.")
+                reiniciar_wazuh()
+            
+            return True
+        
+        log_info("Iniciando registro do agente...")
+        return registrar_wazuh_no_guardiao(wazuh_manager)
         
     except Exception as e:
-        log_exception(f"Erro durante a configuração pós-instalação do OSSEC: {str(e)}")
+        log_exception(f"Erro na configuração: {str(e)}")
         return False
 
-def setup_ossec(activation_key=None):
-    """Complete OSSEC setup"""
+def setup_wazuh(wazuh_manager: Optional[str] = None) -> bool:
+    """Complete Wazuh setup process"""
     try:
-        log_info("Iniciando configuração do OSSEC...")
+        log_info("Iniciando setup do Wazuh...")
         
-        # Instala o OSSEC se não estiver instalado
-        if not verificar_ossec_instalado():
-            log_info("OSSEC não está instalado. Iniciando instalação...")
-            if not instalar_ossec():
-                log_error("Falha na instalação do OSSEC.")
+        if not wazuh_manager:
+            wazuh_manager = get_wazuh_manager_ip()
+        
+        if not verificar_wazuh_instalado():
+            log_info("Instalando Wazuh...")
+            if not instalar_wazuh(wazuh_manager):
+                log_error("Falha na instalação.")
                 return False
-        else:
-            log_info("OSSEC já está instalado.")
-            
-        # Importa a chave de ativação, se fornecida
-        if activation_key:
-            log_info("Importando chave de ativação...")
-            if not importar_chave_ossec(activation_key):
-                log_error("Falha ao importar chave de ativação.")
-                return False
-            
-        # Reinicia o serviço
-        log_info("Reiniciando serviço OSSEC...")
-        if not reiniciar_ossec():
-            log_error("Falha ao reiniciar o serviço OSSEC.")
+        
+        log_info("Configurando Wazuh...")
+        if not configurar_wazuh(wazuh_manager):
+            log_error("Falha na configuração.")
             return False
             
-        log_info("Configuração completa do OSSEC concluída com sucesso.")
+        log_info("Reiniciando serviço...")
+        if not reiniciar_wazuh():
+            log_error("Falha ao reiniciar serviço.")
+            return False
+            
+        log_info("Setup concluído com sucesso.")
         return True
         
     except Exception as e:
-        log_exception("Erro durante a configuração completa do OSSEC")
+        log_exception(f"Erro no setup: {str(e)}")
         return False
 
-def fix_ossec_working_directory():
-    """Fix OSSEC working directory issues"""
-    try:
-        log_info("Corrigindo problemas de diretório de trabalho do OSSEC...")
-        
-        # Ensure the OSSEC directories exist and have correct permissions
-        directories = [
-            '/var/ossec/tmp',
-            '/var/ossec/queue',
-            '/var/ossec/queue/ossec',
-            '/var/ossec/queue/alerts',
-            '/var/ossec/queue/diff',
-            '/var/ossec/queue/syscheck',
-            '/var/ossec/queue/rids'
-        ]
-        
-        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
-        
-        for directory in directories:
-            # Create directory if it doesn't exist
-            mkdir_cmd = ['mkdir', '-p', directory]
-            if usar_sudo:
-                mkdir_cmd.insert(0, 'sudo')
-            
-            subprocess.run(mkdir_cmd, check=True)
-            
-            # Set correct permissions
-            chown_cmd = ['chown', 'root:ossec', directory]
-            chmod_cmd = ['chmod', '770', directory]
-            
-            if usar_sudo:
-                chown_cmd.insert(0, 'sudo')
-                chmod_cmd.insert(0, 'sudo')
-            
-            subprocess.run(chown_cmd, check=True)
-            subprocess.run(chmod_cmd, check=True)
-        
-        log_info("Diretórios de trabalho do OSSEC corrigidos com sucesso.")
-        return True
-    except Exception as e:
-        log_exception(f"Erro ao corrigir diretórios de trabalho do OSSEC: {str(e)}")
-        return False
+# Backward compatibility aliases
+verificar_ossec_instalado = verificar_wazuh_instalado
+verificar_chave_ossec_importada = verificar_chave_wazuh_importada
+verificar_ossec_running = verificar_wazuh_running
+reiniciar_ossec = reiniciar_wazuh
+instalar_ossec = lambda manager=None: instalar_wazuh(manager)
+setup_ossec = lambda activation_key=None: setup_wazuh(get_wazuh_manager_ip())

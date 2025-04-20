@@ -3,10 +3,14 @@ import socket
 import json
 import uuid
 import os
-import platform  # Add this import
+import platform
 from config import ram, nome, chave_ativacao, codigos, SERVER_URL
 from system_utils import detect_os_distribution, os_update, os_install, verificar_sudo_disponivel
-from ossec_manager import instalar_ossec, verificar_ossec_instalado, verificar_chave_ossec_importada, verificar_ossec_running, reiniciar_ossec, importar_chave_ossec
+from ossec_manager import (
+    verificar_wazuh_instalado, verificar_chave_wazuh_importada, 
+    verificar_wazuh_running, reiniciar_wazuh, instalar_wazuh, 
+    configurar_wazuh, setup_wazuh
+)
 from psad_manager import verificar_e_configurar_psad
 from network import enviar_mensagem, salvar_id, carregar_id, ping, res_ping, enviar_softwares, enviar_infos
 from utils import collect_softwares, collect_system_info, execute_script, vuln_scan
@@ -41,221 +45,121 @@ def registrar_agente():
         resposta = enviar_mensagem(data, 'registro')
         
         if resposta.status_code == 200:
-            resposta_json = resposta.json()
-            log_debug(f'Resposta completa do servidor: {json.dumps(resposta_json)}')
+            dados_resposta = resposta.json()
+            log_debug(f'Resposta do servidor: {json.dumps(dados_resposta)}')
             
-            # Check for id_agente first, then fall back to id if needed
-            id_agente = resposta_json.get('id_agente')
-            if id_agente is None:
-                id_agente = resposta_json.get('id')  # Try alternative key
+            if dados_resposta.get('status') == 'sucesso':
+                id_agente = dados_resposta.get('id')
+                log_info(f'Registro bem-sucedido! ID do agente: {id_agente}')
                 
-            if id_agente is None:
-                log_error(f'Servidor retornou status 200 mas sem ID de agente. Resposta completa: {json.dumps(resposta_json)}')
+                # Save agent ID
+                salvar_id(id_agente)
+                return id_agente
+            else:
+                log_error(f'Falha no registro: {dados_resposta.get("mensagem", "Erro desconhecido")}')
                 return None
-                
-            log_info(f'Agente registrado com sucesso! ID: {id_agente}')
-            
-            # Save agent ID
-            salvar_id(id_agente)
-            return id_agente
         else:
-            log_error(f'Falha no registro do agente. Status code: {resposta.status_code}, Resposta: {resposta.text}')
+            log_error(f'Falha na comunicação com o servidor. Status: {resposta.status_code}')
             return None
     except Exception as e:
-        log_exception(f'Erro inesperado durante o registro do agente')
+        log_exception('Erro durante o registro do agente')
         return None
 
-def registrar_ossec(id_agente):
-    """Register agent with OSSEC server"""
-    log_info("Iniciando processo de registro do OSSEC")
+def registrar_wazuh(id_agente):
+    """Register agent with Wazuh server"""
+    log_info("Iniciando processo de registro do Wazuh")
     
-    # Verify if OSSEC is already installed and has a key imported
-    if verificar_ossec_instalado() and verificar_chave_ossec_importada():
-        log_info("OSSEC já está instalado e com chave importada. Nenhuma ação necessária.")
+    # Verify if Wazuh is already installed and has a key imported
+    if verificar_wazuh_instalado() and verificar_chave_wazuh_importada():
+        log_info("Wazuh já está instalado e com chave importada. Nenhuma ação necessária.")
         return True
     
-    # Data for OSSEC registration
-    message_ossec = {
+    # Data for Wazuh registration
+    message_wazuh = {
         'name': nome,  # Agent name (hostname)
         'id': id_agente,  # Agent ID in Guardian
         'chave': chave_ativacao  # Guardian activation key
     }
     
-    log_debug(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
+    log_debug(f"Enviando solicitação de registro Wazuh: {json.dumps(message_wazuh)}")
     
-    # Send request to OSSEC registration endpoint
+    # Send request to Wazuh registration endpoint
     try:
-        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
+        resposta = enviar_mensagem(message_wazuh, 'registro-ossec')
         
         # Check response
         if resposta.status_code == 200:
             dados_resposta = resposta.json()
-            log_debug(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
+            log_debug(f"Resposta do registro Wazuh: {json.dumps(dados_resposta)}")
             
             if dados_resposta.get('status') == 'sucesso':
-                activation_key = dados_resposta.get('activation_key')
-                ossec_server = dados_resposta.get('ossec_server')
-                log_info(f'Registro no OSSEC bem-sucedido!')
-                log_debug(f'Chave de ativação do OSSEC: {activation_key}')
-                log_debug(f'Servidor OSSEC: {ossec_server}')
+                wazuh_manager = dados_resposta.get('wazuh_manager')
+                log_info(f'Registro no Wazuh bem-sucedido!')
                 
-                # Check if OSSEC is already installed
-                if verificar_ossec_instalado():
-                    log_info("OSSEC já está instalado.")
-                    # Check if a key is already imported
-                    if verificar_chave_ossec_importada():
-                        log_info("Chave do OSSEC já importada. Nenhuma ação necessária.")
-                        return True
-                    else:
-                        log_info("Importando chave...")
-                        return importar_chave_ossec(activation_key)
-                else:
-                    # Install OSSEC if not installed
-                    log_info("Instalando OSSEC...")
-                    if instalar_ossec():
-                        log_info('OSSEC instalado com sucesso!')
-                        # After installation, import the key
-                        return importar_chave_ossec(activation_key)
-                    else:
-                        log_error('Falha na instalação do OSSEC.')
+                # Install and configure Wazuh
+                if not verificar_wazuh_instalado():
+                    log_info("Instalando Wazuh...")
+                    if not instalar_wazuh(wazuh_manager):
+                        log_error("Falha ao instalar Wazuh.")
                         return False
+                
+                # Configure Wazuh with the server address
+                log_info(f"Configurando Wazuh para conectar ao servidor: {wazuh_manager}")
+                if not configurar_wazuh(wazuh_manager):
+                    log_error("Falha ao configurar Wazuh.")
+                    return False
+                
+                # Restart Wazuh service
+                log_info("Reiniciando serviço Wazuh...")
+                if not reiniciar_wazuh():
+                    log_error("Falha ao reiniciar Wazuh.")
+                    return False
+                
+                log_info("Wazuh configurado e iniciado com sucesso.")
+                return True
             else:
-                log_error(f"Falha no registro do OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
+                log_error(f"Falha no registro Wazuh: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
                 return False
         else:
-            log_error(f"Falha na comunicação com o servidor para registro do OSSEC. Status: {resposta.status_code}")
+            log_error(f"Falha na comunicação com o servidor para registro Wazuh. Status: {resposta.status_code}")
             return False
     except Exception as e:
-        log_exception(f"Erro durante o registro do OSSEC")
+        log_exception(f"Erro durante o registro Wazuh: {str(e)}")
         return False
 
-def verifica_resposta(resposta, ram, id_agente):
-    """Check server response"""
+def initialize_wazuh(id_agente):
+    """Handle Wazuh initialization"""
     try:
-        if resposta.status_code == 200:
-            resposta_json = resposta.json()
-            codigo = int(resposta_json.get('codigo'))
-            log_debug(f'Resposta recebida com código: {codigo}')
-            
-            if codigo == codigos['ping']:
-                log_debug('Processando resposta de ping')
-                res_ping(resposta_json, ram)
-                
-                # Check if there are tasks in the response
-                if 'tarefas' in ram and ram['tarefas']:
-                    log_info(f"Tarefa recebida: {ram['tarefas']}")
-                    executar_tarefa(ram['tarefas'], id_agente)
-                    # Clear the task after execution
-                    ram['tarefas'] = None
-            elif codigo == codigos['ossec-register']:
-                log_info('Iniciando registro do OSSEC')
-                registrar_ossec(id_agente)
-        else:
-            log_warning(f'Falha na comunicação. Status Code: {resposta.status_code}, Resposta: {resposta.text}')
-    except Exception as e:
-        log_exception(f'Erro ao processar resposta do servidor')
-
-def executar_tarefa(tarefa, id_agente):
-    """Execute a task based on server request"""
-    log_info(f'Executando tarefa: {tarefa}')
-    
-    try:
-        if tarefa == 'softwares':
-            log_debug('Coletando informações de software')
-            collect_softwares()  # This now saves the file directly
-            log_debug('Enviando informações de software')
-            enviar_softwares(id_agente)
-        elif tarefa == 'infos':
-            log_debug('Coletando informações do sistema')
-            info = collect_system_info()
-            log_debug(f'Enviando informações do sistema')
-            # Only use the enviar_infos function, remove the duplicate call
-            enviar_infos(id_agente, info)
-        elif tarefa == 'vuln-scan':
-            log_info('Iniciando scan de vulnerabilidades')
-            scan_result = vuln_scan()
-            
-            # Convert scan result to JSON string
-            scan_json = json.dumps(scan_result)
-            
-            # Encrypt the data using base64 (matching agentenovo.py format)
-            from network import encrypt_base64
-            encrypted_data = encrypt_base64(scan_json)
-            
-            # Prepare data in the same format as agentenovo.py
-            data = {
-                'tipo': 'vuln-scan', 
-                'chave': chave_ativacao,
-                'id': id_agente,
-                'payload': encrypted_data
-            }
-            
-            log_debug('Enviando resultados do scan de vulnerabilidades')
-            # Send to 'envios' endpoint like in agentenovo.py
-            resposta = enviar_mensagem(data, 'envios')
-            
-            if resposta.status_code == 200:
-                log_info('Resultados do scan de vulnerabilidades enviados com sucesso')
-            else:
-                log_error(f'Falha ao enviar resultados do scan. Status Code: {resposta.status_code}')
-        elif tarefa == 'ossec-register':
-            log_info('Iniciando registro do OSSEC')
-            success = registrar_ossec(id_agente)
-            if success:
-                log_info('Registro do OSSEC concluído com sucesso')
-            else:
-                log_error('Falha no registro do OSSEC')
-        elif tarefa == 'script':
-            if 'script_name' in ram and 'script_content' in ram:
-                log_info(f'Executando script: {ram["script_name"]}')
-                result = execute_script(ram['script_name'], ram['script_content'])
-                data = {
-                    "chave": chave_ativacao,
-                    "id": id_agente,
-                    "script_result": result
-                }
-                log_debug('Enviando resultado da execução do script')
-                enviar_mensagem(data, 'script-result')
-            else:
-                log_warning('Tarefa de script recebida, mas sem nome ou conteúdo')
-        else:
-            log_warning(f'Tarefa desconhecida recebida: {tarefa}')
-    except Exception as e:
-        log_exception(f'Erro ao executar tarefa {tarefa}')
-
-def initialize_ossec(id_agente):
-    """Handle OSSEC initialization"""
-    try:
-        # Check if OSSEC is already installed and configured
-        if verificar_ossec_instalado() and verificar_chave_ossec_importada():
-            log_info("OSSEC já está instalado e configurado.")
+        # Check if Wazuh is already installed and configured
+        if verificar_wazuh_instalado() and verificar_chave_wazuh_importada():
+            log_info("Wazuh já está instalado e configurado.")
             return True
             
         # If not installed, install it
-        if not verificar_ossec_instalado():
-            log_info("OSSEC não está instalado. Iniciando instalação...")
-            if not instalar_ossec():
-                log_error("Falha na instalação do OSSEC.")
+        if not verificar_wazuh_instalado():
+            log_info("Wazuh não está instalado. Iniciando instalação...")
+            if not instalar_wazuh():
+                log_error("Falha na instalação do Wazuh.")
                 return False
                 
-        # Register with OSSEC server
-        log_info("Registrando agente no OSSEC...")
-        if not registrar_ossec(id_agente):
-            log_error("Falha no registro do OSSEC.")
+        # Register with Wazuh server
+        log_info("Registrando agente no Wazuh...")
+        if not registrar_wazuh(id_agente):
+            log_error("Falha no registro do Wazuh.")
             return False
             
         # Verify final status
-        if not verificar_ossec_running():
-            log_warning("OSSEC não está em execução. Tentando reiniciar...")
-            if not reiniciar_ossec():
-                log_error("Falha ao reiniciar OSSEC.")
+        if not verificar_wazuh_running():
+            log_warning("Wazuh não está em execução. Tentando reiniciar...")
+            if not reiniciar_wazuh():
+                log_error("Falha ao reiniciar Wazuh.")
                 return False
                 
-        log_info("OSSEC inicializado com sucesso.")
+        log_info("Wazuh inicializado com sucesso.")
         return True
         
     except Exception as e:
-        log_exception("Erro durante a inicialização do OSSEC")
+        log_exception("Erro durante a inicialização do Wazuh")
         return False
 
 def main():
@@ -275,74 +179,78 @@ def main():
                 log_critical("Falha no registro do agente. Saindo...")
                 return
         
-        # Initialize OSSEC
-        if not initialize_ossec(id_agente):
-            log_critical("Falha na inicialização do OSSEC. Saindo...")
+        # Initialize Wazuh
+        if not initialize_wazuh(id_agente):
+            log_critical("Falha na inicialização do Wazuh. Saindo...")
             return
             
-        # Validate OSSEC client.keys file and registration
+        # Validate Wazuh client.keys file and registration
         client_keys_path = "/var/ossec/etc/client.keys"
         if not os.path.exists(client_keys_path) or os.path.getsize(client_keys_path) == 0:
-            log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro OSSEC...")
-            if registrar_ossec(id_agente):
-                log_info("Registro OSSEC concluído com sucesso.")
-                reiniciar_ossec()
+            log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro Wazuh...")
+            if registrar_wazuh(id_agente):
+                log_info("Registro Wazuh concluído com sucesso.")
+                reiniciar_wazuh()
             else:
-                log_error("Falha no registro OSSEC. Verifique os logs para mais detalhes.")
-        else:
-            log_info("Arquivo client.keys encontrado e válido.")
+                log_error("Falha no registro Wazuh.")
         
-        # Verify OSSEC installation and status
-        if not verificar_ossec_instalado():
-            log_info("OSSEC não está instalado. Instalando...")
-            instalar_ossec()
-            registrar_ossec(id_agente)
-        elif not verificar_ossec_running():
-            log_warning("OSSEC não está em execução. Reiniciando...")
-            reiniciar_ossec()
-        
-        # Final OSSEC status verification
-        if verificar_ossec_instalado() and verificar_ossec_running() and verificar_chave_ossec_importada():
-            log_info("OSSEC está instalado, em execução e com chave importada corretamente.")
-        else:
-            log_error("Problemas na configuração do OSSEC. Verifique os logs para mais detalhes.")
-        
-        # Configure PSAD with enhanced settings
-        log_info("Verificando e configurando PSAD para detecção de port scans...")
-        if verificar_e_configurar_psad():
-            log_info("PSAD configurado com sucesso.")
-            
-            # Restart OSSEC after PSAD configuration to ensure integration
-            log_info("Reiniciando OSSEC para garantir integração com PSAD...")
-            reiniciar_ossec()
-        else:
-            log_warning("Houve problemas na configuração do PSAD. Alguns recursos podem não funcionar corretamente.")
+        # Configure PSAD if needed
+        verificar_e_configurar_psad()
         
         # Main loop
-        log_info(f"Agente Guardian iniciado com ID: {id_agente}")
+        log_info("Iniciando loop principal do agente...")
         while True:
             try:
                 # Send ping to server
-                log_debug("Enviando ping para o servidor")
-                resposta = ping(id_agente)
+                ping_response = ping(id_agente)
                 
-                # Process response
-                verifica_resposta(resposta, ram, id_agente)
-                
-                # Execute tasks if any
-                if 'tarefas' in ram and ram['tarefas']:
-                    log_info(f"Tarefa recebida: {ram['tarefas']}")
-                    executar_tarefa(ram['tarefas'], id_agente)
-                    ram['tarefas'] = None
-                
-                # Wait before next ping
-                log_debug("Aguardando próximo ciclo")
-                time.sleep(10)
+                if ping_response:
+                    log_debug("Ping bem-sucedido")
+                    
+                    # Converter a resposta HTTP para um dicionário JSON
+                    ping_data = ping_response.json() if hasattr(ping_response, 'json') else {}
+                    
+                    # Process commands from server
+                    for comando in ping_data.get('comandos', []):
+                        log_info(f"Executando comando: {comando}")
+                        
+                        if comando == 'softwares':
+                            # Collect and send software list
+                            softwares = collect_softwares()
+                            enviar_softwares(id_agente, softwares)
+                            
+                        elif comando == 'infos':
+                            # Collect and send system info
+                            infos = collect_system_info()
+                            enviar_infos(id_agente, infos)
+                            
+                        elif comando == 'vuln':
+                            # Run vulnerability scan
+                            vuln_scan(id_agente)
+                            
+                        elif comando.startswith('script:'):
+                            # Execute custom script
+                            script_id = comando.split(':')[1]
+                            execute_script(id_agente, script_id)
+                            
+                        elif comando == 'restart_wazuh':
+                            # Restart Wazuh service
+                            log_info("Reiniciando serviço Wazuh...")
+                            reiniciar_wazuh()
+                            
+                        else:
+                            log_warning(f"Comando desconhecido: {comando}")
+                else:
+                    log_warning("Falha no ping ao servidor")
+                    
             except Exception as e:
-                log_exception(f"Erro no loop principal")
-                time.sleep(60)
+                log_exception(f"Erro no loop principal: {str(e)}")
+                
+            # Sleep before next iteration
+            time.sleep(60)
+            
     except Exception as e:
-        log_critical("Erro fatal na inicialização do agente", exc_info=e)
+        log_exception(f"Erro fatal no agente: {str(e)}")
 
 if __name__ == "__main__":
     main()

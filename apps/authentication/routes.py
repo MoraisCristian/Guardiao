@@ -191,7 +191,7 @@ import requests
 
 # Função para registro no OSSEC
 def register_ossec_agent(name, id_agente):
-    ossec_server_address = "ossec"
+    ossec_server_address = "wazuh-manager"
     ossec_http_auth = "sua_senha_secreta"
     url = f'http://{ossec_server_address}:59347/add'
     headers = {

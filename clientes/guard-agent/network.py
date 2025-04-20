@@ -30,6 +30,9 @@ def enviar_mensagem(message, endpoint):
             log_debug(f"Conteúdo da resposta: {json.dumps(response_content)}")
         except json.JSONDecodeError:
             log_warning(f"Resposta não é um JSON válido: {resposta.text}")
+            # Generate and log curl command for debugging
+            curl_cmd = f"curl -X POST '{url}' -H 'Content-Type: application/json' -d '{json.dumps(message)}'"
+            log_warning(f"Comando curl para troubleshooting: {curl_cmd}")
         
         return resposta
     except requests.RequestException as e:

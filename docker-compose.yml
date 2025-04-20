@@ -52,21 +52,46 @@ services:
     depends_on:
       - mariadb
 
-  ossec:
-    image: ossec
-    build:
-      context: .
-      dockerfile: ossec-docker/Dockerfile
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.5.2
+    hostname: wazuh-manager
+    restart: always
     ports:
       - "1514:1514/udp"  # Porta para receber logs dos agentes
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
+      - "55000:55000/tcp"  # Porta da API do Wazuh
     volumes:
-      - ossec-data:/var/ossec/  # Volume único para persistir dados do OSSEC
-      - ./ossec-docker/conector:/opt/conector  # Add this line to mirror the API files
+      - wazuh-data:/var/ossec  # Volume para persistir dados do Wazuh
+      - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf:ro  # Mount custom ossec.conf
+      - ./ossec-docker/conector:/opt/conector  # Mount the API connector
+      - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
     networks:
       - app-network
     environment:
-      - API_PASSWORD=sua_senha_secreta  # Senha para proteger a API
+      - FILEBEAT_SSL_VERIFICATION_MODE=none
+      - INDEXER_URL=none
+      - INDEXER_USERNAME=none
+      - INDEXER_PASSWORD=none
+      - ENABLE_FILEBEAT=0
+      - DISABLE_DASHBOARD_MODULES=1
+      - API_PASSWORD=sua_senha_secreta  # Password for the API
+    entrypoint: ["/entrypoint.sh"]  # Use custom entrypoint
+    depends_on:
+      - zincsearch
+
+  ossec-to-zinc:
+    image: python:3.12-slim
+    volumes:
+      - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
+      - ./zincsearch/check_zinc.py:/app/check_zinc.py
+      - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
+      - wazuh-data:/ossec/  # Updated to use wazuh-data volume
+    command: bash /app/ossec_to_zinc.sh
+    networks:
+      - app-network
+    depends_on:
+      - zincsearch
+      - wazuh-manager
 
   zincsearch:
     image: public.ecr.aws/zinclabs/zincsearch:latest
@@ -82,23 +107,9 @@ services:
       - app-network
     restart: unless-stopped
 
-  ossec-to-zinc:
-    image: python:3.12-slim
-    volumes:
-      - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
-      - ./zincsearch/check_zinc.py:/app/check_zinc.py
-      - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
-      - ossec-data:/ossec/
-    command: bash /app/ossec_to_zinc.sh
-    networks:
-      - app-network
-    depends_on:
-      - zincsearch
-      - ossec
-
 volumes:
   zinc-data:
-  ossec-data:
+  wazuh-data:  # Renamed from ossec-data to wazuh-data
   mariadb-data:  # Add this new volume for MariaDB data persistence
 
 networks:
