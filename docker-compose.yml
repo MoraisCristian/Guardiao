@@ -64,10 +64,16 @@ services:
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
       - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
       #- ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
-      #- ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf
-      #- wazuh_data:/var/ossec/data
+      - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf
+      - wazuh_api_configuration:/var/ossec/api/configuration
+      - wazuh_etc:/var/ossec/etc
       - wazuh_logs:/var/ossec/logs
-      #- wazuh_etc:/var/ossec/etc
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_var_multigroups:/var/ossec/var/multigroups
+      - wazuh_integrations:/var/ossec/integrations
+      - wazuh_active_response:/var/ossec/active-response/bin
+      - wazuh_agentless:/var/ossec/agentless
+      - wazuh_wodles:/var/ossec/wodles
     networks:
       - app-network
     environment:
@@ -116,6 +122,13 @@ volumes:
   wazuh_data:
   wazuh_logs:
   wazuh_etc:
+  wazuh_queue:
+  wazuh_var_multigroups:
+  wazuh_integrations:
+  wazuh_api_configuration:
+  wazuh_active_response:
+  wazuh_agentless:
+  wazuh_wodles:
 
 networks:
   app-network:
