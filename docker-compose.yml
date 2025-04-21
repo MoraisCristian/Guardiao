@@ -53,7 +53,7 @@ services:
       - mariadb
 
   wazuh-manager:
-    image: wazuh/wazuh-manager:4.5.2
+    image: wazuh/wazuh-manager:latest
     hostname: wazuh-manager
     restart: always
     ports:
@@ -62,7 +62,6 @@ services:
       - "55000:55000/tcp"  # Porta da API do Wazuh
     volumes:
       - wazuh-data:/var/ossec  # Volume para persistir dados do Wazuh
-      - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf:ro  # Mount custom ossec.conf
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
       - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
     networks:
