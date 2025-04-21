@@ -64,6 +64,7 @@ services:
       - wazuh-data:/var/ossec  # Volume para persistir dados do Wazuh
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
       - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
+      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
     networks:
       - app-network
     environment:
