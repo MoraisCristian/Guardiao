@@ -53,7 +53,9 @@ services:
       - mariadb
 
   wazuh-manager:
-    image: wazuh/wazuh-manager:4.11.2
+    build:
+      context: ./wazuh-config
+      dockerfile: Dockerfile
     hostname: wazuh-manager
     restart: always
     ports:
@@ -62,8 +64,7 @@ services:
       - "55000:55000/tcp"  # Porta da API do Wazuh
     volumes:
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
-      - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
-      #- ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
+      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
       - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf
       - wazuh_api_configuration:/var/ossec/api/configuration
       - wazuh_etc:/var/ossec/etc
@@ -77,14 +78,8 @@ services:
     networks:
       - app-network
     environment:
-      - FILEBEAT_SSL_VERIFICATION_MODE=none
-      - INDEXER_URL=none
-      - INDEXER_USERNAME=none
-      - INDEXER_PASSWORD=none
-      - ENABLE_FILEBEAT=0
       - DISABLE_DASHBOARD_MODULES=1
       - API_PASSWORD=sua_senha_secreta  # Password for the API
-    entrypoint: ["/entrypoint.sh"]  # Use custom entrypoint
     depends_on:
       - zincsearch
 
