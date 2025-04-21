@@ -53,7 +53,7 @@ services:
       - mariadb
 
   wazuh-manager:
-    image: wazuh/wazuh-manager:latest
+    image: wazuh/wazuh-manager:4.11.2
     hostname: wazuh-manager
     restart: always
     ports:
