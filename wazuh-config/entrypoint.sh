@@ -1,47 +1,101 @@
 #!/bin/bash
 
-# Only install dependencies if they don't exist
-if ! command -v python3 &> /dev/null || ! pip3 list | grep -q Flask; then
-  echo "Installing Python and dependencies..."
-  apt-get update
-  apt-get install -y python3 python3-pip lsof
-  pip3 install flask
-else
-  echo "Dependencies already installed, skipping..."
-fi
-
-# Function to check if a process is running on a port
-is_api_running() {
-  netstat -tuln | grep ":59347 " > /dev/null
-  return $?
+# Função para detectar o gerenciador de pacotes
+detect_package_manager() {
+    if command -v dnf &> /dev/null; then
+        echo "dnf"
+    elif command -v yum &> /dev/null; then
+        echo "yum"
+    elif command -v apt-get &> /dev/null; then
+        echo "apt-get"
+    elif command -v apk &> /dev/null; then
+        echo "apk"
+    else
+        echo "unknown"
+    fi
 }
 
-# Start Wazuh manager if not already running
+# Função para instalar pacotes baseado no gerenciador detectado
+install_packages() {
+    local pkg_manager=$(detect_package_manager)
+    echo "Gerenciador de pacotes detectado: $pkg_manager"
+
+    case $pkg_manager in
+        "dnf")
+            dnf -y install python3 python3-pip net-tools lsof
+            ;;
+        "yum")
+            yum -y install python3 python3-pip net-tools lsof
+            ;;
+        "apt-get")
+            apt-get update
+            apt-get install -y python3 python3-pip net-tools lsof
+            ;;
+        "apk")
+            apk add --no-cache python3 py3-pip net-tools lsof
+            ;;
+        *)
+            echo "Gerenciador de pacotes não suportado"
+            exit 1
+            ;;
+    esac
+}
+
+# Função para verificar se um processo está rodando em uma porta usando lsof
+is_api_running() {
+    if command -v lsof &> /dev/null; then
+        lsof -i :59347 > /dev/null 2>&1
+        return $?
+    elif command -v netstat &> /dev/null; then
+        netstat -tuln | grep ":59347 " > /dev/null
+        return $?
+    else
+        echo "Nem lsof nem netstat estão disponíveis"
+        return 1
+    fi
+}
+
+# Criar diretórios necessários
+mkdir -p /var/ossec/logs
+touch /var/ossec/logs/ossec.log
+
+# Instalar dependências se necessário
+if ! command -v python3 &> /dev/null || ! command -v pip3 &> /dev/null; then
+    echo "Instalando Python e dependências..."
+    install_packages
+fi
+
+# Instalar Flask se necessário
+if ! python3 -c "import flask" &> /dev/null; then
+    echo "Instalando Flask..."
+    pip3 install flask
+fi
+
+# Iniciar Wazuh manager se não estiver rodando
 if ! pgrep -f "wazuh-manager" > /dev/null; then
-  echo "Starting Wazuh manager..."
-  /entrypoint.sh wazuh-manager &
-  WAZUH_PID=$!
-  
-  # Wait for Wazuh to fully start
-  echo "Waiting for Wazuh to start..."
-  sleep 15
+    echo "Iniciando Wazuh manager..."
+    /var/ossec/bin/wazuh-control start
+    WAZUH_PID=$!
+    
+    echo "Aguardando Wazuh iniciar..."
+    sleep 15
 else
-  echo "Wazuh manager already running"
-  WAZUH_PID=$(pgrep -f "wazuh-manager")
+    echo "Wazuh manager já está rodando"
+    WAZUH_PID=$(pgrep -f "wazuh-manager")
 fi
 
-# Only start API connector if not already running
+# Iniciar API connector se não estiver rodando
 if ! is_api_running; then
-  cd /opt/conector
-  echo "Starting API connector..."
-  python3 /opt/conector/ossec_api.py &
-  echo "API connector started"
+    cd /opt/conector
+    echo "Iniciando API connector..."
+    python3 /opt/conector/ossec_api.py &
+    echo "API connector iniciado"
 else
-  echo "API connector already running on port 59347"
+    echo "API connector já está rodando na porta 59347"
 fi
 
-echo "Services started successfully"
+echo "Serviços iniciados com sucesso"
 
-# Keep container running without constant monitoring
-echo "Container is now running in service mode"
+# Manter o container rodando
+echo "Container está rodando em modo serviço"
 tail -f /var/ossec/logs/ossec.log
