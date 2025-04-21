@@ -63,7 +63,7 @@ services:
     volumes:
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
       - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
-#      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
+      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
       - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf
       - wazuh_data:/var/ossec/data
       - wazuh_logs:/var/ossec/logs
