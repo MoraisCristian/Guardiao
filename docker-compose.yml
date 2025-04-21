@@ -61,10 +61,12 @@ services:
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
       - "55000:55000/tcp"  # Porta da API do Wazuh
     volumes:
-      - wazuh-data:/var/ossec  # Volume para persistir dados do Wazuh
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
       - ./wazuh-config/entrypoint.sh:/entrypoint.sh  # Custom entrypoint script
-      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
+      #- ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
+      - wazuh_data:/var/ossec/data
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_etc:/var/ossec/etc
     networks:
       - app-network
     environment:
@@ -85,7 +87,7 @@ services:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
       - ./zincsearch/check_zinc.py:/app/check_zinc.py
       - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
-      - wazuh-data:/ossec/  # Updated to use wazuh-data volume
+      - wazuh_data:/ossec/  # Updated to use wazuh-data volume
     command: bash /app/ossec_to_zinc.sh
     networks:
       - app-network
@@ -109,8 +111,10 @@ services:
 
 volumes:
   zinc-data:
-  wazuh-data:  # Renamed from ossec-data to wazuh-data
   mariadb-data:  # Add this new volume for MariaDB data persistence
+  wazuh_data:
+  wazuh_logs:
+  wazuh_etc:
 
 networks:
   app-network:
