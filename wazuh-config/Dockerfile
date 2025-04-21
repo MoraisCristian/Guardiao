@@ -15,37 +15,37 @@ RUN yum install curl-minimal xz gnupg tar gzip openssl findutils procps python3 
 RUN mkdir -p /config
 
 # Script para adicionar o repositório Wazuh
-RUN echo '#!/bin/bash \n\
-curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --import - \n\
-echo -e "[wazuh]\nname=Wazuh Repository\nbaseurl=https://packages.wazuh.com/4.x/yum/\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1" > /etc/yum.repos.d/wazuh.repo \n\
+RUN echo '#!/bin/bash
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --import -
+echo -e "[wazuh]\nname=Wazuh Repository\nbaseurl=https://packages.wazuh.com/4.x/yum/\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1" > /etc/yum.repos.d/wazuh.repo
 ' > /config/add_repository.sh && \
     chmod 775 /config/add_repository.sh && \
     /config/add_repository.sh
 
 # Script para preparar diretórios de dados permanentes
-RUN echo '#!/bin/bash \n\
-mkdir -p /var/ossec/etc/shared/default \n\
-mkdir -p /var/ossec/queue/agent-info \n\
-mkdir -p /var/ossec/queue/agent-groups \n\
-mkdir -p /var/ossec/queue/diff \n\
-mkdir -p /var/ossec/queue/fim/db \n\
-mkdir -p /var/ossec/queue/fts \n\
-mkdir -p /var/ossec/queue/logcollector \n\
-mkdir -p /var/ossec/queue/rids \n\
-mkdir -p /var/ossec/queue/rootcheck \n\
-mkdir -p /var/ossec/queue/syscheck \n\
-mkdir -p /var/ossec/queue/vulnerabilities \n\
-mkdir -p /var/ossec/var/db \n\
-mkdir -p /var/ossec/var/download \n\
-mkdir -p /var/ossec/var/run \n\
-mkdir -p /var/ossec/var/selinux \n\
-mkdir -p /var/ossec/var/upgrade \n\
-mkdir -p /var/ossec/var/wodles \n\
-mkdir -p /var/ossec/logs/alerts \n\
-mkdir -p /var/ossec/logs/archives \n\
-mkdir -p /var/ossec/logs/firewall \n\
-mkdir -p /var/ossec/logs/ossec \n\
-touch /var/ossec/logs/active-responses.log \n\
+RUN echo '#!/bin/bash
+mkdir -p /var/ossec/etc/shared/default
+mkdir -p /var/ossec/queue/agent-info
+mkdir -p /var/ossec/queue/agent-groups
+mkdir -p /var/ossec/queue/diff
+mkdir -p /var/ossec/queue/fim/db
+mkdir -p /var/ossec/queue/fts
+mkdir -p /var/ossec/queue/logcollector
+mkdir -p /var/ossec/queue/rids
+mkdir -p /var/ossec/queue/rootcheck
+mkdir -p /var/ossec/queue/syscheck
+mkdir -p /var/ossec/queue/vulnerabilities
+mkdir -p /var/ossec/var/db
+mkdir -p /var/ossec/var/download
+mkdir -p /var/ossec/var/run
+mkdir -p /var/ossec/var/selinux
+mkdir -p /var/ossec/var/upgrade
+mkdir -p /var/ossec/var/wodles
+mkdir -p /var/ossec/logs/alerts
+mkdir -p /var/ossec/logs/archives
+mkdir -p /var/ossec/logs/firewall
+mkdir -p /var/ossec/logs/ossec
+touch /var/ossec/logs/active-responses.log
 ' > /config/prepare_data.sh && \
     chmod 775 /config/prepare_data.sh
 
