@@ -71,25 +71,36 @@ if ! python3 -c "import flask" &> /dev/null; then
     pip3 install flask
 fi
 
-# Iniciar Wazuh manager se não estiver rodando
-if ! pgrep -f "wazuh-manager" > /dev/null; then
+# Verificar se o Wazuh já está em execução (imagem oficial pode iniciar automaticamente)
+if ! pgrep -f "wazuh-manager" > /dev/null && ! pgrep -f "ossec-server" > /dev/null; then
     echo "Iniciando Wazuh manager..."
-    /var/ossec/bin/wazuh-control start
-    WAZUH_PID=$!
+    # Verificar qual comando está disponível na imagem
+    if [ -f "/var/ossec/bin/wazuh-control" ]; then
+        /var/ossec/bin/wazuh-control start
+    elif [ -f "/var/ossec/bin/ossec-control" ]; then
+        /var/ossec/bin/ossec-control start
+    else
+        echo "ERRO: Não foi possível encontrar o script de controle do Wazuh"
+        exit 1
+    fi
     
     echo "Aguardando Wazuh iniciar..."
     sleep 15
 else
     echo "Wazuh manager já está rodando"
-    WAZUH_PID=$(pgrep -f "wazuh-manager")
 fi
 
 # Iniciar API connector se não estiver rodando
 if ! is_api_running; then
-    cd /opt/conector
-    echo "Iniciando API connector..."
-    python3 /opt/conector/ossec_api.py &
-    echo "API connector iniciado"
+    # Verificar se o diretório do conector existe
+    if [ -d "/opt/conector" ]; then
+        cd /opt/conector
+        echo "Iniciando API connector..."
+        python3 /opt/conector/ossec_api.py &
+        echo "API connector iniciado"
+    else
+        echo "AVISO: Diretório do conector não encontrado em /opt/conector"
+    fi
 else
     echo "API connector já está rodando na porta 59347"
 fi
