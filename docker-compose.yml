@@ -52,36 +52,29 @@ services:
     depends_on:
       - mariadb
 
-  wazuh-manager:
-    image: wazuh/wazuh-manager:4.11.2
-    hostname: wazuh-manager
+  ossec-server:
+    build:
+      context: .
+      dockerfile: ossec-docker/Dockerfile
+    hostname: ossec-server
     restart: always
     ports:
       - "1514:1514/udp"  # Porta para receber logs dos agentes
       - "1515:1515/tcp"  # Porta para comunicação com os agentes
-      - "55000:55000/tcp"  # Porta da API do Wazuh
+      - "59347:59347/tcp"  # Porta da API do OSSEC
     volumes:
       - ./ossec-docker/conector:/opt/conector  # Mount the API connector
-      - ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
-      - ./wazuh-config/ossec.conf:/var/ossec/etc/ossec.conf
-      - ./wazuh-config/entrypoint.sh:/entrypoint.sh
-      - wazuh_api_configuration:/var/ossec/api/configuration
-      - wazuh_etc:/var/ossec/etc
-      - wazuh_logs:/var/ossec/logs
-      - wazuh_queue:/var/ossec/queue
-      - wazuh_var_multigroups:/var/ossec/var/multigroups
-      - wazuh_integrations:/var/ossec/integrations
-      - wazuh_active_response:/var/ossec/active-response/bin
-      - wazuh_agentless:/var/ossec/agentless
-      - wazuh_wodles:/var/ossec/wodles
+      #- ./wazuh-config/internal_options.conf:/var/ossec/etc/internal_options.conf
+      - ossec_etc:/var/ossec/etc
+      - ossec_logs:/var/ossec/logs
+      - ossec_queue:/var/ossec/queue
+      - ossec_var:/var/ossec/var
+      - ossec_active_response:/var/ossec/active-response/bin
+      - ossec_agentless:/var/ossec/agentless
     networks:
       - app-network
-    environment:
-      - DISABLE_DASHBOARD_MODULES=1
-      - API_PASSWORD=sua_senha_secreta  # Password for the API
     depends_on:
       - zincsearch
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
 
   ossec-to-zinc:
     image: python:3.12-slim
@@ -89,13 +82,13 @@ services:
       - ./zincsearch/ossec_to_zincsearch.py:/app/ossec_to_zincsearch.py
       - ./zincsearch/check_zinc.py:/app/check_zinc.py
       - ./zincsearch/ossec_to_zinc.sh:/app/ossec_to_zinc.sh
-      - wazuh_data:/ossec/  # Updated to use wazuh-data volume
+      - ossec_logs:/ossec/logs
     command: bash /app/ossec_to_zinc.sh
     networks:
       - app-network
     depends_on:
       - zincsearch
-      - wazuh-manager
+      - ossec-server
 
   zincsearch:
     image: public.ecr.aws/zinclabs/zincsearch:latest
@@ -113,17 +106,13 @@ services:
 
 volumes:
   zinc-data:
-  mariadb-data:  # Add this new volume for MariaDB data persistence
-  wazuh_data:
-  wazuh_logs:
-  wazuh_etc:
-  wazuh_queue:
-  wazuh_var_multigroups:
-  wazuh_integrations:
-  wazuh_api_configuration:
-  wazuh_active_response:
-  wazuh_agentless:
-  wazuh_wodles:
+  mariadb-data:
+  ossec_etc:
+  ossec_logs:
+  ossec_queue:
+  ossec_var:
+  ossec_active_response:
+  ossec_agentless:
 
 networks:
   app-network:
