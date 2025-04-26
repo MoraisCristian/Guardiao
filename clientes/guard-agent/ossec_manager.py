@@ -205,12 +205,12 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 subprocess.run(deps_cmd, shell=True, check=True)
                 log_info("Dependências instaladas com sucesso.")
                 
-                # Baixar o script atomic-ossec.sh
-                log_info("Baixando script atomic-ossec.sh...")
+                # Baixar o script atomic installer
+                log_info("Baixando script do instalador Atomic...")
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    atomic_script = os.path.join(temp_dir, "atomic-ossec.sh")
+                    atomic_script = os.path.join(temp_dir, "atomic_installer.sh")
                     
-                    download_cmd = f"wget -q -O {atomic_script} https://updates.atomicorp.com/installers/atomic-ossec.sh"
+                    download_cmd = f"wget -q -O {atomic_script} https://updates.atomicorp.com/installers/atomic"
                     if os.geteuid() != 0 and verificar_sudo_disponivel():
                         download_cmd = "sudo " + download_cmd
                     
@@ -223,28 +223,77 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     
                     subprocess.run(chmod_cmd, shell=True, check=True)
                     
-                    # Executar o script de instalação
-                    log_info("Executando script de instalação atomic-ossec.sh...")
-                    install_cmd = f"{atomic_script}"
+                    # Executar o script de instalação do repositório
+                    log_info("Instalando repositório Atomicorp...")
+                    install_repo_cmd = f"bash {atomic_script}"
                     if os.geteuid() != 0 and verificar_sudo_disponivel():
-                        install_cmd = "sudo " + install_cmd
+                        install_repo_cmd = "sudo " + install_repo_cmd
                     
                     # Usar echo para responder automaticamente às perguntas do script
-                    install_cmd = f"echo -e 'agent\ny\n{ossec_manager}\n' | {install_cmd}"
-                    subprocess.run(install_cmd, shell=True, check=True)
+                    install_repo_cmd = f"echo -e 'yes\nyes\n' | {install_repo_cmd}"
+                    subprocess.run(install_repo_cmd, shell=True, check=True)
+                
+                # Atualizar repositórios
+                log_info("Atualizando repositórios...")
+                update_cmd = "apt-get update"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    update_cmd = "sudo " + update_cmd
+                
+                subprocess.run(update_cmd, shell=True, check=True)
+                
+                # Instalar o agente OSSEC
+                log_info(f"Instalando agente OSSEC com manager: {ossec_manager}")
+                install_cmd = "apt-get install -y ossec-hids-agent"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    install_cmd = "sudo " + install_cmd
+                
+                subprocess.run(install_cmd, shell=True, check=True)
                 
                 # Verificar se a instalação foi bem-sucedida
                 if verificar_ossec_instalado():
-                    log_info("OSSEC instalado com sucesso via atomic-ossec.sh.")
+                    log_info("OSSEC instalado com sucesso via repositório Atomicorp.")
                     
                     # Configurar o OSSEC com o IP do servidor
                     if os.path.exists('/var/ossec/etc/ossec.conf'):
                         log_info(f"Configurando OSSEC manager para: {ossec_manager}")
-                        sed_cmd = f"sed -i 's/<server-ip>.*<\\/server-ip>/<server-ip>{ossec_manager}<\\/server-ip>/g' /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            sed_cmd = "sudo " + sed_cmd
                         
-                        subprocess.run(sed_cmd, shell=True, check=True)
+                        # Criar um arquivo ossec.conf correto
+                        ossec_conf_content = f"""<ossec_config>
+  <client>
+    <server-ip>{ossec_manager}</server-ip>
+    <server-port>1514</server-port>
+    <protocol>tcp</protocol>
+    <config-profile>agent</config-profile>
+    <notify_time>30</notify_time>
+    <auto_restart>yes</auto_restart>
+  </client>
+</ossec_config>
+"""
+                        # Salvar o arquivo temporário
+                        temp_conf = "/tmp/ossec_temp.conf"
+                        with open(temp_conf, 'w') as f:
+                            f.write(ossec_conf_content)
+                        
+                        # Copiar para o local correto
+                        copy_cmd = f"cp {temp_conf} /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            copy_cmd = "sudo " + copy_cmd
+                        
+                        subprocess.run(copy_cmd, shell=True, check=True)
+                        
+                        # Ajustar permissões
+                        chmod_cmd = "chmod 640 /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            chmod_cmd = "sudo " + chmod_cmd
+                        
+                        subprocess.run(chmod_cmd, shell=True, check=True)
+                        
+                        # Ajustar proprietário
+                        chown_cmd = "chown root:ossec /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            chown_cmd = "sudo " + chown_cmd
+                        
+                        subprocess.run(chown_cmd, shell=True, check=True)
                     
                     # Iniciar o agente OSSEC
                     log_info("Iniciando agente OSSEC...")
@@ -255,7 +304,7 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     subprocess.run(start_cmd, shell=True, check=True)
                     return True
                 else:
-                    log_error("Falha na instalação do OSSEC via atomic-ossec.sh.")
+                    log_error("Falha na instalação do OSSEC via repositório Atomicorp.")
                     return False
                 
             except subprocess.CalledProcessError as e:
@@ -275,12 +324,12 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 subprocess.run(deps_cmd, shell=True, check=True)
                 log_info("Dependências instaladas com sucesso.")
                 
-                # Baixar o script atomic-ossec.sh
-                log_info("Baixando script atomic-ossec.sh...")
+                # Baixar o script atomic installer
+                log_info("Baixando script do instalador Atomic...")
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    atomic_script = os.path.join(temp_dir, "atomic-ossec.sh")
+                    atomic_script = os.path.join(temp_dir, "atomic_installer.sh")
                     
-                    download_cmd = f"wget -q -O {atomic_script} https://updates.atomicorp.com/installers/atomic-ossec.sh"
+                    download_cmd = f"wget -q -O {atomic_script} https://updates.atomicorp.com/installers/atomic"
                     if os.geteuid() != 0 and verificar_sudo_disponivel():
                         download_cmd = "sudo " + download_cmd
                     
@@ -293,28 +342,69 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     
                     subprocess.run(chmod_cmd, shell=True, check=True)
                     
-                    # Executar o script de instalação
-                    log_info("Executando script de instalação atomic-ossec.sh...")
-                    install_cmd = f"{atomic_script}"
+                    # Executar o script de instalação do repositório
+                    log_info("Instalando repositório Atomicorp...")
+                    install_repo_cmd = f"bash {atomic_script}"
                     if os.geteuid() != 0 and verificar_sudo_disponivel():
-                        install_cmd = "sudo " + install_cmd
+                        install_repo_cmd = "sudo " + install_repo_cmd
                     
                     # Usar echo para responder automaticamente às perguntas do script
-                    install_cmd = f"echo -e 'agent\ny\n{ossec_manager}\n' | {install_cmd}"
-                    subprocess.run(install_cmd, shell=True, check=True)
+                    install_repo_cmd = f"echo -e 'yes\nyes\n' | {install_repo_cmd}"
+                    subprocess.run(install_repo_cmd, shell=True, check=True)
+                
+                # Instalar o agente OSSEC
+                log_info(f"Instalando agente OSSEC com manager: {ossec_manager}")
+                install_cmd = "yum install -y ossec-hids-agent"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    install_cmd = "sudo " + install_cmd
+                
+                subprocess.run(install_cmd, shell=True, check=True)
                 
                 # Verificar se a instalação foi bem-sucedida
                 if verificar_ossec_instalado():
-                    log_info("OSSEC instalado com sucesso via atomic-ossec.sh.")
+                    log_info("OSSEC instalado com sucesso via repositório Atomicorp.")
                     
                     # Configurar o OSSEC com o IP do servidor
                     if os.path.exists('/var/ossec/etc/ossec.conf'):
                         log_info(f"Configurando OSSEC manager para: {ossec_manager}")
-                        sed_cmd = f"sed -i 's/<server-ip>.*<\\/server-ip>/<server-ip>{ossec_manager}<\\/server-ip>/g' /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            sed_cmd = "sudo " + sed_cmd
                         
-                        subprocess.run(sed_cmd, shell=True, check=True)
+                        # Criar um arquivo ossec.conf correto
+                        ossec_conf_content = f"""<ossec_config>
+  <client>
+    <server-ip>{ossec_manager}</server-ip>
+    <server-port>1514</server-port>
+    <protocol>tcp</protocol>
+    <config-profile>agent</config-profile>
+    <notify_time>30</notify_time>
+    <auto_restart>yes</auto_restart>
+  </client>
+</ossec_config>
+"""
+                        # Salvar o arquivo temporário
+                        temp_conf = "/tmp/ossec_temp.conf"
+                        with open(temp_conf, 'w') as f:
+                            f.write(ossec_conf_content)
+                        
+                        # Copiar para o local correto
+                        copy_cmd = f"cp {temp_conf} /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            copy_cmd = "sudo " + copy_cmd
+                        
+                        subprocess.run(copy_cmd, shell=True, check=True)
+                        
+                        # Ajustar permissões
+                        chmod_cmd = "chmod 640 /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            chmod_cmd = "sudo " + chmod_cmd
+                        
+                        subprocess.run(chmod_cmd, shell=True, check=True)
+                        
+                        # Ajustar proprietário
+                        chown_cmd = "chown root:ossec /var/ossec/etc/ossec.conf"
+                        if os.geteuid() != 0 and verificar_sudo_disponivel():
+                            chown_cmd = "sudo " + chown_cmd
+                        
+                        subprocess.run(chown_cmd, shell=True, check=True)
                     
                     # Iniciar o agente OSSEC
                     log_info("Iniciando agente OSSEC...")
@@ -325,7 +415,7 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     subprocess.run(start_cmd, shell=True, check=True)
                     return True
                 else:
-                    log_error("Falha na instalação do OSSEC via atomic-ossec.sh.")
+                    log_error("Falha na instalação do OSSEC via repositório Atomicorp.")
                     return False
                 
             except subprocess.CalledProcessError as e:
