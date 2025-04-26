@@ -7,9 +7,9 @@ import platform
 from config import ram, nome, chave_ativacao, codigos, SERVER_URL
 from system_utils import detect_os_distribution, os_update, os_install, verificar_sudo_disponivel
 from ossec_manager import (
-    verificar_wazuh_instalado, verificar_chave_wazuh_importada, 
-    verificar_wazuh_running, reiniciar_wazuh, instalar_wazuh, 
-    configurar_wazuh, setup_wazuh
+    verificar_ossec_instalado, verificar_chave_ossec_importada, 
+    verificar_ossec_running, reiniciar_ossec, instalar_ossec, 
+    configurar_ossec, registrar_ossec_no_guardiao
 )
 from psad_manager import verificar_e_configurar_psad
 from network import enviar_mensagem, salvar_id, carregar_id, ping, res_ping, enviar_softwares, enviar_infos
@@ -65,101 +65,101 @@ def registrar_agente():
         log_exception('Erro durante o registro do agente')
         return None
 
-def registrar_wazuh(id_agente):
-    """Register agent with Wazuh server"""
-    log_info("Iniciando processo de registro do Wazuh")
+def registrar_ossec(id_agente):
+    """Register agent with OSSEC server"""
+    log_info("Iniciando processo de registro do OSSEC")
     
-    # Verify if Wazuh is already installed and has a key imported
-    if verificar_wazuh_instalado() and verificar_chave_wazuh_importada():
-        log_info("Wazuh já está instalado e com chave importada. Nenhuma ação necessária.")
+    # Verify if OSSEC is already installed and has a key imported
+    if verificar_ossec_instalado() and verificar_chave_ossec_importada():
+        log_info("OSSEC já está instalado e com chave importada. Nenhuma ação necessária.")
         return True
     
-    # Data for Wazuh registration
-    message_wazuh = {
+    # Data for OSSEC registration
+    message_ossec = {
         'name': nome,  # Agent name (hostname)
         'id': id_agente,  # Agent ID in Guardian
         'chave': chave_ativacao  # Guardian activation key
     }
     
-    log_debug(f"Enviando solicitação de registro Wazuh: {json.dumps(message_wazuh)}")
+    log_debug(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
     
-    # Send request to Wazuh registration endpoint
+    # Send request to OSSEC registration endpoint
     try:
-        resposta = enviar_mensagem(message_wazuh, 'registro-ossec')
+        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
         
         # Check response
         if resposta.status_code == 200:
             dados_resposta = resposta.json()
-            log_debug(f"Resposta do registro Wazuh: {json.dumps(dados_resposta)}")
+            log_debug(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
             
             if dados_resposta.get('status') == 'sucesso':
-                wazuh_manager = dados_resposta.get('wazuh_manager')
-                log_info(f'Registro no Wazuh bem-sucedido!')
+                ossec_manager = dados_resposta.get('ossec_server')
+                log_info(f'Registro no OSSEC bem-sucedido!')
                 
-                # Install and configure Wazuh
-                if not verificar_wazuh_instalado():
-                    log_info("Instalando Wazuh...")
-                    if not instalar_wazuh(wazuh_manager):
-                        log_error("Falha ao instalar Wazuh.")
+                # Install and configure OSSEC
+                if not verificar_ossec_instalado():
+                    log_info("Instalando OSSEC...")
+                    if not instalar_ossec(ossec_manager):
+                        log_error("Falha ao instalar OSSEC.")
                         return False
                 
-                # Configure Wazuh with the server address
-                log_info(f"Configurando Wazuh para conectar ao servidor: {wazuh_manager}")
-                if not configurar_wazuh(wazuh_manager):
-                    log_error("Falha ao configurar Wazuh.")
+                # Configure OSSEC with the server address
+                log_info(f"Configurando OSSEC para conectar ao servidor: {ossec_manager}")
+                if not configurar_ossec(ossec_manager):
+                    log_error("Falha ao configurar OSSEC.")
                     return False
                 
-                # Restart Wazuh service
-                log_info("Reiniciando serviço Wazuh...")
-                if not reiniciar_wazuh():
-                    log_error("Falha ao reiniciar Wazuh.")
+                # Restart OSSEC service
+                log_info("Reiniciando serviço OSSEC...")
+                if not reiniciar_ossec():
+                    log_error("Falha ao reiniciar OSSEC.")
                     return False
                 
-                log_info("Wazuh configurado e iniciado com sucesso.")
+                log_info("OSSEC configurado e iniciado com sucesso.")
                 return True
             else:
-                log_error(f"Falha no registro Wazuh: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
+                log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
                 return False
         else:
-            log_error(f"Falha na comunicação com o servidor para registro Wazuh. Status: {resposta.status_code}")
+            log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
             return False
     except Exception as e:
-        log_exception(f"Erro durante o registro Wazuh: {str(e)}")
+        log_exception(f"Erro durante o registro OSSEC: {str(e)}")
         return False
 
-def initialize_wazuh(id_agente):
-    """Handle Wazuh initialization"""
+def initialize_ossec(id_agente):
+    """Handle OSSEC initialization"""
     try:
-        # Check if Wazuh is already installed and configured
-        if verificar_wazuh_instalado() and verificar_chave_wazuh_importada():
-            log_info("Wazuh já está instalado e configurado.")
+        # Check if OSSEC is already installed and configured
+        if verificar_ossec_instalado() and verificar_chave_ossec_importada():
+            log_info("OSSEC já está instalado e configurado.")
             return True
             
         # If not installed, install it
-        if not verificar_wazuh_instalado():
-            log_info("Wazuh não está instalado. Iniciando instalação...")
-            if not instalar_wazuh():
-                log_error("Falha na instalação do Wazuh.")
+        if not verificar_ossec_instalado():
+            log_info("OSSEC não está instalado. Iniciando instalação...")
+            if not instalar_ossec():
+                log_error("Falha na instalação do OSSEC.")
                 return False
                 
-        # Register with Wazuh server
-        log_info("Registrando agente no Wazuh...")
-        if not registrar_wazuh(id_agente):
-            log_error("Falha no registro do Wazuh.")
+        # Register with OSSEC server
+        log_info("Registrando agente no OSSEC...")
+        if not registrar_ossec(id_agente):
+            log_error("Falha no registro do OSSEC.")
             return False
             
         # Verify final status
-        if not verificar_wazuh_running():
-            log_warning("Wazuh não está em execução. Tentando reiniciar...")
-            if not reiniciar_wazuh():
-                log_error("Falha ao reiniciar Wazuh.")
+        if not verificar_ossec_running():
+            log_warning("OSSEC não está em execução. Tentando reiniciar...")
+            if not reiniciar_ossec():
+                log_error("Falha ao reiniciar OSSEC.")
                 return False
                 
-        log_info("Wazuh inicializado com sucesso.")
+        log_info("OSSEC inicializado com sucesso.")
         return True
         
     except Exception as e:
-        log_exception("Erro durante a inicialização do Wazuh")
+        log_exception("Erro durante a inicialização do OSSEC")
         return False
 
 def main():
@@ -179,20 +179,20 @@ def main():
                 log_critical("Falha no registro do agente. Saindo...")
                 return
         
-        # Initialize Wazuh
-        if not initialize_wazuh(id_agente):
-            log_critical("Falha na inicialização do Wazuh. Saindo...")
+        # Initialize OSSEC
+        if not initialize_ossec(id_agente):
+            log_critical("Falha na inicialização do OSSEC. Saindo...")
             return
             
-        # Validate Wazuh client.keys file and registration
+        # Validate OSSEC client.keys file and registration
         client_keys_path = "/var/ossec/etc/client.keys"
         if not os.path.exists(client_keys_path) or os.path.getsize(client_keys_path) == 0:
-            log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro Wazuh...")
-            if registrar_wazuh(id_agente):
-                log_info("Registro Wazuh concluído com sucesso.")
-                reiniciar_wazuh()
+            log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro OSSEC...")
+            if registrar_ossec(id_agente):
+                log_info("Registro OSSEC concluído com sucesso.")
+                reiniciar_ossec()
             else:
-                log_error("Falha no registro Wazuh.")
+                log_error("Falha no registro OSSEC.")
         
         # Configure PSAD if needed
         verificar_e_configurar_psad()
@@ -233,10 +233,10 @@ def main():
                             script_id = comando.split(':')[1]
                             execute_script(id_agente, script_id)
                             
-                        elif comando == 'restart_wazuh':
-                            # Restart Wazuh service
-                            log_info("Reiniciando serviço Wazuh...")
-                            reiniciar_wazuh()
+                        elif comando == 'restart_ossec':
+                            # Restart OSSEC service
+                            log_info("Reiniciando serviço OSSEC...")
+                            reiniciar_ossec()
                             
                         else:
                             log_warning(f"Comando desconhecido: {comando}")
