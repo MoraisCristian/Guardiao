@@ -200,6 +200,31 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 if verificar_ossec_instalado():
                     return True
                 
+                # Adicionar repositório Atomicorp
+                log_info("Adicionando repositório Atomicorp...")
+                
+                # Criar diretório temporário para o script
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    atomic_script = os.path.join(temp_dir, "atomic_installer.sh")
+                    
+                    # Baixar o script de instalação do repositório
+                    download_cmd = f"wget -q -O {atomic_script} https://updates.atomicorp.com/installers/atomic"
+                    if os.geteuid() != 0 and verificar_sudo_disponivel():
+                        download_cmd = "sudo " + download_cmd
+                    
+                    log_info("Baixando script do repositório Atomicorp...")
+                    subprocess.run(download_cmd, shell=True, check=True)
+                    
+                    # Executar o script de instalação
+                    install_repo_cmd = f"bash {atomic_script}"
+                    if os.geteuid() != 0 and verificar_sudo_disponivel():
+                        install_repo_cmd = "sudo " + install_repo_cmd
+                    
+                    log_info("Instalando repositório Atomicorp...")
+                    # Usar echo para responder automaticamente às perguntas do script
+                    install_repo_cmd = f"echo -e 'yes\nyes\n' | {install_repo_cmd}"
+                    subprocess.run(install_repo_cmd, shell=True, check=True)
+                
                 # Update repositories
                 log_info("Atualizando repositórios...")
                 update_cmd = "apt-get update"
@@ -211,9 +236,9 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 if verificar_ossec_instalado():
                     return True
                 
-                # Install OSSEC agent
+                # Install OSSEC agent - usando o nome correto do pacote
                 log_info(f"Instalando agente OSSEC com manager: {ossec_manager}")
-                install_cmd = f'apt-get install -y ossec-agent'
+                install_cmd = f'apt-get install -y ossec-hids-agent'
                 if os.geteuid() != 0 and verificar_sudo_disponivel():
                     install_cmd = "sudo " + install_cmd
                 
