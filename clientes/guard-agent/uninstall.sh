@@ -52,51 +52,47 @@ systemctl daemon-reload
 print_message "Removing installation directory..."
 rm -rf $INSTALL_DIR
 
-# Uninstall Wazuh agent
-print_message "Uninstalling Wazuh agent..."
-if command -v wazuh-agent > /dev/null 2>&1 || [ -d "/var/ossec" ]; then
-    # Stop Wazuh service first
-    if [ -f "/var/ossec/bin/wazuh-control" ]; then
-        print_message "Stopping Wazuh service..."
-        /var/ossec/bin/wazuh-control stop || true
-    elif [ -f "/var/ossec/bin/ossec-control" ]; then
-        print_message "Stopping OSSEC service..."
+# Uninstall OSSEC agent
+print_message "Desinstalando agente OSSEC..."
+if [ -d "/var/ossec" ]; then
+    # Stop OSSEC service first
+    if [ -f "/var/ossec/bin/ossec-control" ]; then
+        print_message "Parando serviço OSSEC..."
         /var/ossec/bin/ossec-control stop || true
     fi
     
     # Detect package manager and uninstall
     if command -v apt > /dev/null 2>&1; then
-        print_message "Removing Wazuh agent package using apt..."
-        apt-get remove --purge -y wazuh-agent || true
+        print_message "Removendo pacote ossec-hids-agent usando apt..."
+        apt-get remove --purge -y ossec-hids-agent || true
     elif command -v yum > /dev/null 2>&1; then
-        print_message "Removing Wazuh agent package using yum..."
-        yum remove -y wazuh-agent || true
+        print_message "Removendo pacote ossec-hids-agent usando yum..."
+        yum remove -y ossec-hids-agent || true
     elif command -v dnf > /dev/null 2>&1; then
-        print_message "Removing Wazuh agent package using dnf..."
-        dnf remove -y wazuh-agent || true
+        print_message "Removendo pacote ossec-hids-agent usando dnf..."
+        dnf remove -y ossec-hids-agent || true
     else
-        print_warning "Could not detect package manager. Proceeding with manual removal."
+        print_warning "Não foi possível detectar o gerenciador de pacotes. Prosseguindo com remoção manual."
     fi
     
-    # Remove OSSEC/Wazuh related files
-    print_message "Removing Wazuh/OSSEC related files..."
+    # Remove OSSEC related files
+    print_message "Removendo arquivos relacionados ao OSSEC..."
     rm -rf /var/ossec
     rm -rf /etc/ossec-init.conf
-    rm -rf /etc/systemd/system/wazuh-agent.service
     systemctl daemon-reload
 else
-    print_message "Wazuh agent not found. Skipping uninstallation."
+    print_message "Agente OSSEC não encontrado. Pulando desinstalação."
 fi
 
 # Remove any remaining temporary files
-print_message "Cleaning up temporary files..."
+print_message "Limpando arquivos temporários..."
 rm -f /tmp/guardiao.tar
 rm -f /tmp/guardiao.md5
 rm -f /tmp/guard_config.json.backup
-rm -f /tmp/wazuh-agent.deb
+rm -f /tmp/ossec-hids-agent.deb
 
 # Remove psad
-print_message "Removing psad..."
+print_message "Removendo psad..."
 apt remove -y psad || true
 
-print_message "Guard-Agent has been completely uninstalled!"
+print_message "Guard-Agent foi completamente desinstalado!"
