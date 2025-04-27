@@ -18,25 +18,17 @@ O Guardião é uma plataforma integrada de gestão de riscos para homelabs, comb
 
 ## 🔑 Funcionalidades Principais
 
-| **Categoria** | **Detalhes** |
 
-|----------------------|-----------------------------------------------------------------------------|
-
-| **Detecção Ativa**  | Scans com Trivy, Nmap, OSSEC, Nuclei, OpenVAS |
-| **Detecção Passiva**  | Zeek |
-| **Monitoramento** | Análise de logs em tempo real via ZincSearch |
-
-| **Resposta** | Execução remota de patches, reinicialização de serviços e scripts custom |
-
-| **Análise** | Correlação de eventos e modelagem de vetores de ataque (Em breve) |
-
-| **Automação** | Workflows para instalação de software, updates e mitigação de vulnerabilidades |
-
-  
+| **Categoria**        | **Detalhes**                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| **Detecção Ativa**    | Scans com Trivy, Nmap, OSSEC, Nuclei, OpenVAS                               |
+| **Detecção Passiva**  | Zeek                                                                        |
+| **Monitoramento**     | Análise de logs em tempo real via ZincSearch                                |
+| **Resposta**          | Execução remota de patches, reinicialização de serviços e scripts custom    |
+| **Análise**           | Correlação de eventos e modelagem de vetores de ataque (Em breve)           |
+| **Automação**         | Workflows para instalação de software, updates e mitigação de vulnerabilidades |
 
 ---
-
-  
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -46,8 +38,6 @@ O Guardião é uma plataforma integrada de gestão de riscos para homelabs, comb
 - **Monitoramento**: OSSEC + ZincSearch (alternativa levinha ao Elasticsearch)
 - **Scanners**: Trivy (vulnerabilidades), Nuclei (web apps), OpenVAS (rede)
 - **Orquestração**: Docker Compose 
-
-  
 
 ---
 
