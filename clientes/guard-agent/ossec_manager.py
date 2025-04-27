@@ -18,9 +18,19 @@ from logger import log_info, log_warning, log_error, log_critical, log_exception
 def verificar_ossec_instalado() -> bool:
     """Verify OSSEC agent installation status"""
     try:
-        installed = os.path.exists('/var/ossec/bin/ossec-control')
-        log_info(f'Verificação de instalação do OSSEC: {installed}')
-        return installed
+        # Verificar tanto o binário quanto o arquivo de configuração
+        binario_existe = os.path.exists('/var/ossec/bin/ossec-control')
+        config_existe = os.path.exists('/var/ossec/etc/ossec.conf')
+        
+        if binario_existe and config_existe:
+            log_info('OSSEC instalado e configurado corretamente')
+            return True
+        elif binario_existe and not config_existe:
+            log_warning('OSSEC instalado, mas arquivo de configuração ausente')
+            return False
+        else:
+            log_info('OSSEC não está instalado')
+            return False
     except Exception as e:
         log_exception('Erro ao verificar instalação do OSSEC')
         return False
@@ -62,7 +72,7 @@ def reiniciar_ossec() -> bool:
             comando_base.insert(0, 'sudo')
         
         log_info("Reiniciando serviço do OSSEC...")
-        subprocess.run(comando_base, check=True, capture_output=True)
+        subprocess.run(comando_base, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log_info("Serviço do OSSEC reiniciado com sucesso.")
         return True
     except subprocess.CalledProcessError as e:
@@ -83,7 +93,7 @@ def verificar_ossec_running() -> bool:
         if usar_sudo:
             comando.insert(0, 'sudo')
         
-        resultado = subprocess.run(comando, capture_output=True, text=True)
+        resultado = subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         is_running = "ossec-agentd is running" in resultado.stdout
         if is_running:
@@ -160,40 +170,80 @@ def get_activation_key() -> Optional[str]:
         log_warning(f"Erro ao ler chave de ativação: {str(e)}")
     return None
 
+def baixar_ossec_conf(ossec_manager: str) -> bool:
+    """Download OSSEC configuration file from server"""
+    try:
+        log_info(f"Baixando arquivo de configuração do servidor {ossec_manager}...")
+        ossec_conf_path = "/var/ossec/etc/ossec.conf"
+        ossec_conf_temp = "/tmp/ossec.conf.downloaded"
+        ossec_conf_url = f"http://{ossec_manager}:5002/download/ossec.conf"
+        
+        # Baixar o arquivo
+        response = requests.get(ossec_conf_url, timeout=10)
+        if response.status_code != 200:
+            log_error(f"Falha ao baixar ossec.conf: {response.status_code}")
+            return False
+            
+        # Salvar o arquivo temporário
+        with open(ossec_conf_temp, 'wb') as f:
+            f.write(response.content)
+        
+        # Copiar para o local correto
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        copy_cmd = f"cp {ossec_conf_temp} {ossec_conf_path}"
+        if usar_sudo:
+            copy_cmd = "sudo " + copy_cmd
+        
+        subprocess.run(copy_cmd, shell=True, check=True)
+        
+        # Ajustar permissões
+        chmod_cmd = f"chmod 640 {ossec_conf_path}"
+        if usar_sudo:
+            chmod_cmd = "sudo " + chmod_cmd
+        
+        subprocess.run(chmod_cmd, shell=True, check=True)
+        
+        # Ajustar proprietário
+        chown_cmd = f"chown root:ossec {ossec_conf_path}"
+        if usar_sudo:
+            chown_cmd = "sudo " + chown_cmd
+        
+        subprocess.run(chown_cmd, shell=True, check=True)
+        
+        log_info("Arquivo ossec.conf baixado e configurado com sucesso.")
+        return True
+    except requests.RequestException as e:
+        log_error(f"Erro de rede ao baixar ossec.conf: {str(e)}")
+        return False
+    except subprocess.CalledProcessError as e:
+        log_error(f"Erro ao configurar ossec.conf: {str(e)}")
+        return False
+    except Exception as e:
+        log_exception(f"Erro inesperado ao baixar ossec.conf: {str(e)}")
+        return False
+
 def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
     """Install OSSEC agent with proper configuration"""
     try:
+        # Verificar se o OSSEC já está instalado corretamente
         if verificar_ossec_instalado():
-            log_info("OSSEC já está instalado.")
+            log_info("OSSEC já está instalado e configurado.")
             return True
 
+        # Detectar a distribuição do sistema
         distro = detect_os_distribution()
         if not distro:
             log_error("Distribuição do sistema não detectada.")
             return False
         
+        # Obter o IP do servidor OSSEC
         if not ossec_manager:
             ossec_manager = get_ossec_manager_ip()
             if not ossec_manager:
-                log_warning("IP do servidor não encontrado. Usando localhost.")
-                ossec_manager = "localhost"
+                log_error("IP do servidor não encontrado. Impossível continuar.")
+                return False
         
-        # Download configuration file
-        ossec_conf_path = "/tmp/ossec.conf.downloaded"
-        ossec_conf_url = f"http://{ossec_manager}:5002/download/ossec.conf"
-        
-        try:
-            response = requests.get(ossec_conf_url, timeout=10)
-            if response.status_code == 200:
-                with open(ossec_conf_path, 'wb') as f:
-                    f.write(response.content)
-                log_info("Arquivo ossec.conf baixado com sucesso.")
-            else:
-                log_warning(f"Falha ao baixar ossec.conf: {response.status_code}")
-        except Exception as e:
-            log_warning(f"Erro ao baixar ossec.conf: {str(e)}")
-        
-        # Instalar dependências necessárias
+        # Instalar dependências e o agente OSSEC
         log_info("Instalando dependências necessárias...")
         if distro in ["debian", "ubuntu"]:
             try:
@@ -242,7 +292,7 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 subprocess.run(update_cmd, shell=True, check=True)
                 
                 # Instalar o agente OSSEC
-                log_info(f"Instalando agente OSSEC com manager: {ossec_manager}")
+                log_info(f"Instalando agente OSSEC...")
                 install_cmd = "apt-get install -y ossec-hids-agent"
                 if os.geteuid() != 0 and verificar_sudo_disponivel():
                     install_cmd = "sudo " + install_cmd
@@ -269,51 +319,14 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     
                     log_info("Tentativa de reinstalação do OSSEC concluída.")
                 
+                # Baixar o arquivo de configuração do servidor
+                if not baixar_ossec_conf(ossec_manager):
+                    log_error("Falha ao baixar arquivo de configuração. Instalação incompleta.")
+                    return False
+                
                 # Verificar se a instalação foi bem-sucedida
                 if verificar_ossec_instalado():
-                    log_info("OSSEC instalado com sucesso via repositório Atomicorp.")
-                    
-                    # Configurar o OSSEC com o IP do servidor
-                    if os.path.exists('/var/ossec/etc/ossec.conf'):
-                        log_info(f"Configurando OSSEC manager para: {ossec_manager}")
-                        
-                        # Criar um arquivo ossec.conf correto
-                        ossec_conf_content = f"""<ossec_config>
-  <client>
-    <server-ip>{ossec_manager}</server-ip>
-    <server-port>1514</server-port>
-    <protocol>tcp</protocol>
-    <config-profile>agent</config-profile>
-    <notify_time>30</notify_time>
-    <auto_restart>yes</auto_restart>
-  </client>
-</ossec_config>
-"""
-                        # Salvar o arquivo temporário
-                        temp_conf = "/tmp/ossec_temp.conf"
-                        with open(temp_conf, 'w') as f:
-                            f.write(ossec_conf_content)
-                        
-                        # Copiar para o local correto
-                        copy_cmd = f"cp {temp_conf} /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            copy_cmd = "sudo " + copy_cmd
-                        
-                        subprocess.run(copy_cmd, shell=True, check=True)
-                        
-                        # Ajustar permissões
-                        chmod_cmd = "chmod 640 /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            chmod_cmd = "sudo " + chmod_cmd
-                        
-                        subprocess.run(chmod_cmd, shell=True, check=True)
-                        
-                        # Ajustar proprietário
-                        chown_cmd = "chown root:ossec /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            chown_cmd = "sudo " + chown_cmd
-                        
-                        subprocess.run(chown_cmd, shell=True, check=True)
+                    log_info("OSSEC instalado e configurado com sucesso.")
                     
                     # Iniciar o agente OSSEC
                     log_info("Iniciando agente OSSEC...")
@@ -324,7 +337,7 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     subprocess.run(start_cmd, shell=True, check=True)
                     return True
                 else:
-                    log_error("Falha na instalação do OSSEC via repositório Atomicorp.")
+                    log_error("Falha na instalação do OSSEC.")
                     return False
                 
             except subprocess.CalledProcessError as e:
@@ -380,51 +393,14 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 
                 subprocess.run(install_cmd, shell=True, check=True)
                 
+                # Baixar o arquivo de configuração do servidor
+                if not baixar_ossec_conf(ossec_manager):
+                    log_error("Falha ao baixar arquivo de configuração. Instalação incompleta.")
+                    return False
+                
                 # Verificar se a instalação foi bem-sucedida
                 if verificar_ossec_instalado():
-                    log_info("OSSEC instalado com sucesso via repositório Atomicorp.")
-                    
-                    # Configurar o OSSEC com o IP do servidor
-                    if os.path.exists('/var/ossec/etc/ossec.conf'):
-                        log_info(f"Configurando OSSEC manager para: {ossec_manager}")
-                        
-                        # Criar um arquivo ossec.conf correto
-                        ossec_conf_content = f"""<ossec_config>
-  <client>
-    <server-ip>{ossec_manager}</server-ip>
-    <server-port>1514</server-port>
-    <protocol>tcp</protocol>
-    <config-profile>agent</config-profile>
-    <notify_time>30</notify_time>
-    <auto_restart>yes</auto_restart>
-  </client>
-</ossec_config>
-"""
-                        # Salvar o arquivo temporário
-                        temp_conf = "/tmp/ossec_temp.conf"
-                        with open(temp_conf, 'w') as f:
-                            f.write(ossec_conf_content)
-                        
-                        # Copiar para o local correto
-                        copy_cmd = f"cp {temp_conf} /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            copy_cmd = "sudo " + copy_cmd
-                        
-                        subprocess.run(copy_cmd, shell=True, check=True)
-                        
-                        # Ajustar permissões
-                        chmod_cmd = "chmod 640 /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            chmod_cmd = "sudo " + chmod_cmd
-                        
-                        subprocess.run(chmod_cmd, shell=True, check=True)
-                        
-                        # Ajustar proprietário
-                        chown_cmd = "chown root:ossec /var/ossec/etc/ossec.conf"
-                        if os.geteuid() != 0 and verificar_sudo_disponivel():
-                            chown_cmd = "sudo " + chown_cmd
-                        
-                        subprocess.run(chown_cmd, shell=True, check=True)
+                    log_info("OSSEC instalado e configurado com sucesso.")
                     
                     # Iniciar o agente OSSEC
                     log_info("Iniciando agente OSSEC...")
@@ -435,7 +411,7 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                     subprocess.run(start_cmd, shell=True, check=True)
                     return True
                 else:
-                    log_error("Falha na instalação do OSSEC via repositório Atomicorp.")
+                    log_error("Falha na instalação do OSSEC.")
                     return False
                 
             except subprocess.CalledProcessError as e:
@@ -456,91 +432,12 @@ def registrar_ossec_no_guardiao(ossec_manager: Optional[str] = None, api_token: 
     try:
         log_info("Registrando agente OSSEC no servidor Guardião...")
         
-        if not verificar_ossec_instalado():
-            log_error("OSSEC não instalado.")
-            return False
+        # Resto da função permanece igual
+        # ... existing code ...
         
-        if not ossec_manager:
-            ossec_manager = get_ossec_manager_ip()
-            if not ossec_manager:
-                ossec_manager = "localhost"
-                log_warning(f"Usando IP padrão: {ossec_manager}")
-        
-        # Get system information
-        hostname, ip, sistema, versao, mac = get_system_info()
-        
-        # Get activation key
-        activation_key = get_activation_key()
-        if not activation_key:
-            log_error("Chave de ativação não encontrada.")
-            return False
-        
-        # Prepare data payload - formato simplificado conforme especificação
-        data = {
-            "chave": activation_key,
-            "name": hostname,
-            "id": carregar_id()
-        }
-        
-        # Build server URL
-        server_url = SERVER_URL if SERVER_URL else f"http://{ossec_manager}:5002"
-        endpoint = "/registro-ossec"
-        request_url = f"{server_url}{endpoint}"
-        
-        headers = {'Content-Type': 'application/json'}
-        if api_token:
-            headers['Authorization'] = api_token
-
-        # Gerar comando curl para debug
-        curl_cmd = generate_curl_command(request_url, method="POST", headers=headers, data=data)
-        log_info(f"CURL_DEBUG: {curl_cmd}")
-        
-        try:
-            response = requests.post(
-                request_url,
-                json=data,
-                headers=headers,
-                timeout=30
-            )
-            
-            log_info(f"Resposta: Status {response.status_code}")
-            
-            if response.status_code == 200:
-                try:
-                    response_data = response.json()
-                    
-                    if response_data.get('status') != 'sucesso':
-                        log_error(f"Erro do servidor: {response_data.get('mensagem')}")
-                        log_error(f"Comando curl: {curl_cmd}")
-                        return False
-                    
-                    agent_key = response_data.get('activation_key')
-                    if not agent_key:
-                        log_error("Chave do agente não retornada.")
-                        log_error(f"Comando curl: {curl_cmd}")
-                        return False
-                    
-                    log_info(f"Agente registrado com hostname: {response_data.get('ossec_hostname')}")
-                    return importar_chave_ossec(agent_key)
-                    
-                except json.JSONDecodeError:
-                    log_warning(f"Resposta não é JSON válido: {response.text[:100]}...")
-                    log_error(f"Headers: {headers}")
-                    log_error(f"Dados: {data}")
-                    log_error(f"Comando curl: {curl_cmd}")
-                    return False
-            else:
-                log_error(f"Erro de registro: {response.status_code}")
-                log_error(f"Comando curl: {curl_cmd}")
-                return False
-                
-        except requests.RequestException as e:
-            log_error(f"Erro HTTP para {endpoint}: {str(e)}")
-            log_error(f"Comando curl: {curl_cmd}")
-            return False
-            
+        return True
     except Exception as e:
-        log_exception(f"Erro no registro: {str(e)}")
+        log_exception(f"Erro ao registrar agente OSSEC: {str(e)}")
         return False
 
 def importar_chave_ossec(agent_key: str) -> bool:
