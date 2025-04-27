@@ -107,6 +107,8 @@ A[Início] --> B{Internet OK?}
 
 B -->|Não| C[Espera 5min]
 
+C --> B
+
 B -->|Sim| D[Ping ao Servidor]
 
 D --> E{Atividades?}
