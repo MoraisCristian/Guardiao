@@ -250,6 +250,26 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 subprocess.run(install_cmd, shell=True, check=True)
                 
                 # Verificar se a instalação foi bem-sucedida
+                if not os.path.exists('/var/ossec'):
+                    log_warning("Diretório /var/ossec não encontrado após instalação. Tentando reinstalar...")
+                    
+                    # Reinstalar o pacote OSSEC
+                    reinstall_cmd = "apt-get install --reinstall ossec-hids-agent"
+                    if os.geteuid() != 0 and verificar_sudo_disponivel():
+                        reinstall_cmd = "sudo " + reinstall_cmd
+                    
+                    subprocess.run(reinstall_cmd, shell=True, check=True)
+                    
+                    # Reparar pacotes quebrados
+                    repair_cmd = "dpkg --configure -a"
+                    if os.geteuid() != 0 and verificar_sudo_disponivel():
+                        repair_cmd = "sudo " + repair_cmd
+                    
+                    subprocess.run(repair_cmd, shell=True, check=True)
+                    
+                    log_info("Tentativa de reinstalação do OSSEC concluída.")
+                
+                # Verificar se a instalação foi bem-sucedida
                 if verificar_ossec_instalado():
                     log_info("OSSEC instalado com sucesso via repositório Atomicorp.")
                     

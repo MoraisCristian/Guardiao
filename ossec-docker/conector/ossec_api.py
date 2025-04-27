@@ -136,9 +136,10 @@ def list_agents():
         # Primeiro, obtenha a lista de agentes usando manage_agents
         result = subprocess.run(
             ["/var/ossec/bin/manage_agents", "-l"],
-            capture_output=True,
-            text=True,
-            input="\n",  # Adiciona uma nova linha para evitar que o comando fique esperando input
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            input="\n"  # Adiciona uma nova linha para evitar que o comando fique esperando input
         )
         
         if result.returncode != 0:
@@ -156,8 +157,9 @@ def list_agents():
             # Tente novamente com um método alternativo
             result = subprocess.run(
                 ["grep", "-A", "1", "is available", "/var/ossec/etc/client.keys"],
-                capture_output=True,
-                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
             )
             
             if result.returncode == 0:
@@ -177,8 +179,9 @@ def extract_key(agent_id):
     try:
         result = subprocess.run(
             ["/var/ossec/bin/manage_agents", "-e", agent_id],
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
         )
         if result.returncode != 0:
             return jsonify({"error": result.stderr}), 500
@@ -196,8 +199,9 @@ def remove_agent(agent_id):
     try:
         result = subprocess.run(
             ["/var/ossec/bin/manage_agents", "-r", agent_id],
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
         )
         if result.returncode != 0:
             return jsonify({"error": result.stderr}), 500
@@ -215,16 +219,18 @@ def agents_status():
         # Obter lista de agentes - Wazuh usa agent_control da mesma forma que OSSEC
         agents_result = subprocess.run(
             ["/var/ossec/bin/agent_control", "-l"],
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
         )
         
         if agents_result.returncode != 0:
             # Tente com o comando alternativo do Wazuh
             agents_result = subprocess.run(
                 ["/var/ossec/bin/wazuh-control", "-l"],
-                capture_output=True,
-                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
             )
             if agents_result.returncode != 0:
                 return jsonify({"error": agents_result.stderr}), 500
@@ -251,16 +257,18 @@ def agents_status():
                     # Tente primeiro com agent_control
                     status_result = subprocess.run(
                         ["/var/ossec/bin/agent_control", "-i", agent['id']],
-                        capture_output=True,
-                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        universal_newlines=True
                     )
                     
                     # Se falhar, tente com wazuh-control
                     if status_result.returncode != 0:
                         status_result = subprocess.run(
                             ["/var/ossec/bin/wazuh-control", "-i", agent['id']],
-                            capture_output=True,
-                            text=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            universal_newlines=True
                         )
                     
                     if status_result.returncode == 0:
