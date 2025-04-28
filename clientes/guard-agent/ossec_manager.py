@@ -17,10 +17,20 @@ from logger import log_info, log_warning, log_error, log_critical, log_exception
 # Core OSSEC verification functions
 def executar_comando(comando: List[str], usar_sudo: bool = False, check: bool = False) -> subprocess.CompletedProcess:
     """Executa um comando com ou sem sudo"""
+    cmd_str = ' '.join(comando)
     if usar_sudo and os.geteuid() != 0 and verificar_sudo_disponivel():
         comando.insert(0, 'sudo')
+        cmd_str = 'sudo ' + cmd_str
     
-    return subprocess.run(comando, capture_output=True, text=True, check=check)
+    log_info(f"Executando comando: {cmd_str}")
+    resultado = subprocess.run(comando, capture_output=True, text=True, check=check)
+    log_info(f"Resultado do comando: Código de saída={resultado.returncode}")
+    if resultado.stdout:
+        log_info(f"Saída do comando: {resultado.stdout.strip()}")
+    if resultado.stderr:
+        log_warning(f"Erro do comando: {resultado.stderr.strip()}")
+    
+    return resultado
 
 def verificar_ossec_instalado() -> bool:
     """Verify OSSEC agent installation status"""
@@ -83,6 +93,7 @@ def reiniciar_ossec() -> bool:
         if os.geteuid() != 0 and verificar_sudo_disponivel():
             status_cmd.insert(0, 'sudo')
             
+        log_info(f"Verificando status atual: {' '.join(status_cmd)}")
         status_result = subprocess.run(status_cmd, capture_output=True, text=True)
         log_info(f"Status atual do OSSEC: {status_result.stdout}")
         
@@ -91,12 +102,15 @@ def reiniciar_ossec() -> bool:
         if os.geteuid() != 0 and verificar_sudo_disponivel():
             stop_cmd.insert(0, 'sudo')
             
-        log_info("Parando serviço do OSSEC...")
+        log_info(f"Parando serviço do OSSEC: {' '.join(stop_cmd)}")
         stop_result = subprocess.run(stop_cmd, capture_output=True, text=True)
         log_info(f"Resultado da parada: {stop_result.stdout}")
+        if stop_result.stderr:
+            log_warning(f"Erro ao parar: {stop_result.stderr}")
         
         # Aguardar um momento
         import time
+        log_info("Aguardando 2 segundos...")
         time.sleep(2)
         
         # Iniciar o serviço
@@ -104,13 +118,19 @@ def reiniciar_ossec() -> bool:
         if os.geteuid() != 0 and verificar_sudo_disponivel():
             start_cmd.insert(0, 'sudo')
         
-        log_info("Iniciando serviço do OSSEC...")
-        start_result = subprocess.run(start_cmd, capture_output=True, text=True, check=True)
+        log_info(f"Iniciando serviço do OSSEC: {' '.join(start_cmd)}")
+        start_result = subprocess.run(start_cmd, capture_output=True, text=True)
         log_info(f"Resultado do início: {start_result.stdout}")
+        if start_result.stderr:
+            log_warning(f"Erro ao iniciar: {start_result.stderr}")
         
         # Verificar se o serviço está em execução
+        log_info("Aguardando 2 segundos para verificar status...")
         time.sleep(2)
+        
+        log_info(f"Verificando status final: {' '.join(status_cmd)}")
         check_result = subprocess.run(status_cmd, capture_output=True, text=True)
+        log_info(f"Status final: {check_result.stdout}")
         
         if "ossec-agentd is running" in check_result.stdout:
             log_info("Serviço do OSSEC reiniciado com sucesso.")
