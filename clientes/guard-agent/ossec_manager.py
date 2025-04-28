@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from network import carregar_id, enviar_mensagem
 from system_utils import os_update, os_install, detect_os_distribution, verificar_sudo_disponivel
 from config import SERVER_URL
-from logger import log_info, log_warning, log_error, log_critical, log_exception
+from logger import log_info, log_warning, log_error, log_debug, log_critical, log_exception
 
 # Core OSSEC verification functions
 def executar_comando(comando: List[str], usar_sudo: bool = False, check: bool = False) -> subprocess.CompletedProcess:
