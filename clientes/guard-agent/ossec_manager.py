@@ -63,20 +63,58 @@ def verificar_chave_ossec_importada() -> bool:
 def reiniciar_ossec() -> bool:
     """Restart OSSEC service with proper error handling"""
     try:
+        # Verificar se o arquivo client.keys existe
+        if not os.path.exists("/var/ossec/etc/client.keys"):
+            log_error("Arquivo client.keys não encontrado. Impossível reiniciar o OSSEC.")
+            return False
+            
         # Find appropriate control script
         control_script = '/var/ossec/bin/ossec-control'
         
-        comando_base = [control_script, 'restart']
-        
+        # Verificar status atual
+        status_cmd = [control_script, 'status']
         if os.geteuid() != 0 and verificar_sudo_disponivel():
-            comando_base.insert(0, 'sudo')
+            status_cmd.insert(0, 'sudo')
+            
+        status_result = subprocess.run(status_cmd, capture_output=True, text=True)
+        log_info(f"Status atual do OSSEC: {status_result.stdout}")
         
-        log_info("Reiniciando serviço do OSSEC...")
-        subprocess.run(comando_base, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        log_info("Serviço do OSSEC reiniciado com sucesso.")
-        return True
+        # Parar o serviço primeiro
+        stop_cmd = [control_script, 'stop']
+        if os.geteuid() != 0 and verificar_sudo_disponivel():
+            stop_cmd.insert(0, 'sudo')
+            
+        log_info("Parando serviço do OSSEC...")
+        stop_result = subprocess.run(stop_cmd, capture_output=True, text=True)
+        log_info(f"Resultado da parada: {stop_result.stdout}")
+        
+        # Aguardar um momento
+        import time
+        time.sleep(2)
+        
+        # Iniciar o serviço
+        start_cmd = [control_script, 'start']
+        if os.geteuid() != 0 and verificar_sudo_disponivel():
+            start_cmd.insert(0, 'sudo')
+        
+        log_info("Iniciando serviço do OSSEC...")
+        start_result = subprocess.run(start_cmd, capture_output=True, text=True, check=True)
+        log_info(f"Resultado do início: {start_result.stdout}")
+        
+        # Verificar se o serviço está em execução
+        time.sleep(2)
+        check_result = subprocess.run(status_cmd, capture_output=True, text=True)
+        
+        if "ossec-agentd is running" in check_result.stdout:
+            log_info("Serviço do OSSEC reiniciado com sucesso.")
+            return True
+        else:
+            log_error(f"Serviço não está em execução após reinício: {check_result.stdout}")
+            return False
     except subprocess.CalledProcessError as e:
         log_error(f"Erro ao reiniciar o serviço do OSSEC: {str(e)}")
+        log_error(f"Saída do comando: {e.stdout if hasattr(e, 'stdout') else 'N/A'}")
+        log_error(f"Erro do comando: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
         return False
     except Exception as e:
         log_exception(f"Erro inesperado ao reiniciar OSSEC: {str(e)}")
@@ -449,8 +487,10 @@ def importar_chave_ossec(agent_key: str) -> bool:
             log_info("Chave já importada.")
             return True
         
-        # Log da chave para debug
-        log_info(f"Chave a ser importada: {agent_key}")
+        # Verificar se a chave é válida
+        if not agent_key or len(agent_key.strip()) < 10:
+            log_error(f"Chave de agente inválida ou muito curta: {agent_key}")
+            return False
         
         manage_agents = '/var/ossec/bin/manage_agents'
         if not os.path.exists(manage_agents):
@@ -465,30 +505,58 @@ def importar_chave_ossec(agent_key: str) -> bool:
             
         key_base64 = key_match.group(1)
         
-        # Importa a chave usando echo
-        import_cmd = f"echo 'y' | {manage_agents} -i {key_base64}"
+        # Salvar a chave em um arquivo temporário
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
+            temp_file.write(f"y\n{key_base64}\ny\n")
+            temp_file_path = temp_file.name
+        
+        # Importa a chave usando o arquivo temporário
+        import_cmd = f"cat {temp_file_path} | {manage_agents} -i {key_base64}"
         if os.geteuid() != 0 and verificar_sudo_disponivel():
             import_cmd = f"sudo {import_cmd}"
         
         log_info(f"Executando: {import_cmd}")
         result = subprocess.run(import_cmd, shell=True, capture_output=True, text=True)
         
+        # Remover o arquivo temporário
+        os.unlink(temp_file_path)
+        
         # Log completo do resultado para debug
         log_info(f"Saída do comando: {result.stdout}")
         if result.stderr:
             log_warning(f"Erro do comando: {result.stderr}")
         
-        success_indicators = ["Added successfully", "successfully added"]
-        if not any(indicator in result.stdout.lower() for indicator in success_indicators):
-            log_error(f"Erro na importação. Saída: {result.stdout}")
-            log_error(f"Erro: {result.stderr}")
-            return False
-        
-        log_info("Chave importada com sucesso.")
-        return reiniciar_ossec()
+        # Verificar se a chave foi importada com sucesso
+        if "Added successfully" in result.stdout or "successfully added" in result.stdout.lower():
+            log_info("Chave importada com sucesso.")
             
+            # Verificar se o arquivo client.keys foi criado
+            if os.path.exists("/var/ossec/etc/client.keys"):
+                log_info("Arquivo client.keys criado com sucesso.")
+                
+                # Ajustar permissões do arquivo client.keys
+                chmod_cmd = "chmod 640 /var/ossec/etc/client.keys"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    chmod_cmd = f"sudo {chmod_cmd}"
+                
+                subprocess.run(chmod_cmd, shell=True, check=True)
+                
+                # Ajustar proprietário do arquivo client.keys
+                chown_cmd = "chown root:ossec /var/ossec/etc/client.keys"
+                if os.geteuid() != 0 and verificar_sudo_disponivel():
+                    chown_cmd = f"sudo {chown_cmd}"
+                
+                subprocess.run(chown_cmd, shell=True, check=True)
+                
+                return True
+            else:
+                log_error("Chave importada, mas arquivo client.keys não foi criado.")
+                return False
+        else:
+            log_error("Falha ao importar a chave.")
+            return False
     except Exception as e:
-        log_exception(f"Erro na importação: {str(e)}")
+        log_exception(f"Erro ao importar chave do OSSEC: {str(e)}")
         return False
 
 def configurar_ossec(ossec_manager: Optional[str] = None) -> bool:
