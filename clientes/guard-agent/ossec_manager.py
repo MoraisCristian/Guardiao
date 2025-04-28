@@ -497,9 +497,121 @@ def registrar_ossec_no_guardiao(ossec_manager: Optional[str] = None, api_token: 
     try:
         log_info("Registrando agente OSSEC no servidor Guardião...")
         
-        return True
+        # Carregar ID do agente
+        id_agente = carregar_id()
+        if not id_agente:
+            log_error("ID do agente não encontrado. Impossível registrar no OSSEC.")
+            return False
+            
+        # Preparar dados para registro
+        from config import nome, chave_ativacao
+        
+        message_ossec = {
+            'name': nome,  # Nome do agente (hostname)
+            'id': id_agente,  # ID do agente no Guardian
+            'chave': chave_ativacao  # Chave de ativação do Guardian
+        }
+        
+        log_debug(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
+        
+        # Enviar solicitação para o endpoint de registro OSSEC
+        from network import enviar_mensagem
+        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
+        
+        # Verificar resposta
+        if resposta.status_code == 200:
+            dados_resposta = resposta.json()
+            log_debug(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
+            
+            if dados_resposta.get('status') == 'sucesso':
+                activation_key = dados_resposta.get('activation_key')
+                ossec_hostname = dados_resposta.get('ossec_hostname')
+                ossec_server = dados_resposta.get('ossec_server')
+                
+                log_info(f"Registro no OSSEC bem-sucedido! Servidor: {ossec_server}")
+                
+                # Importar a chave recebida
+                if not importar_chave_ossec(activation_key, ossec_hostname):
+                    log_error("Falha ao importar chave OSSEC.")
+                    return False
+                    
+                # Salvar configuração
+                config_dir = "/var/guardiao"
+                if not os.path.exists(config_dir):
+                    os.makedirs(config_dir, exist_ok=True)
+                    
+                config_file = f"{config_dir}/guard_config.json"
+                config_data = {
+                    "server_ip": ossec_server,
+                    "activation_key": activation_key,
+                    "ossec_hostname": ossec_hostname
+                }
+                
+                with open(config_file, 'w') as f:
+                    json.dump(config_data, f)
+                    
+                log_info("Configuração OSSEC salva com sucesso.")
+                return True
+            else:
+                log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
+                return False
+        else:
+            log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
+            return False
     except Exception as e:
         log_exception(f"Erro ao registrar agente OSSEC: {str(e)}")
+        return False
+
+def importar_chave_ossec(activation_key: str, ossec_hostname: str) -> bool:
+    """Import OSSEC agent key"""
+    try:
+        log_info("Importando chave do agente OSSEC...")
+        
+        if not activation_key or not ossec_hostname:
+            log_error("Chave de ativação ou hostname não fornecidos.")
+            return False
+            
+        # Verificar se o arquivo client.keys já existe
+        client_keys_path = "/var/ossec/etc/client.keys"
+        if os.path.exists(client_keys_path) and verificar_chave_ossec_importada():
+            log_info("Chave já importada anteriormente.")
+            return True
+            
+        # Criar diretório temporário para o arquivo de importação
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
+            temp_file_path = temp_file.name
+            temp_file.write(activation_key)
+            
+        log_debug(f"Arquivo temporário de chave criado: {temp_file_path}")
+        
+        # Comando para importar a chave
+        import_cmd = ['/var/ossec/bin/manage_agents', '-i', temp_file_path]
+        if os.geteuid() != 0 and verificar_sudo_disponivel():
+            import_cmd.insert(0, 'sudo')
+            
+        log_info(f"Executando comando de importação: {' '.join(import_cmd)}")
+        import_result = subprocess.run(import_cmd, 
+                                      stdout=subprocess.PIPE, 
+                                      stderr=subprocess.PIPE, 
+                                      text=True, 
+                                      input='\n\ny\n')  # Responder 'y' para confirmar
+        
+        # Remover arquivo temporário
+        try:
+            os.unlink(temp_file_path)
+        except Exception as e:
+            log_warning(f"Erro ao remover arquivo temporário: {str(e)}")
+        
+        if "successfully" in import_result.stdout:
+            log_info("Chave importada com sucesso.")
+            return True
+        else:
+            log_error(f"Falha ao importar chave: {import_result.stdout}")
+            log_error(f"Erro: {import_result.stderr}")
+            return False
+            
+    except Exception as e:
+        log_exception(f"Erro ao importar chave OSSEC: {str(e)}")
         return False
 
 def importar_chave_ossec(agent_key: str) -> bool:
@@ -598,16 +710,18 @@ def configurar_ossec(ossec_manager: Optional[str] = None) -> bool:
                 ossec_manager = "localhost"
                 log_warning(f"Usando IP padrão: {ossec_manager}")
         
+        # Verificar se já temos a chave importada
         if verificar_chave_ossec_importada():
-            log_info("Agente já registrado.")
+            log_info("Agente já registrado com chave.")
             
             if not verificar_ossec_running():
-                log_warning("Agente não está em execução.")
+                log_warning("Agente não está em execução. Tentando reiniciar...")
                 reiniciar_ossec()
             
             return True
         
-        log_info("Iniciando registro do agente...")
+        # Se não temos chave, registrar o agente
+        log_info("Chave não encontrada. Iniciando registro do agente...")
         return registrar_ossec_no_guardiao(ossec_manager)
         
     except Exception as e:

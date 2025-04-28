@@ -94,6 +94,9 @@ def registrar_ossec(id_agente):
             
             if dados_resposta.get('status') == 'sucesso':
                 ossec_manager = dados_resposta.get('ossec_server')
+                activation_key = dados_resposta.get('activation_key')
+                ossec_hostname = dados_resposta.get('ossec_hostname')
+                
                 log_info(f'Registro no OSSEC bem-sucedido!')
                 
                 # Install and configure OSSEC
@@ -107,6 +110,12 @@ def registrar_ossec(id_agente):
                 log_info(f"Configurando OSSEC para conectar ao servidor: {ossec_manager}")
                 if not configurar_ossec(ossec_manager):
                     log_error("Falha ao configurar OSSEC.")
+                    return False
+                
+                # Importar a chave recebida
+                log_info("Importando chave OSSEC...")
+                if not importar_chave_ossec(activation_key, ossec_hostname):
+                    log_error("Falha ao importar chave OSSEC.")
                     return False
                 
                 # Restart OSSEC service
@@ -131,8 +140,8 @@ def initialize_ossec(id_agente):
     """Handle OSSEC initialization"""
     try:
         # Check if OSSEC is already installed and configured
-        if verificar_ossec_instalado() and verificar_chave_ossec_importada():
-            log_info("OSSEC já está instalado e configurado.")
+        if verificar_ossec_instalado() and verificar_chave_ossec_importada() and verificar_ossec_running():
+            log_info("OSSEC já está instalado, configurado e em execução.")
             return True
             
         # If not installed, install it
@@ -141,12 +150,16 @@ def initialize_ossec(id_agente):
             if not instalar_ossec():
                 log_error("Falha na instalação do OSSEC.")
                 return False
-                
-        # Register with OSSEC server
-        log_info("Registrando agente no OSSEC...")
-        if not registrar_ossec(id_agente):
-            log_error("Falha no registro do OSSEC.")
-            return False
+        
+        # Verificar se a chave está importada
+        if not verificar_chave_ossec_importada():
+            log_info("Chave OSSEC não encontrada. Iniciando registro...")
+            # Register with OSSEC server
+            if not registrar_ossec(id_agente):
+                log_error("Falha no registro do OSSEC.")
+                return False
+        else:
+            log_info("Chave OSSEC já importada.")
             
         # Verify final status
         if not verificar_ossec_running():
@@ -190,7 +203,8 @@ def main():
             log_info("Arquivo client.keys não encontrado ou vazio. Iniciando registro OSSEC...")
             if registrar_ossec(id_agente):
                 log_info("Registro OSSEC concluído com sucesso.")
-                reiniciar_ossec()
+                if not reiniciar_ossec():
+                    log_error("Falha ao reiniciar OSSEC após registro.")
             else:
                 log_error("Falha no registro OSSEC.")
         
