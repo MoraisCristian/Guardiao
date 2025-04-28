@@ -15,6 +15,13 @@ from config import SERVER_URL
 from logger import log_info, log_warning, log_error, log_critical, log_exception
 
 # Core OSSEC verification functions
+def executar_comando(comando: List[str], usar_sudo: bool = False, check: bool = False) -> subprocess.CompletedProcess:
+    """Executa um comando com ou sem sudo"""
+    if usar_sudo and os.geteuid() != 0 and verificar_sudo_disponivel():
+        comando.insert(0, 'sudo')
+    
+    return subprocess.run(comando, capture_output=True, text=True, check=check)
+
 def verificar_ossec_instalado() -> bool:
     """Verify OSSEC agent installation status"""
     try:
@@ -469,9 +476,6 @@ def registrar_ossec_no_guardiao(ossec_manager: Optional[str] = None, api_token: 
     """Register OSSEC agent with Guardian server"""
     try:
         log_info("Registrando agente OSSEC no servidor Guardião...")
-        
-        # Resto da função permanece igual
-        # ... existing code ...
         
         return True
     except Exception as e:
