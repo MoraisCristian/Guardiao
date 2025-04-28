@@ -14,6 +14,47 @@ def encrypt_base64(data):
         log_exception(f"Erro ao codificar dados em base64")
         raise
 
+def enviar_mensagem(data, tipo):
+    """Send message to server with improved logging"""
+    try:
+        from config import SERVER_URL, codigos
+        from logger import log_info, log_error, log_debug
+        
+        # Determinar URL com base no tipo de mensagem
+        if tipo == 'registro':
+            url = f"{SERVER_URL}/api/registro"
+        elif tipo == 'ping':
+            url = f"{SERVER_URL}/api/ping"
+        elif tipo == 'softwares':
+            url = f"{SERVER_URL}/api/softwares"
+        elif tipo == 'infos':
+            url = f"{SERVER_URL}/api/infos"
+        elif tipo == 'registro-ossec':
+            url = f"{SERVER_URL}/api/registro-ossec"
+        else:
+            url = f"{SERVER_URL}/api/{tipo}"
+        
+        # Registrar detalhes da requisição
+        log_info(f"Enviando requisição para: {url}")
+        log_info(f"Dados da requisição: {json.dumps(data)}")
+        
+        # Enviar requisição
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url, json=data, headers=headers)
+        
+        # Registrar detalhes da resposta
+        log_info(f"Resposta recebida: Status={response.status_code}")
+        try:
+            resp_data = response.json()
+            log_info(f"Conteúdo da resposta: {json.dumps(resp_data)}")
+        except:
+            log_info(f"Conteúdo da resposta (texto): {response.text[:200]}")
+        
+        return response
+    except Exception as e:
+        log_error(f"Erro ao enviar mensagem: {str(e)}")
+        raise
+
 def enviar_mensagem(message, endpoint):
     """Send message to server"""
     url = f'{SERVER_URL}/{endpoint}'

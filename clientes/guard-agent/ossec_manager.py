@@ -9,7 +9,7 @@ import socket
 import uuid
 import tempfile
 from typing import Optional, Dict, Any, List, Tuple
-from network import carregar_id
+from network import carregar_id, enviar_mensagem
 from system_utils import os_update, os_install, detect_os_distribution, verificar_sudo_disponivel
 from config import SERVER_URL
 from logger import log_info, log_warning, log_error, log_critical, log_exception
@@ -490,6 +490,73 @@ def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
             return False
     except Exception as e:
         log_exception(f"Falha na instalação: {str(e)}")
+        return False
+
+def registrar_ossec_no_guardiao(ossec_manager: str) -> bool:
+    """Register OSSEC agent with Guardian server"""
+    try:
+        log_info("Registrando agente OSSEC no servidor Guardião...")
+        
+        # Carregar ID do agente
+        id_agente = carregar_id()
+        if not id_agente:
+            log_error("ID do agente não encontrado. Impossível registrar OSSEC.")
+            return False
+        
+        # Preparar dados para registro
+        from config import nome, chave_ativacao
+        
+        message_ossec = {
+            'name': nome,
+            'id': id_agente,
+            'chave': chave_ativacao
+        }
+        
+        log_info(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
+        
+        # Enviar solicitação para o endpoint de registro OSSEC
+        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
+        
+        # Registrar detalhes da resposta
+        log_info(f"Resposta do servidor: Status={resposta.status_code}")
+        
+        # Verificar resposta
+        if resposta.status_code == 200:
+            dados_resposta = resposta.json()
+            log_info(f"Conteúdo da resposta: {json.dumps(dados_resposta)}")
+            
+            if dados_resposta.get('status') == 'sucesso':
+                ossec_server = dados_resposta.get('ossec_server', ossec_manager)
+                activation_key = dados_resposta.get('activation_key')
+                
+                if not activation_key:
+                    log_error("Chave de ativação não recebida do servidor.")
+                    return False
+                
+                log_info(f"Registro no OSSEC bem-sucedido! Servidor: {ossec_server}")
+                
+                # Importar a chave recebida
+                log_info("Importando chave OSSEC...")
+                if not importar_chave_ossec(activation_key):
+                    log_error("Falha ao importar chave OSSEC.")
+                    return False
+                
+                # Reiniciar OSSEC
+                log_info("Reiniciando serviço OSSEC...")
+                if not reiniciar_ossec():
+                    log_error("Falha ao reiniciar OSSEC.")
+                    return False
+                
+                log_info("OSSEC registrado e configurado com sucesso.")
+                return True
+            else:
+                log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
+                return False
+        else:
+            log_error(f"Falha na comunicação com o servidor. Status: {resposta.status_code}")
+            return False
+    except Exception as e:
+        log_exception(f"Erro ao registrar agente OSSEC: {str(e)}")
         return False
 
 def registrar_ossec_no_guardiao(ossec_manager: Optional[str] = None, api_token: Optional[str] = None) -> bool:

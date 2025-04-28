@@ -95,7 +95,6 @@ def registrar_ossec(id_agente):
             if dados_resposta.get('status') == 'sucesso':
                 ossec_manager = dados_resposta.get('ossec_server')
                 activation_key = dados_resposta.get('activation_key')
-                ossec_hostname = dados_resposta.get('ossec_hostname')
                 
                 log_info(f'Registro no OSSEC bem-sucedido!')
                 
@@ -114,7 +113,7 @@ def registrar_ossec(id_agente):
                 
                 # Importar a chave recebida
                 log_info("Importando chave OSSEC...")
-                if not importar_chave_ossec(activation_key, ossec_hostname):
+                if not importar_chave_ossec(activation_key):
                     log_error("Falha ao importar chave OSSEC.")
                     return False
                 
