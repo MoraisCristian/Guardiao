@@ -297,18 +297,19 @@ def importar_chave_ossec(activation_key: str) -> bool:
                 activation_key = parts[1].strip()
                 log_info(f"Chave extraída: {activation_key[:10]}...")
         
-        # Comando para importar a chave diretamente, sem criar arquivo temporário
+        # Comando para importar a chave diretamente como string
         usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
         
-        # O comando correto é passar a chave diretamente como argumento
-        import_cmd = ['echo', 'y|', f'{OSSEC_BIN_PATH}/manage_agents', '-i', activation_key]
+        # Usar shell=True para permitir o pipe
+        cmd_str = f"echo 'y' | {OSSEC_BIN_PATH}/manage_agents -i {activation_key}"
         if usar_sudo:
-            import_cmd.insert(0, 'sudo')
+            cmd_str = f"sudo {cmd_str}"
             
-        log_info(f"Executando comando de importação: {' '.join(import_cmd)}")
+        log_info(f"Executando comando de importação: {cmd_str}")
         
-        # Executar o comando sem usar input, pois a chave já está sendo passada como argumento
-        import_result = subprocess.run(import_cmd, 
+        # Executar o comando com shell=True para permitir o pipe
+        import_result = subprocess.run(cmd_str, 
+                                      shell=True,
                                       stdout=subprocess.PIPE, 
                                       stderr=subprocess.PIPE, 
                                       text=True)
@@ -322,80 +323,7 @@ def importar_chave_ossec(activation_key: str) -> bool:
             log_info("Chave importada com sucesso.")
             return True
         else:
-            # Tentar método alternativo se o primeiro falhar
-            log_warning("Método padrão falhou, tentando método alternativo...")
-            
-            # Alguns sistemas precisam da chave em um arquivo
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
-                temp_file_path = temp_file.name
-                temp_file.write(activation_key)
-                
-            log_info(f"Arquivo temporário de chave criado: {temp_file_path}")
-            
-            # Comando alternativo
-            alt_cmd = [f'{OSSEC_BIN_PATH}/manage_agents', '-i', temp_file_path]
-            if usar_sudo:
-                alt_cmd.insert(0, 'sudo')
-                
-            log_info(f"Executando comando alternativo: {' '.join(alt_cmd)}")
-            alt_result = subprocess.run(alt_cmd, 
-                                      stdout=subprocess.PIPE, 
-                                      stderr=subprocess.PIPE, 
-                                      text=True)
-            
-            # Remover arquivo temporário
-            try:
-                os.unlink(temp_file_path)
-            except Exception as e:
-                log_warning(f"Erro ao remover arquivo temporário: {str(e)}")
-            
-            if "Added" in alt_result.stdout or "successfully" in alt_result.stdout:
-                log_info("Chave importada com sucesso (método alternativo).")
-                return True
-            else:
-                # Último recurso: tentar importar manualmente
-                log_warning("Métodos anteriores falharam, tentando importação manual...")
-                
-                # Extrair componentes da chave (ID NOME IP CHAVE)
-                try:
-                    key_parts = activation_key.split(' ')
-                    if len(key_parts) >= 4:
-                        agent_id = key_parts[0]
-                        agent_name = key_parts[1]
-                        agent_ip = key_parts[2]
-                        agent_key = ' '.join(key_parts[3:])
-                        
-                        # Criar o arquivo client.keys diretamente
-                        client_keys_content = f"{agent_id} {agent_name} {agent_ip} {agent_key}"
-                        
-                        write_cmd = f"echo '{client_keys_content}' > {CLIENT_KEYS}"
-                        if usar_sudo:
-                            write_cmd = f"sudo bash -c \"{write_cmd}\""
-                            
-                        log_info("Criando arquivo client.keys manualmente...")
-                        subprocess.run(write_cmd, shell=True, check=True)
-                        
-                        # Ajustar permissões
-                        chmod_cmd = f"chmod 640 {CLIENT_KEYS}"
-                        if usar_sudo:
-                            chmod_cmd = f"sudo {chmod_cmd}"
-                            
-                        subprocess.run(chmod_cmd, shell=True, check=True)
-                        
-                        # Ajustar proprietário
-                        chown_cmd = f"chown root:ossec {CLIENT_KEYS}"
-                        if usar_sudo:
-                            chown_cmd = f"sudo {chown_cmd}"
-                            
-                        subprocess.run(chown_cmd, shell=True, check=True)
-                        
-                        log_info("Arquivo client.keys criado manualmente com sucesso.")
-                        return True
-                except Exception as e:
-                    log_error(f"Falha na importação manual: {str(e)}")
-            
-            log_error(f"Falha ao importar chave: {alt_result.stdout}")
-            log_error(f"Erro: {alt_result.stderr}")
+            log_error(f"Falha ao importar chave: {import_result.stdout}")
             return False
             
     except Exception as e:
