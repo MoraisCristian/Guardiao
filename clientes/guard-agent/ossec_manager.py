@@ -301,7 +301,7 @@ def importar_chave_ossec(activation_key: str) -> bool:
         usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
         
         # O comando correto é passar a chave diretamente como argumento
-        import_cmd = [f'{OSSEC_BIN_PATH}/manage_agents', '-i', activation_key]
+        import_cmd = ['echo', 'y|', f'{OSSEC_BIN_PATH}/manage_agents', '-i', activation_key]
         if usar_sudo:
             import_cmd.insert(0, 'sudo')
             
