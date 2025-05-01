@@ -275,3 +275,19 @@ def deletar_chave(chave_id):
     if chave_d:
         db.session.delete(chave_d)
         db.session.commit()
+
+class WebScan(db.Model):
+    __tablename__ = 'webscans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='agendado')  # agendado, executando, finalizado, desativado
+    recorrencia = db.Column(db.String(50), nullable=True)  # ex: 'diário', 'semanal', 'mensal', 'único'
+    ultima_execucao = db.Column(db.DateTime, nullable=True)
+    proxima_execucao = db.Column(db.DateTime, nullable=True)
+    ativo = db.Column(db.Boolean, default=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<WebScan {self.nome}>'
