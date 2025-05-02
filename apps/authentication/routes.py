@@ -506,49 +506,6 @@ def receber_dados():
                 return jsonify({'status': 'sucesso'}), 200
     return jsonify({'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}), 400
 
-@blueprint.route('/ping', methods=['POST'])
-def ping():
-    data = request.get_json()
-    chave = data.get('chave')
-    id_agente = data.get('id')
-
-    output = jsonify({"mensagem": "Não há atividades pendentes na fila.", "fila": None, 'codigo': codigos['ping']}), 200
-
-    agentes = Agentes.query.all()
-
-    for agente in agentes:
-        if agente.chave == chave:
-            if int(agente.id) == int(id_agente):
-                registrar_atividade(chave, id_agente, 'ping')
-                fila = Fila.query.all()
-                for atividade in fila:
-                    if atividade.chave == chave:
-                        if int(atividade.id_agente) == int(id_agente):
-                            resposta = {
-                                "mensagem": "Há atividades pendentes na fila.",
-                                "fila": atividade.fila,
-                                'codigo': codigos['ping']
-                            }
-                            # Adiciona o nome do script se a atividade for do tipo script
-                            if atividade.fila == 'script':
-                                resposta['script_name'] = atividade.script_name
-                            output = jsonify(resposta), 200
-    return output
-
-# Rota para registro de novos agentes
-@blueprint.route('/registro', methods=['POST'])
-def registro():
-    supostachave = request.json.get('chave')
-    host = request.json.get('host')
-
-    chaves = Chaves.query.all()
-    for chave in chaves:
-        if supostachave == chave.chave:
-            id_agente = registrar_agente(chave.chave, host)
-            registrar_atividade(chave.chave, id_agente, 'registro')
-            return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
-    return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
-
 # Rota para download de arquivos
 @blueprint.route('/download/<arquivo>', methods=['GET'])
 def download(arquivo):
@@ -611,77 +568,6 @@ def remove_agent_route(agent_id):
         return render_template('home/page-500.html', 
                               error=f"Erro ao remover agente: {str(e)}"), 500
 
-
-# Add these routes for agent removal workflow
-
-@blueprint.route('/remove_agent/<int:id_agente>', methods=['GET'])
-def remove_agent(id_agente):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-            
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=id_agente).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', error="Agente não encontrado"), 404
-        
-        # Get agent info for display
-        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-        
-        if not agent_info:
-            return render_template('home/page-404.html', error="Informações do agente não encontradas"), 404
-        
-        # Show confirmation page
-        return render_template('home/remove_agent.html', agent=agent, agent_info=agent_info)
-            
-    except Exception as e:
-        print(f"Erro ao preparar remoção do agente: {str(e)}")
-        return render_template('home/page-500.html', error=f"Erro ao preparar remoção do agente: {str(e)}"), 500
-
-@blueprint.route('/confirm_remove_agent/<int:id_agente>', methods=['POST'])
-def confirm_remove_agent(id_agente):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-        
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=id_agente).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', error="Agente não encontrado"), 404
-        
-        # Get agent info
-        agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-        
-        # Verify confirmation text
-        confirmation = request.form.get('confirmation', '')
-        if not agent_info or confirmation != agent_info.hostname:
-            flash("Confirmação incorreta. A remoção do agente foi cancelada.", "danger")
-            return redirect(url_for('authentication_blueprint.remove_agent', id_agente=id_agente))
-        
-        # Call the remover_agente function
-        result = remover_agente(id_agente)
-        
-        if isinstance(result, tuple) and len(result) == 2:
-            success, message = result
-        else:
-            # Handle the case where remover_agente doesn't return a tuple
-            success = result
-            message = "Agente removido com sucesso" if success else "Falha ao remover o agente"
-        
-        if success:
-            flash("Agente removido com sucesso", "success")
-            return redirect(url_for('home_blueprint.agentes'))
-        else:
-            flash(f"Falha ao remover o agente: {message}", "danger")
-            return redirect(url_for('authentication_blueprint.remove_agent', id_agente=id_agente))
-            
-    except Exception as e:
-        print(f"Erro ao remover agente: {str(e)}")
-        return render_template('home/page-500.html', error=f"Erro ao remover agente: {str(e)}"), 500
 
 from apps.authentication.models import WebScan
 
@@ -809,70 +695,6 @@ def registro():
             return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
     return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
 
-# Rota para download de arquivos
-@blueprint.route('/download/<arquivo>', methods=['GET'])
-def download(arquivo):
-    caminho = 'downloads/' + arquivo
-    return send_file(caminho, as_attachment=True)
-
-# Nova rota para download de scripts
-@blueprint.route('/download/script/<int:id_agente>/<script_name>', methods=['GET'])
-def download_script(id_agente, script_name):
-    try:
-        # Construir o caminho para o script
-        caminho = f'/app/apps/utils/{id_agente}/{script_name}'
-        
-        # Verificar se o arquivo existe
-        if not os.path.exists(caminho):
-            return jsonify({'erro': 'Script não encontrado'}), 404
-            
-        return send_file(caminho, as_attachment=True)
-    except Exception as e:
-        return jsonify({'erro': str(e)}), 500
-
-@blueprint.route('/remove_agent/<int:agent_id>', methods=['GET'])
-def remove_agent_route(agent_id):
-    try:
-        # Check if user is authenticated
-        if not current_user.is_authenticated:
-            return redirect(url_for('authentication_blueprint.login'))
-            
-        # Get the agent from database
-        agent = Agentes.query.filter_by(id=agent_id).first()
-        
-        if not agent:
-            return render_template('home/page-404.html', 
-                                  error="Agente não encontrado"), 404
-        
-        # Call the remover_agente function that was imported
-        success = remover_agente(agent_id)
-        
-        if success:
-            # Log the activity
-            nova_atividade = Atividades(
-                agente_id=agent_id,
-                tipo="remocao",
-                descricao=f"Agente {agent.hostname} removido manualmente",
-                data=datetime.utcnow()
-            )
-            db.session.add(nova_atividade)
-            db.session.commit()
-            
-            # Redirect to the agents list with success message
-            return redirect(url_for('home_blueprint.agentes', 
-                                   msg="Agente removido com sucesso"))
-        else:
-            # If removal failed, redirect with error message
-            return redirect(url_for('home_blueprint.agentes', 
-                                   error="Falha ao remover o agente"))
-            
-    except Exception as e:
-        print(f"Erro ao remover agente: {str(e)}")
-        return render_template('home/page-500.html', 
-                              error=f"Erro ao remover agente: {str(e)}"), 500
-
-
-# Add these routes for agent removal workflow
 
 @blueprint.route('/remove_agent/<int:id_agente>', methods=['GET'])
 def remove_agent(id_agente):
