@@ -1,0 +1,65 @@
+{% extends 'layouts/base.html' %}
+{% block title %} Scans Web {% endblock title %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card h-100">
+        <div class="card-header pb-0 p-3 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Scans de Vulnerabilidades Web</h6>
+          <a href="{{ url_for('authentication_blueprint.novo_webscan') }}" class="btn btn-primary btn-sm">Novo Scan</a>
+        </div>
+        <div class="card-body p-3">
+          {% if scans %}
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>URL</th>
+                  <th>Status</th>
+                  <th>Recorrência</th>
+                  <th>Última Execução</th>
+                  <th>Próxima Execução</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for scan in scans %}
+                <tr>
+                  <td>{{ scan.nome }}</td>
+                  <td>{{ scan.url }}</td>
+                  <td>{{ scan.status }}</td>
+                  <td>{{ scan.recorrencia or '-' }}</td>
+                  <td>{{ scan.ultima_execucao.strftime('%d/%m/%Y %H:%M') if scan.ultima_execucao else '-' }}</td>
+                  <td>{{ scan.proxima_execucao.strftime('%d/%m/%Y %H:%M') if scan.proxima_execucao else '-' }}</td>
+                  <td>
+                    <a href="{{ url_for('authentication_blueprint.editar_webscan', id=scan.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('authentication_blueprint.desativar_webscan', id=scan.id) }}" method="post" style="display:inline;">
+                      <button type="submit" class="btn btn-sm btn-secondary">Desativar</button>
+                    </form>
+                    <form action="{{ url_for('authentication_blueprint.clonar_webscan', id=scan.id) }}" method="post" style="display:inline;">
+                      <button type="submit" class="btn btn-sm btn-info">Clonar</button>
+                    </form>
+                    <form action="{{ url_for('authentication_blueprint.excluir_webscan', id=scan.id) }}" method="post" style="display:inline;">
+                      <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-5">
+            <h5>Você ainda não possui scans cadastrados.</h5>
+            <p>Crie seu primeiro scan em menos de 2 minutos clicando no botão abaixo!</p>
+            <a href="{{ url_for('authentication_blueprint.novo_webscan') }}" class="btn btn-success">Criar Scan</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
