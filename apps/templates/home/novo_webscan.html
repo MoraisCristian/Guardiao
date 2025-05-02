@@ -1,0 +1,82 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Novo Web Scan {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+          <div class="card mt-4">
+            <div class="card-header p-3">
+              <h5 class="mb-0">Criar Novo Web Scan</h5>
+              <p class="text-sm mb-0">
+                Preencha os detalhes para agendar um novo scan de vulnerabilidades web.
+              </p>
+            </div>
+            <div class="card-body p-3">
+              <form role="form" method="POST" action="{{ url_for('authentication_blueprint.novo_webscan') }}">
+                
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="nome">Nome do Scan</label>
+                      <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="url">URL Alvo</label>
+                      <input type="url" class="form-control" id="url" name="url" placeholder="https://exemplo.com" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="recorrencia">Recorrência</label>
+                      <select class="form-control" id="recorrencia" name="recorrencia">
+                        <option value="Nunca">Nunca</option>
+                        <option value="Diário">Diário</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Mensal">Mensal</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="proxima_execucao">Próxima Execução (Opcional)</label>
+                      <input type="datetime-local" class="form-control" id="proxima_execucao" name="proxima_execucao">
+                    </div>
+                     <small class="text-muted">Deixe em branco para executar imediatamente (se recorrência for 'Nunca') ou para seguir a recorrência.</small>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-12 text-end">
+                    <button type="submit" class="btn bg-gradient-primary mt-3 mb-0">Salvar Scan</button>
+                    <a href="{{ url_for('authentication_blueprint.webscans') }}" class="btn btn-outline-secondary mt-3 mb-0 ms-2">Cancelar</a>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% include "includes/footer.html" %}
+
+    </div>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+<script>
+  // Opcional: Adicionar lógica JS se necessário, por exemplo, para mostrar/ocultar data de execução
+</script>
+{% endblock javascripts %}
