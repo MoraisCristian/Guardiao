@@ -1,6 +1,6 @@
 {% extends 'layouts/base.html' %}
 
-{% block title %} Novo Web Scan {% endblock title %}
+{% block title %} Editar Web Scan {% endblock title %}
 
 <!-- Specific CSS goes HERE -->
 {% block stylesheets %}{% endblock stylesheets %}
@@ -12,25 +12,25 @@
         <div class="col-lg-8 col-md-10 mx-auto">
           <div class="card mt-4">
             <div class="card-header p-3">
-              <h5 class="mb-0">Criar Novo Web Scan</h5>
+              <h5 class="mb-0">Editar Web Scan</h5>
               <p class="text-sm mb-0">
-                Preencha os detalhes para agendar um novo scan de vulnerabilidades web.
+                Atualize os detalhes do scan de vulnerabilidades web.
               </p>
             </div>
             <div class="card-body p-3">
-              <form role="form" method="POST" action="{{ url_for('authentication_blueprint.novo_webscan') }}">
+              <form role="form" method="POST" action="{{ url_for('authentication_blueprint.editar_webscan', id=scan.id) }}">
                 
                 <div class="row">
                   <div class="col-md-6">
                     <div class="input-group input-group-static mb-4">
                       <label for="nome">Nome do Scan</label>
-                      <input type="text" class="form-control" id="nome" name="nome" required>
+                      <input type="text" class="form-control" id="nome" name="nome" value="{{ scan.nome }}" required>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <div class="input-group input-group-static mb-4">
                       <label for="url">URL Alvo</label>
-                      <input type="url" class="form-control" id="url" name="url" placeholder="https://exemplo.com" required>
+                      <input type="url" class="form-control" id="url" name="url" value="{{ scan.url }}" placeholder="https://exemplo.com" required>
                     </div>
                   </div>
                 </div>
@@ -40,18 +40,18 @@
                     <div class="input-group input-group-static mb-4">
                       <label for="recorrencia">Recorrência</label>
                       <select class="form-control" id="recorrencia" name="recorrencia" onchange="toggleDiasSemana()">
-                        <option value="Nunca">Nunca</option>
-                        <option value="Diário">Diário</option>
-                        <option value="Semanal">Semanal</option>
-                        <option value="Quinzenal">Quinzenal</option>
-                        <option value="Mensal">Mensal</option>
+                        <option value="Nunca" {% if scan.recorrencia == 'Nunca' %}selected{% endif %}>Nunca</option>
+                        <option value="Diário" {% if scan.recorrencia == 'Diário' %}selected{% endif %}>Diário</option>
+                        <option value="Semanal" {% if scan.recorrencia == 'Semanal' %}selected{% endif %}>Semanal</option>
+                        <option value="Quinzenal" {% if scan.recorrencia == 'Quinzenal' %}selected{% endif %}>Quinzenal</option>
+                        <option value="Mensal" {% if scan.recorrencia == 'Mensal' %}selected{% endif %}>Mensal</option>
                       </select>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <div class="input-group input-group-static mb-4">
                       <label for="hora_execucao">Hora de Execução</label>
-                      <input type="time" class="form-control" id="hora_execucao" name="hora_execucao">
+                      <input type="time" class="form-control" id="hora_execucao" name="hora_execucao" value="{{ scan.hora_execucao.strftime('%H:%M') if scan.hora_execucao else '' }}">
                     </div>
                   </div>
                 </div>
@@ -60,31 +60,31 @@
                   <div class="col-md-12">
                     <label class="form-label">Dias da Semana</label>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_0" name="dias_semana" value="0">
+                      <input class="form-check-input" type="checkbox" id="dia_0" name="dias_semana" value="0" {% if '0' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_0">Domingo</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_1" name="dias_semana" value="1">
+                      <input class="form-check-input" type="checkbox" id="dia_1" name="dias_semana" value="1" {% if '1' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_1">Segunda</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_2" name="dias_semana" value="2">
+                      <input class="form-check-input" type="checkbox" id="dia_2" name="dias_semana" value="2" {% if '2' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_2">Terça</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_3" name="dias_semana" value="3">
+                      <input class="form-check-input" type="checkbox" id="dia_3" name="dias_semana" value="3" {% if '3' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_3">Quarta</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_4" name="dias_semana" value="4">
+                      <input class="form-check-input" type="checkbox" id="dia_4" name="dias_semana" value="4" {% if '4' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_4">Quinta</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_5" name="dias_semana" value="5">
+                      <input class="form-check-input" type="checkbox" id="dia_5" name="dias_semana" value="5" {% if '5' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_5">Sexta</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="dia_6" name="dias_semana" value="6">
+                      <input class="form-check-input" type="checkbox" id="dia_6" name="dias_semana" value="6" {% if '6' in dias_semana %}checked{% endif %}>
                       <label class="form-check-label" for="dia_6">Sábado</label>
                     </div>
                   </div>
@@ -92,7 +92,7 @@
 
                 <div class="row">
                   <div class="col-md-12 text-end">
-                    <button type="submit" class="btn bg-gradient-primary mt-3 mb-0">Salvar Scan</button>
+                    <button type="submit" class="btn bg-gradient-primary mt-3 mb-0">Atualizar Scan</button>
                     <a href="{{ url_for('authentication_blueprint.webscans') }}" class="btn btn-outline-secondary mt-3 mb-0 ms-2">Cancelar</a>
                   </div>
                 </div>

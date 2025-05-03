@@ -283,7 +283,9 @@ class WebScan(db.Model):
     nome = db.Column(db.String(120), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     status = db.Column(db.String(50), nullable=False, default='agendado')  # agendado, executando, finalizado, desativado
-    recorrencia = db.Column(db.String(50), nullable=True)  # ex: 'diário', 'semanal', 'mensal', 'único'
+    recorrencia = db.Column(db.String(50), nullable=True)  # ex: 'Nunca', 'Diário', 'Semanal', 'Quinzenal', 'Mensal'
+    dias_semana = db.Column(db.String(100), nullable=True)  # Armazena os dias da semana como string (ex: "1,3,5" para segunda, quarta e sexta)
+    hora_execucao = db.Column(db.Time, nullable=True)  # Hora específica para execução
     ultima_execucao = db.Column(db.DateTime, nullable=True)
     proxima_execucao = db.Column(db.DateTime, nullable=True)
     ativo = db.Column(db.Boolean, default=True)

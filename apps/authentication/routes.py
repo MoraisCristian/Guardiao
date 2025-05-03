@@ -585,16 +585,51 @@ def novo_webscan():
         nome = request.form['nome']
         url = request.form['url']
         recorrencia = request.form['recorrencia']
-        proxima_execucao = request.form.get('proxima_execucao')
-        if proxima_execucao:
-            from datetime import datetime
-            proxima_execucao = datetime.strptime(proxima_execucao, '%Y-%m-%dT%H:%M')
-        else:
-            proxima_execucao = None
+        hora_execucao_str = request.form.get('hora_execucao')
+        
+        # Processar dias da semana (checkboxes)
+        dias_semana = request.form.getlist('dias_semana')
+        dias_semana_str = ','.join(dias_semana) if dias_semana else None
+        
+        # Converter hora de execução para objeto Time
+        hora_execucao = None
+        if hora_execucao_str:
+            from datetime import datetime, time
+            hora, minuto = hora_execucao_str.split(':')
+            hora_execucao = time(int(hora), int(minuto))
+        
+        # Calcular próxima execução com base na recorrência e dias selecionados
+        proxima_execucao = None
+        if recorrencia != 'Nunca' and hora_execucao:
+            from datetime import datetime, timedelta
+            agora = datetime.now()
+            
+            # Definir a próxima execução com base na hora especificada
+            proxima_execucao = datetime.combine(agora.date(), hora_execucao)
+            
+            # Se a hora já passou hoje, avançar para o próximo dia
+            if proxima_execucao < agora:
+                proxima_execucao += timedelta(days=1)
+            
+            # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
+            if recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and dias_semana:
+                # Converter dias da semana para inteiros
+                dias_int = [int(dia) for dia in dias_semana]
+                
+                # Encontrar o próximo dia da semana válido
+                dias_para_adicionar = 0
+                while proxima_execucao.weekday() not in dias_int:
+                    proxima_execucao += timedelta(days=1)
+                    dias_para_adicionar += 1
+                    if dias_para_adicionar > 7:  # Evitar loop infinito
+                        break
+        
         scan = WebScan(
             nome=nome,
             url=url,
             recorrencia=recorrencia,
+            dias_semana=dias_semana_str,
+            hora_execucao=hora_execucao,
             proxima_execucao=proxima_execucao,
             usuario_id=current_user.id
         )
@@ -611,13 +646,56 @@ def editar_webscan(id):
         scan.nome = request.form['nome']
         scan.url = request.form['url']
         scan.recorrencia = request.form['recorrencia']
-        proxima_execucao = request.form.get('proxima_execucao')
-        if proxima_execucao:
-            from datetime import datetime
-            scan.proxima_execucao = datetime.strptime(proxima_execucao, '%Y-%m-%dT%H:%M')
+        
+        # Processar dias da semana (checkboxes)
+        dias_semana = request.form.getlist('dias_semana')
+        scan.dias_semana = ','.join(dias_semana) if dias_semana else None
+        
+        # Processar hora de execução
+        hora_execucao_str = request.form.get('hora_execucao')
+        if hora_execucao_str:
+            from datetime import time
+            hora, minuto = hora_execucao_str.split(':')
+            scan.hora_execucao = time(int(hora), int(minuto))
+        else:
+            scan.hora_execucao = None
+        
+        # Recalcular próxima execução
+        if scan.recorrencia != 'Nunca' and scan.hora_execucao:
+            from datetime import datetime, timedelta
+            agora = datetime.now()
+            
+            # Definir a próxima execução com base na hora especificada
+            proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
+            
+            # Se a hora já passou hoje, avançar para o próximo dia
+            if proxima_execucao < agora:
+                proxima_execucao += timedelta(days=1)
+            
+            # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
+            if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
+                # Converter dias da semana para inteiros
+                dias_int = [int(dia) for dia in scan.dias_semana.split(',')]
+                
+                # Encontrar o próximo dia da semana válido
+                dias_para_adicionar = 0
+                while proxima_execucao.weekday() not in dias_int:
+                    proxima_execucao += timedelta(days=1)
+                    dias_para_adicionar += 1
+                    if dias_para_adicionar > 7:  # Evitar loop infinito
+                        break
+            
+            scan.proxima_execucao = proxima_execucao
+        else:
+            scan.proxima_execucao = None
+        
         db.session.commit()
         return redirect(url_for('authentication_blueprint.webscans'))
-    return render_template('home/editar_webscan.html', scan=scan)
+    
+    # Preparar dias da semana para o template
+    dias_semana = scan.dias_semana.split(',') if scan.dias_semana else []
+    
+    return render_template('home/editar_webscan.html', scan=scan, dias_semana=dias_semana)
 
 # Desativar scan
 @blueprint.route('/webscans/desativar/<int:id>', methods=['POST'])
@@ -637,6 +715,8 @@ def clonar_webscan(id):
         url=scan.url,
         status='agendado',
         recorrencia=scan.recorrencia,
+        dias_semana=scan.dias_semana,
+        hora_execucao=scan.hora_execucao,
         proxima_execucao=scan.proxima_execucao,
         usuario_id=scan.usuario_id
     )
