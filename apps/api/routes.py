@@ -490,8 +490,11 @@ class Registro(Resource):
         for chave in chaves:
             if supostachave == chave.chave:
                 id_agente = registrar_agente(chave.chave, host)
-                registrar_atividade(chave.chave, id_agente, 'registro')
-                return {'id_agente': id_agente, 'codigo': codigos['registro']}, 200
+                if id_agente is not None:
+                    registrar_atividade(chave.chave, id_agente, 'registro')
+                    return {'status': 'sucesso', 'id': id_agente, 'codigo': codigos['registro']}, 200
+                else:
+                    return {'status': 'erro', 'mensagem': 'Falha ao registrar agente', 'codigo': codigos['registro']}, 500
         return {'erro': 'Chave não autorizada', 'codigo': codigos['registro']}, 403
 
 @api.route('/remove_agent/<int:id_agente>')

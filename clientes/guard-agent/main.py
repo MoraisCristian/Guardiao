@@ -26,7 +26,7 @@ def registrar_agente():
         log_debug(f'Informações do sistema coletadas: {json.dumps(info)}')
         
         # Ensure hostname is not None
-        hostname = nome if nome else socket.gethostname()
+        hostname = nome 
         log_info(f'Usando hostname: {hostname}')
         
         # Prepare registration data with fallbacks for missing keys
