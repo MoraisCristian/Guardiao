@@ -336,6 +336,7 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
 
 @api.route('/envios', methods=['POST'])
 class ReceberDados(Resource):
+    @api.doc('post_envios')
     def post(self):
         """
         Endpoint para receber dados dos agentes
@@ -360,6 +361,7 @@ class ReceberDados(Resource):
 # Rota para download de arquivos
 @api.route('/download/<arquivo>')
 class Download(Resource):
+    @api.doc('get_download')
     def get(self, arquivo):
         """
         Endpoint para download de arquivos como install.sh e uninstall.sh
@@ -382,6 +384,7 @@ class Download(Resource):
 # Rota para download de scripts
 @api.route('/download/script/<int:id_agente>/<script_name>')
 class DownloadScript(Resource):
+    @api.doc('get_download_script')
     def get(self, id_agente, script_name):
         """
         Endpoint para download de scripts específicos para um agente
@@ -400,12 +403,14 @@ class DownloadScript(Resource):
 
 @api.route('/ping')
 class Ping(Resource):
+    @api.doc('get_ping')
     def get(self):
         """
         Endpoint para verificar se o servidor está online (GET)
         """
         return {"status": "online", "codigo": codigos['ping']}, 200
         
+    @api.doc('post_ping')
     def post(self):
         """
         Endpoint para verificar se o servidor está online (POST) e verificar atividades pendentes
@@ -458,6 +463,7 @@ class Ping(Resource):
 # Rota para registro de novos agentes
 @api.route('/registro')
 class Registro(Resource):
+    @api.doc('post_registro')
     def post(self):
         """
         Endpoint para registrar novos agentes no sistema
@@ -475,6 +481,7 @@ class Registro(Resource):
 
 @api.route('/remove_agent/<int:id_agente>')
 class RemoveAgent(Resource):
+    @api.doc('get_remove_agent')
     def get(self, id_agente):
         """
         Endpoint para exibir a página de confirmação de remoção de agente
@@ -505,6 +512,7 @@ class RemoveAgent(Resource):
 
 @api.route('/confirm_remove_agent/<int:id_agente>')
 class ConfirmRemoveAgent(Resource):
+    @api.doc('post_confirm_remove_agent')
     def post(self, id_agente):
         """
         Endpoint para confirmar a remoção de um agente
