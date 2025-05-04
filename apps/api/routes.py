@@ -588,14 +588,27 @@ class RegistroOssec(Resource):
         Endpoint para registrar novos agentes no sistema
         """
         supostachave = request.json.get('chave')
-        host = request.json.get('host')
+        host = request.json.get('name')  # Usa o name se fornecido, senão usa o host
 
-        print(host)
 
         chaves = Chaves.query.all()
         for chave in chaves:
             if supostachave == chave.chave:
                 id_agente = registrar_agente(chave.chave, host)
                 registrar_atividade(chave.chave, id_agente, 'registro')
-                return {'id_agente': id_agente, 'codigo': codigos['registro']}, 200
+                
+                # Registrar no OSSEC e obter informações
+                ossec_id, ossec_hostname, ossec_key = register_ossec_agent(host, id_agente)
+                
+                # Retornar resposta no formato esperado pelo cliente
+                return {
+                    'status': 'sucesso',
+                    'id_agente': id_agente,
+                    'ossec_server': 'ossec',  # Endereço do servidor OSSEC
+                    'ossec_id': ossec_id,
+                    'ossec_hostname': ossec_hostname,
+                    'chave_ossec': ossec_key,
+                    'codigo': codigos['registro']
+                }, 200
+                
         return {'erro': 'Chave não autorizada', 'codigo': codigos['registro']}, 403
