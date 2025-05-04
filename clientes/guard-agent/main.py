@@ -14,7 +14,7 @@ from ossec_manager import (
 from psad_manager import verificar_e_configurar_psad
 from network import enviar_mensagem, salvar_id, carregar_id, ping, res_ping, enviar_softwares, enviar_infos
 from utils import collect_softwares, collect_system_info, execute_script, vuln_scan
-from logger import log_info, log_warning, log_error, log_debug, log_critical, log_exception
+from logger import log_info, log_warning, log_error, log_info, log_critical, log_exception
 
 def registrar_agente():
     """Register agent with the server"""
@@ -23,7 +23,7 @@ def registrar_agente():
     try:
         # Collect system information for registration
         info = collect_system_info()
-        log_debug(f'Informações do sistema coletadas: {json.dumps(info)}')
+        log_info(f'Informações do sistema coletadas: {json.dumps(info)}')
         
         # Ensure hostname is not None
         hostname = nome 
@@ -41,12 +41,12 @@ def registrar_agente():
         }
         
         # Send registration request
-        log_debug(f'Enviando dados de registro: {json.dumps(data)}')
+        log_info(f'Enviando dados de registro: {json.dumps(data)}')
         resposta = enviar_mensagem(data, 'registro')
         
         if resposta.status_code == 200:
             dados_resposta = resposta.json()
-            log_debug(f'Resposta do servidor: {json.dumps(dados_resposta)}')
+            log_info(f'Resposta do servidor: {json.dumps(dados_resposta)}')
             
             if dados_resposta.get('status') == 'sucesso':
                 id_agente = dados_resposta.get('id')
@@ -230,7 +230,7 @@ def main():
     try:
         # Load agent ID if exists
         id_agente = carregar_id()
-        log_debug(f'ID do agente carregado: {id_agente}')
+        log_info(f'ID do agente carregado: {id_agente}')
         
         # Register agent if not registered
         if not id_agente:
@@ -261,7 +261,7 @@ def main():
                     try:
                         # Converter a resposta HTTP para um dicionário JSON
                         ping_data = ping_response.json()
-                        log_debug(f"Dados recebidos do servidor: {json.dumps(ping_data)}")
+                        log_info(f"Dados recebidos do servidor: {json.dumps(ping_data)}")
                         
                         # Verificar se há comandos na fila
                         if 'fila' in ping_data and ping_data['fila']:
