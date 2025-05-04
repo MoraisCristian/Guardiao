@@ -354,9 +354,6 @@ def salvar_configuracao_ossec(ossec_server: str, activation_key: str, ossec_host
         log_exception(f"Erro ao salvar configuração OSSEC: {str(e)}")
         return False
 
-# Modificar qualquer função que faça comunicação com o servidor
-# para garantir que use o prefixo /api/
-
 def registrar_ossec_no_guardiao():
     """Registra o agente OSSEC no servidor Guardian"""
 
@@ -415,27 +412,59 @@ def registrar_ossec_no_guardiao():
         curl_cmd = f"curl -X POST -H 'Content-Type: application/json' -d '{json.dumps(data)}' {endpoint_url}"
         
         log_info(f"Registrando OSSEC no Guardian. Endpoint: {endpoint_url}")
-        log_debug(f"Payload: {json.dumps(data)}")
-        log_debug(f"Comando curl para troubleshooting: {curl_cmd}")
+        log_info(f"Payload: {json.dumps(data)}")
+        log_info(f"Comando curl para troubleshooting: {curl_cmd}")
         
         # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
         response = enviar_mensagem(data, endpoint)
         
-        if response and response.status_code == 200:
-            response_data = response.json()
-            log_info(f"Registro OSSEC bem-sucedido. ID do agente: {response_data.get('id_agente')}")
-            return response_data
+        # Log detalhado da resposta para diagnóstico
+        if response:
+            log_info(f"Resposta recebida. Status: {response.status_code}")
+            log_info(f"Headers: {dict(response.headers)}")
+            
+            try:
+                response_data = response.json()
+                log_info(f"Corpo da resposta: {json.dumps(response_data)}")
+                
+                if response.status_code == 200:
+                    # Verificar se a resposta contém os campos esperados
+                    if 'id_agente' in response_data:
+                        log_info(f"Registro OSSEC bem-sucedido. ID do agente: {response_data.get('id_agente')}")
+                        
+                        # Verificar se há uma chave de ativação na resposta
+                        if 'chave_ossec' in response_data:
+                            log_info(f"Chave OSSEC recebida: {response_data.get('chave_ossec')[:10]}...")
+                        else:
+                            log_warning("Resposta não contém chave OSSEC")
+                            
+                        return response_data
+                    else:
+                        log_error("Resposta não contém ID do agente")
+                        log_error(f"Resposta completa: {json.dumps(response_data)}")
+                        return None
+                else:
+                    log_error(f"Falha no registro OSSEC. Status: {response.status_code}")
+                    log_error(f"Resposta: {json.dumps(response_data)}")
+                    return None
+            except ValueError as e:
+                # A resposta não é um JSON válido
+                log_error(f"Erro ao processar resposta JSON: {str(e)}")
+                log_error(f"Corpo da resposta (texto): {response.text[:500]}")
+                return None
         else:
-            status_code = response.status_code if response else "Sem resposta"
-            log_error(f"Falha no registro OSSEC. Status: {status_code}")
-            log_error(f"Endpoint: {endpoint_url}")
-            log_error(f"Payload: {json.dumps(data)}")
-            log_error(f"Resposta: {response.text if hasattr(response, 'text') else 'Sem corpo de resposta'}")
+            log_error("Nenhuma resposta recebida do servidor")
             log_error(f"Comando para troubleshooting: {curl_cmd}")
             return None
             
+    except requests.exceptions.RequestException as e:
+        log_error(f"Erro de rede ao registrar OSSEC: {str(e)}")
+        return None
     except Exception as e:
         log_exception(f"Erro ao registrar OSSEC no Guardian: {str(e)}")
+        log_error(f"Tipo de exceção: {type(e).__name__}")
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
         return None
 
 def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
