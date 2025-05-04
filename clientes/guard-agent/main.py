@@ -244,10 +244,6 @@ def main():
         ossec_inicializado = initialize_ossec(id_agente)
         if not ossec_inicializado:
             log_critical("Falha na inicialização do OSSEC. Continuando sem OSSEC...")
-            # Continuamos a execução mesmo sem OSSEC para evitar loop de reinicialização
-        
-        # Não tentamos registrar novamente se o initialize_ossec já falhou
-        # Isso evita o loop de registro
         
         # Configure PSAD if needed
         verificar_e_configurar_psad()
@@ -256,45 +252,49 @@ def main():
         log_info("Iniciando loop principal do agente...")
         while True:
             try:
-                # Send ping to server
+                log_info("Enviando ping para o servidor...")
                 ping_response = ping(id_agente)
                 
                 if ping_response:
-                    log_debug("Ping bem-sucedido")
+                    log_info("Ping bem-sucedido")
                     
-                    # Converter a resposta HTTP para um dicionário JSON
-                    ping_data = ping_response.json() if hasattr(ping_response, 'json') else {}
-                    
-                    # Process commands from server
-                    for comando in ping_data.get('comandos', []):
-                        log_info(f"Executando comando: {comando}")
+                    try:
+                        # Converter a resposta HTTP para um dicionário JSON
+                        ping_data = ping_response.json()
+                        log_debug(f"Dados recebidos do servidor: {json.dumps(ping_data)}")
                         
-                        if comando == 'softwares':
-                            # Collect and send software list
-                            softwares = collect_softwares()
-                            enviar_softwares(id_agente, softwares)
+                        # Verificar se há comandos na fila
+                        if 'fila' in ping_data and ping_data['fila']:
+                            log_info(f"Comando recebido da fila: {ping_data['fila']}")
                             
-                        elif comando == 'infos':
-                            # Collect and send system info
-                            infos = collect_system_info()
-                            enviar_infos(id_agente, infos)
-                            
-                        elif comando == 'vuln':
-                            # Run vulnerability scan
-                            vuln_scan(id_agente)
-                            
-                        elif comando.startswith('script:'):
-                            # Execute custom script
-                            script_id = comando.split(':')[1]
-                            execute_script(id_agente, script_id)
-                            
-                        elif comando == 'restart_ossec':
-                            # Restart OSSEC service
-                            log_info("Reiniciando serviço OSSEC...")
-                            reiniciar_ossec()
-                            
+                            # Processar comando da fila
+                            if ping_data['fila'] == 'softwares':
+                                log_info("Coletando lista de softwares...")
+                                softwares = collect_softwares()
+                                enviar_softwares(id_agente, softwares)
+                                
+                            elif ping_data['fila'] == 'infos':
+                                log_info("Coletando informações do sistema...")
+                                infos = collect_system_info()
+                                enviar_infos(id_agente, infos)
+                                
+                            elif ping_data['fila'] == 'vuln-scan':
+                                log_info("Iniciando varredura de vulnerabilidades...")
+                                vuln_scan(id_agente)
+                                
+                            elif ping_data['fila'] == 'script' and 'script_name' in ping_data:
+                                log_info(f"Executando script: {ping_data['script_name']}")
+                                execute_script(id_agente, ping_data['script_name'])
+                                
+                            else:
+                                log_warning(f"Comando desconhecido na fila: {ping_data['fila']}")
                         else:
-                            log_warning(f"Comando desconhecido: {comando}")
+                            log_info("Nenhum comando na fila")
+                            
+                    except json.JSONDecodeError as e:
+                        log_error(f"Erro ao decodificar resposta JSON: {str(e)}")
+                    except Exception as e:
+                        log_exception(f"Erro ao processar resposta do servidor: {str(e)}")
                 else:
                     log_warning("Falha no ping ao servidor")
                     
@@ -302,6 +302,7 @@ def main():
                 log_exception(f"Erro no loop principal: {str(e)}")
                 
             # Sleep before next iteration
+            log_info("Aguardando 60 segundos antes do próximo ping...")
             time.sleep(60)
             
     except Exception as e:

@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import time
-from logger import log_info, log_error, log_debug, log_exception
+from logger import log_info, log_error, log_debug, log_exception, log_warning
 from config import API_URL, SERVER_URL
 
 def enviar_mensagem(data, endpoint):
@@ -48,8 +48,28 @@ def carregar_id():
 def ping(id_agente):
     """Envia ping para o servidor"""
     try:
-        data = {"id": id_agente}
-        return enviar_mensagem(data, '/ping')
+        log_info(f"Enviando ping para o servidor com ID: {id_agente}")
+        data = {
+            "id": id_agente,
+            "chave": chave_ativacao
+        }
+        log_debug(f"Dados do ping: {json.dumps(data)}")
+        
+        resposta = enviar_mensagem(data, '/ping')
+        
+        if resposta:
+            log_info(f"Resposta do ping recebida. Status: {resposta.status_code}")
+            try:
+                dados = resposta.json()
+                log_debug(f"Dados da resposta: {json.dumps(dados)}")
+                return resposta
+            except json.JSONDecodeError as e:
+                log_error(f"Erro ao decodificar resposta JSON: {str(e)}")
+                return None
+        else:
+            log_warning("Nenhuma resposta recebida do servidor")
+            return None
+            
     except Exception as e:
         log_exception(f"Erro ao enviar ping: {str(e)}")
         return None
