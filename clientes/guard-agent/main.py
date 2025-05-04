@@ -74,12 +74,25 @@ def registrar_ossec(id_agente):
         log_info("OSSEC já está instalado e com chave importada. Nenhuma ação necessária.")
         return True
     
+    # Obter o hostname do sistema
+    hostname = socket.gethostname()
+    log_info(f"Usando hostname do sistema: {hostname}")
+    
     # Dados para registro no OSSEC
     message_ossec = {
-        'name': nome,  # Nome do agente (hostname)
-        'id': id_agente,  # ID do agente no Guardian
+        'name': hostname,  # Nome do agente (hostname do sistema)
+        'id': id_agente,   # ID do agente no Guardian
         'chave': chave_ativacao  # Chave de ativação do Guardian
     }
+    
+    # Verificar se algum campo está vazio ou None
+    for key, value in message_ossec.items():
+        if value is None or (isinstance(value, str) and value.strip() == ''):
+            log_error(f"Campo '{key}' está vazio ou nulo. Valor: {value}")
+            if key == 'name':
+                # Forçar o uso do hostname do sistema
+                message_ossec[key] = hostname
+                log_info(f"Forçando uso do hostname do sistema: {hostname}")
     
     # Gerar equivalente curl para troubleshooting
     endpoint = 'registro-ossec'

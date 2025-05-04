@@ -374,17 +374,40 @@ def registrar_ossec_no_guardiao():
             log_error("ID do agente não encontrado. Impossível registrar OSSEC.")
             return None
             
+        # Garantir que o hostname não seja nulo
         if not hostname or hostname.strip() == '':
             # Fallback para o hostname do sistema se o valor estiver vazio
             hostname = socket.gethostname()
             log_warning(f"Hostname vazio, usando hostname do sistema: {hostname}")
+        
+        # Verificar se o hostname foi obtido corretamente
+        if not hostname or hostname.strip() == '':
+            log_error("Não foi possível obter o hostname do sistema.")
+            # Último recurso: usar um nome fixo
+            hostname = "agent_" + str(id_agente)
+            log_warning(f"Usando hostname fixo: {hostname}")
+        
         # Ajustar os dados para corresponder ao que a rota /registro-ossec espera
         data = {
             "chave": chave_ativacao,  # A chave de ativação
-            "host": hostname,   # O hostname formatado
+            "host": hostname,         # O hostname formatado
             "name": hostname,         # O nome do host
             "id": id_agente           # O ID do agente
         }
+        
+        # Verificar se algum campo está vazio ou None
+        for key, value in data.items():
+            if value is None or (isinstance(value, str) and value.strip() == ''):
+                log_error(f"Campo '{key}' está vazio ou nulo. Valor: {value}")
+                if key == 'name' or key == 'host':
+                    # Forçar o uso do hostname do sistema ou um valor fixo
+                    system_hostname = socket.gethostname()
+                    if system_hostname and system_hostname.strip() != '':
+                        data[key] = system_hostname
+                        log_info(f"Forçando uso do hostname do sistema para '{key}': {system_hostname}")
+                    else:
+                        data[key] = "agent_" + str(id_agente)
+                        log_info(f"Forçando uso de nome fixo para '{key}': {data[key]}")
         
         # Gerar comando curl para troubleshooting
         endpoint = 'registro-ossec'
