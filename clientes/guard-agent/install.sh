@@ -77,7 +77,7 @@ download_config() {
     chmod 755 "$INSTALL_DIR"
     
     # Download configuration file with retry logic
-    CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guard_config.json"
+    CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/api/download/guard_config.json"
     print_message "Downloading configuration from $CONFIG_URL"
     
     for i in {1..3}; do
@@ -154,7 +154,7 @@ check_for_update() {
     print_message "Checking for updates..."
     
     # Download MD5 file from server
-    REMOTE_MD5_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.md5"
+    REMOTE_MD5_URL="http://${SERVER_IP}:${SERVER_PORT}/api/download/guardiao.md5"
     if ! curl -s -f -o /tmp/guardiao.md5 "$REMOTE_MD5_URL"; then
         print_error "Failed to download MD5 file from server"
         return 1
@@ -186,7 +186,7 @@ check_for_update() {
 test_server_connectivity() {
     print_message "Testing server connectivity..."
     
-    if curl -s -f -m 5 "http://${SERVER_IP}:${SERVER_PORT}/ping" > /dev/null; then
+    if curl -s -f -m 5 "http://${SERVER_IP}:${SERVER_PORT}/api/ping" > /dev/null; then
         print_message "Server connection test successful"
         return 0
     else
@@ -208,7 +208,7 @@ download_and_install() {
     fi
     
     # Download the package with retry logic
-    DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/download/guardiao.tar"
+    DOWNLOAD_URL="http://${SERVER_IP}:${SERVER_PORT}/api/download/guardiao.tar"
     print_message "Downloading Guard-Agent from $DOWNLOAD_URL"
     
     for i in {1..3}; do
@@ -311,19 +311,19 @@ manual_register_agent() {
     PAYLOAD="{\"chave\":\"$ACTIVATION_KEY\",\"host\":\"$HOSTNAME\",\"sistema\":\"$OS_NAME\",\"versao\":\"$OS_VERSION\",\"ip\":\"$IP_ADDRESS\",\"mac\":\"$MAC_ADDRESS\"}"
     
     print_message "Sending registration request to server..."
-    print_message "Server URL: http://${SERVER_IP}:${SERVER_PORT}/registro"
+    print_message "Server URL: http://${SERVER_IP}:${SERVER_PORT}/api/registro"
     print_message "Registration payload: $PAYLOAD"
     
     # Create a temporary file for response logging
     RESPONSE_LOG="/tmp/guardiao_registration_response.log"
     echo "=== Guardião Registration Request $(date) ===" > "$RESPONSE_LOG"
-    echo "REQUEST URL: http://${SERVER_IP}:${SERVER_PORT}/registro" >> "$RESPONSE_LOG"
+    echo "REQUEST URL: http://${SERVER_IP}:${SERVER_PORT}/api/registro" >> "$RESPONSE_LOG"
     echo "REQUEST PAYLOAD: $PAYLOAD" >> "$RESPONSE_LOG"
     echo "REQUEST HEADERS: Content-Type: application/json" >> "$RESPONSE_LOG"
     echo "===" >> "$RESPONSE_LOG"
     
     # Send registration request
-    curl -v -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "http://${SERVER_IP}:${SERVER_PORT}/registro" >> "$RESPONSE_LOG" 2>&1
+    curl -v -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "http://${SERVER_IP}:${SERVER_PORT}/api/registro" >> "$RESPONSE_LOG" 2>&1
     CURL_EXIT=$?
     
     echo "===" >> "$RESPONSE_LOG"
