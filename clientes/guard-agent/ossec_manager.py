@@ -228,7 +228,7 @@ def baixar_ossec_conf(ossec_manager: str) -> bool:
     try:
         log_info(f"Baixando arquivo de configuração do servidor {ossec_manager}...")
         ossec_conf_temp = "/tmp/ossec.conf.downloaded"
-        ossec_conf_url = f"http://{ossec_manager}:5002/download/ossec.conf"
+        ossec_conf_url = f"{SERVER_URL}/ossec.conf"
         
         # Baixar o arquivo
         response = requests.get(ossec_conf_url, timeout=10)

@@ -398,7 +398,6 @@ def vuln_scan():
         
         return scan_result
 
-
 def baixar_script(script_name, id_agente, server_url):
     """Download script from server"""
     url = f'{server_url}/download/script/{id_agente}/{script_name}'
