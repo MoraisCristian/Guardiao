@@ -479,23 +479,26 @@ class Ping(Resource):
                 agente = Agentes.query.filter_by(chave=chave, id=id_agente).first()
                 if agente:
                     # Verifica se há atividades pendentes na fila
-                    atividades_pendentes = Fila.query.filter_by(chave=chave, id_agente=id_agente).all()
+                    atividades_pendentes = Fila.query.filter_by(id_agente=id_agente, chave=chave).order_by(Fila.id.asc()).first()
                     
-                    for atividade in atividades_pendentes:
+                    if atividades_pendentes:
                         resposta = {
                             "mensagem": "Há atividades pendentes na fila.",
-                            "fila": atividade.fila,
+                            "fila": atividades_pendentes.fila,
                             'codigo': codigos['ping']
                         }
                         
                         # Adiciona o nome do script se a atividade for do tipo script
-                        if atividade.fila == 'script':
-                            resposta['script_name'] = atividade.script_name
+                        if atividades_pendentes.fila == 'script':
+                            resposta['script_name'] = atividades_pendentes.script_name
                         
-                        # Retorna a primeira atividade encontrada
-                        return resposta, 200
+                        print(f"[DEBUG] Atividade encontrada na fila: {atividades_pendentes.fila} para agente {id_agente}")
+                    else:
+                        print(f"[DEBUG] Nenhuma atividade encontrada na fila para agente {id_agente}")
             except Exception as e:
-                print(f"Erro ao processar ping: {str(e)}")
+                print(f"[ERRO] Erro ao processar ping: {str(e)}")
+                import traceback
+                print(f"[ERRO] Traceback: {traceback.format_exc()}")
         
         # Retorna a resposta padrão se não houver atividades pendentes
         return resposta, 200

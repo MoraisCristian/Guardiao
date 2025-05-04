@@ -76,15 +76,17 @@ class Agentes(db.Model):
     
 # Registro de agentes
 class Fila(db.Model):
+    __tablename__ = 'fila'
+    
     id = db.Column(db.Integer, primary_key=True)
     id_agente = db.Column(db.Integer, nullable=False)
     chave = db.Column(db.String(120), nullable=False)
     fila = db.Column(db.String(20), nullable=False)
     script_name = db.Column(db.String(120), nullable=True)
-    data_registro = db.Column(db.String(50), nullable=False)
+    data_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
-        return '<Atividade %r>' % self.id
+        return f'<Fila {self.id} - Agente {self.id_agente} - Atividade {self.fila}>'
 
 # Registro de atividades
 class Atividades(db.Model):
