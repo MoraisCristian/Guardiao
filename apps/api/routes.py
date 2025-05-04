@@ -154,16 +154,41 @@ def decrypt_base64(encoded_string):
 # Registra nova atividade de agente
 def registrar_atividade(chave, id_agente, atividade):
     """
-    Registra uma nova atividade para um agente.
+    Registra uma atividade do agente no banco de dados
     
     Args:
-        chave: Chave de ativação do agente
-        id_agente: ID do agente
-        atividade: Tipo de atividade realizada
+        chave (str): Chave de ativação do agente
+        id_agente (str ou int): ID do agente
+        atividade (str): Tipo de atividade realizada
+    
+    Returns:
+        bool: True se o registro foi bem-sucedido, False caso contrário
     """
-    data_contato = datetime.now()
-    nova_atividade = Atividades(chave=chave, id_agente=id_agente, data_contato=data_contato, atividade=atividade)
-    salvar_no_banco(nova_atividade)
+    try:
+        # Validação dos parâmetros
+        if not chave or not isinstance(chave, str) or chave.strip() == '':
+            print(f"[ERRO] Falha ao registrar atividade: Chave vazia ou inválida. Valor recebido: '{chave}'")
+            return False
+            
+        if id_agente is None or (isinstance(id_agente, str) and id_agente.strip() == ''):
+            print(f"[ERRO] Falha ao registrar atividade: ID do agente vazio ou inválido. Valor recebido: '{id_agente}'")
+            return False
+            
+        if not atividade or not isinstance(atividade, str) or atividade.strip() == '':
+            print(f"[ERRO] Falha ao registrar atividade: Atividade vazia ou inválida. Valor recebido: '{atividade}'")
+            return False
+        
+        # Converte id_agente para string se for um número
+        if isinstance(id_agente, int):
+            id_agente = str(id_agente)
+            
+        data_contato = datetime.now()
+        nova_atividade = Atividades(chave=chave, id_agente=id_agente, data_contato=data_contato, atividade=atividade)
+        salvar_no_banco(nova_atividade)
+        return True
+    except Exception as e:
+        print(f"[ERRO] Exceção ao registrar atividade: {str(e)}")
+        return False
 
 def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
     """
@@ -491,6 +516,7 @@ class Registro(Resource):
             if supostachave == chave.chave:
                 id_agente = registrar_agente(chave.chave, host)
                 if id_agente is not None:
+                    # Só registra a atividade se o id_agente for válido
                     registrar_atividade(chave.chave, id_agente, 'registro')
                     return {'status': 'sucesso', 'id': id_agente, 'codigo': codigos['registro']}, 200
                 else:
