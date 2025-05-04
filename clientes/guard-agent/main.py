@@ -81,10 +81,17 @@ def registrar_ossec(id_agente):
         'chave': chave_ativacao  # Chave de ativação do Guardian
     }
     
+    # Gerar equivalente curl para troubleshooting
+    endpoint = 'registro-ossec'
+    endpoint_url = f"{SERVER_URL}/{endpoint}"
+    curl_cmd = f"curl -X POST -H 'Content-Type: application/json' -d '{json.dumps(message_ossec)}' {endpoint_url}"
+    
     log_debug(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
+    log_debug(f"Endpoint: {endpoint_url}")
+    log_debug(f"Comando curl equivalente para troubleshooting: {curl_cmd}")
     
     try:
-        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
+        resposta = enviar_mensagem(message_ossec, endpoint)
         
         if resposta.status_code == 200:
             dados_resposta = resposta.json()
@@ -119,10 +126,18 @@ def registrar_ossec(id_agente):
                 log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
                 return False
         else:
+            # Log detalhado para falha na comunicação
             log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
+            log_error(f"Endpoint: {endpoint_url}")
+            log_error(f"Payload: {json.dumps(message_ossec)}")
+            log_error(f"Resposta: {resposta.text if hasattr(resposta, 'text') else 'Sem corpo de resposta'}")
+            log_error(f"Comando para troubleshooting: {curl_cmd}")
             return False
     except Exception as e:
         log_exception(f"Erro durante o registro OSSEC: {str(e)}")
+        log_error(f"Endpoint: {endpoint_url}")
+        log_error(f"Payload: {json.dumps(message_ossec)}")
+        log_error(f"Comando para troubleshooting: {curl_cmd}")
         return False
 
 def initialize_ossec(id_agente):

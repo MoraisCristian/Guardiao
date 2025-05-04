@@ -379,8 +379,17 @@ def registrar_ossec_no_guardiao():
             "host": ossec_hostname    # A rota espera um host
         }
         
+        # Gerar comando curl para troubleshooting
+        endpoint = '/registro-ossec'
+        endpoint_url = f"{SERVER_URL}{endpoint}"
+        curl_cmd = f"curl -X POST -H 'Content-Type: application/json' -d '{json.dumps(data)}' {endpoint_url}"
+        
+        log_info(f"Registrando OSSEC no Guardian. Endpoint: {endpoint_url}")
+        log_debug(f"Payload: {json.dumps(data)}")
+        log_debug(f"Comando curl para troubleshooting: {curl_cmd}")
+        
         # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
-        response = enviar_mensagem(data, '/registro-ossec')
+        response = enviar_mensagem(data, endpoint)
         
         if response and response.status_code == 200:
             response_data = response.json()
@@ -389,6 +398,10 @@ def registrar_ossec_no_guardiao():
         else:
             status_code = response.status_code if response else "Sem resposta"
             log_error(f"Falha no registro OSSEC. Status: {status_code}")
+            log_error(f"Endpoint: {endpoint_url}")
+            log_error(f"Payload: {json.dumps(data)}")
+            log_error(f"Resposta: {response.text if hasattr(response, 'text') else 'Sem corpo de resposta'}")
+            log_error(f"Comando para troubleshooting: {curl_cmd}")
             return None
             
     except Exception as e:
