@@ -63,4 +63,29 @@ if not server_port:
     sys.exit(1)
 
 # Server URL
-SERVER_URL = f'http://{server_ip}:{server_port}'
+# Precisamos verificar como a URL do servidor está definida
+# e garantir que todas as chamadas de API incluam o prefixo /api/
+
+# Exemplo de modificação (o conteúdo exato dependerá do arquivo atual)
+import os
+import json
+
+# Carregar configurações do arquivo JSON
+config_file = os.path.join(os.path.dirname(__file__), 'guard_config.json')
+with open(config_file, 'r') as f:
+    config = json.load(f)
+
+# Configurações do servidor
+server_ip = config.get('server_ip', '127.0.0.1')
+server_port = config.get('server_port', '5000')
+chave_ativacao = config.get('activation_key', '')
+
+# Construir URL base com prefixo /api/
+BASE_URL = f"http://{server_ip}:{server_port}"
+API_URL = f"{BASE_URL}/api"  # Adicionar prefixo /api/
+SERVER_URL = API_URL  # Para compatibilidade com código existente
+
+# Outras configurações
+nome = os.environ.get('HOSTNAME', None)
+ram = "512M"
+codigos = {}

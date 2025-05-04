@@ -420,3 +420,52 @@ def baixar_script(script_name, id_agente, server_url):
     else:
         print(f'Falha ao baixar o script {script_name}. Status Code:', resposta.status_code)
         return None
+
+# Modificar qualquer função que faça comunicação com o servidor
+# para garantir que use o prefixo /api/
+
+def execute_script(id_agente, script_id):
+    """Executa um script remoto"""
+    from network import enviar_mensagem
+    from logger import log_info, log_error, log_exception
+    
+    try:
+        # Obter o script do servidor
+        data = {
+            "id": id_agente,
+            "script_id": script_id
+        }
+        
+        # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
+        response = enviar_mensagem(data, '/get-script')
+        
+        if response and response.status_code == 200:
+            # Processar e executar o script
+            pass
+        else:
+            log_error(f"Falha ao obter script {script_id}")
+            
+    except Exception as e:
+        log_exception(f"Erro ao executar script {script_id}: {str(e)}")
+
+def vuln_scan(id_agente):
+    """Executa uma varredura de vulnerabilidades"""
+    from network import enviar_mensagem
+    from logger import log_info, log_error, log_exception
+    
+    try:
+        # ... código existente ...
+        
+        # Enviar resultados para o servidor
+        data = {
+            "id": id_agente,
+            "vulnerabilidades": resultados
+        }
+        
+        # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
+        response = enviar_mensagem(data, '/vulnerabilidades')
+        
+        # ... código existente ...
+        
+    except Exception as e:
+        log_exception(f"Erro na varredura de vulnerabilidades: {str(e)}")

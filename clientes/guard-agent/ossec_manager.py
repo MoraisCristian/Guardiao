@@ -354,77 +354,26 @@ def salvar_configuracao_ossec(ossec_server: str, activation_key: str, ossec_host
         log_exception(f"Erro ao salvar configuração OSSEC: {str(e)}")
         return False
 
-def registrar_ossec_no_guardiao(ossec_manager: Optional[str] = None) -> bool:
-    """Registra o agente OSSEC no servidor Guardião"""
+# Modificar qualquer função que faça comunicação com o servidor
+# para garantir que use o prefixo /api/
+
+def registrar_ossec_no_guardiao(id_agente, nome_host):
+    """Registra o agente OSSEC no servidor Guardian"""
+    from network import enviar_mensagem
+    
     try:
-        log_info("Registrando agente OSSEC no servidor Guardião...")
-        
-        # Carregar ID do agente
-        id_agente = carregar_id()
-        if not id_agente:
-            log_error("ID do agente não encontrado. Impossível registrar no OSSEC.")
-            return False
-            
-        # Preparar dados para registro
-        from config import nome, chave_ativacao
-        
-        message_ossec = {
-            'name': nome,  # Nome do agente (hostname)
-            'id': id_agente,  # ID do agente no Guardian
-            'chave': chave_ativacao  # Chave de ativação do Guardian
+        data = {
+            "id": id_agente,
+            "nome": nome_host
         }
         
-        log_info(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
-        
-        # Enviar solicitação para o endpoint de registro OSSEC
-        resposta = enviar_mensagem(message_ossec, 'registro-ossec')
-        
-        # Registrar detalhes da resposta
-        log_info(f"Resposta do servidor: Status={resposta.status_code}")
-        
-        # Verificar resposta
-        if resposta.status_code == 200:
-            dados_resposta = resposta.json()
-            log_info(f"Conteúdo da resposta: {json.dumps(dados_resposta)}")
-            
-            if dados_resposta.get('status') == 'sucesso':
-                ossec_server = dados_resposta.get('ossec_server', ossec_manager)
-                activation_key = dados_resposta.get('activation_key')
-                ossec_hostname = dados_resposta.get('ossec_hostname', nome)
-                
-                if not activation_key:
-                    log_error("Chave de ativação não recebida do servidor.")
-                    return False
-                
-                log_info(f"Registro no OSSEC bem-sucedido! Servidor: {ossec_server}")
-                
-                # Salvar configuração
-                if not salvar_configuracao_ossec(ossec_server, activation_key, ossec_hostname):
-                    log_warning("Falha ao salvar configuração OSSEC.")
-                
-                # Importar a chave recebida
-                log_info("Importando chave OSSEC...")
-                if not importar_chave_ossec(activation_key):
-                    log_error("Falha ao importar chave OSSEC.")
-                    return False
-                
-                # Reiniciar OSSEC
-                log_info("Reiniciando serviço OSSEC...")
-                if not reiniciar_ossec():
-                    log_error("Falha ao reiniciar OSSEC.")
-                    return False
-                
-                log_info("OSSEC registrado e configurado com sucesso.")
-                return True
-            else:
-                log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
-                return False
-        else:
-            log_error(f"Falha na comunicação com o servidor. Status: {resposta.status_code}")
-            return False
+        # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
+        response = enviar_mensagem(data, '/registro-ossec')
+        return response
     except Exception as e:
-        log_exception(f"Erro ao registrar agente OSSEC: {str(e)}")
-        return False
+        from logger import log_exception
+        log_exception(f"Erro ao registrar OSSEC no Guardian: {str(e)}")
+        return None
 
 def instalar_ossec(ossec_manager: Optional[str] = None) -> bool:
     """Instala o agente OSSEC com a configuração adequada"""
