@@ -357,14 +357,24 @@ def salvar_configuracao_ossec(ossec_server: str, activation_key: str, ossec_host
 # Modificar qualquer função que faça comunicação com o servidor
 # para garantir que use o prefixo /api/
 
-def registrar_ossec_no_guardiao(id_agente, nome_host):
+def registrar_ossec_no_guardiao():
     """Registra o agente OSSEC no servidor Guardian"""
-    from network import enviar_mensagem
-    
+    id_agente = carregar_id()
+
     try:
+        # Obter informações do sistema usando a função existente
+        hostname, ip, sistema, versao, mac = get_system_info()
+        
+        # Criar o formato correto do hostname para o OSSEC: hostname_agentid
+        ossec_hostname = f"{hostname}_{id_agente}"
+        
         data = {
             "id": id_agente,
-            "nome": nome_host
+            "nome": ossec_hostname,
+            "ip": ip,
+            "sistema": sistema,
+            "versao": versao,
+            "mac": mac
         }
         
         # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
@@ -519,7 +529,7 @@ def configurar_ossec(ossec_manager: Optional[str] = None) -> bool:
         
         # Se não temos chave, registrar o agente
         log_info("Chave não encontrada. Iniciando registro do agente...")
-        return registrar_ossec_no_guardiao(ossec_manager)
+        return registrar_ossec_no_guardiao()
         
     except Exception as e:
         log_exception(f"Erro na configuração: {str(e)}")
