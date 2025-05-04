@@ -27,7 +27,7 @@ def enviar_mensagem(data, endpoint):
 def salvar_id(id_agente):
     """Salva o ID do agente em um arquivo local"""
     try:
-        with open('agent_id.txt', 'w') as f:
+        with open('AGENTID', 'w') as f:
             f.write(str(id_agente))
         return True
     except Exception as e:
@@ -37,8 +37,8 @@ def salvar_id(id_agente):
 def carregar_id():
     """Carrega o ID do agente do arquivo local"""
     try:
-        if os.path.exists('agent_id.txt'):
-            with open('agent_id.txt', 'r') as f:
+        if os.path.exists('AGENTID'):
+            with open('AGENTID', 'r') as f:
                 return f.read().strip()
         return None
     except Exception as e:
