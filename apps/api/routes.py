@@ -43,8 +43,21 @@ from apps.authentication.models import (
 
 api = Api(blueprint)
 
+# Códigos de resposta para as operações
+codigos = {'registro': 1, 'ping': 2, 'upload': 3}
+
 # Função para registro no OSSEC
 def register_ossec_agent(name, id_agente):
+    """
+    Registra um agente no servidor OSSEC.
+    
+    Args:
+        name: Nome do agente
+        id_agente: ID do agente no sistema Guardião
+        
+    Returns:
+        Tupla contendo (ossec_agent_id, ossec_hostname, activation_key) ou (None, None, None) em caso de falha
+    """
     ossec_server_address = "ossec"
     ossec_http_auth = "sua_senha_secreta"
     url = f'http://{ossec_server_address}:59347/add'
@@ -53,11 +66,11 @@ def register_ossec_agent(name, id_agente):
         'Content-Type': 'application/json'
     }
     
-    # Ensure name and id_agente are strings
+    # Garante que nome e id_agente são strings
     name = str(name) if name else "unknown"
     id_agente = str(id_agente) if id_agente else "0"
     
-    # Create unique hostname for OSSEC registration
+    # Cria um hostname único para registro no OSSEC
     ossec_hostname = f"{name}_{id_agente}"
     data = {
         'ip': 'any',
@@ -65,7 +78,7 @@ def register_ossec_agent(name, id_agente):
     }
 
     try:
-        # Register new agent
+        # Registra novo agente
         response = requests.post(url, headers=headers, json=data)
         print(response.text)
         print(response.status_code)
@@ -77,80 +90,29 @@ def register_ossec_agent(name, id_agente):
                 ossec_agent_id = str(response_data.get('id'))
                 key_response = response_data.get('key', '')
                 
-                # Extract the actual key from the response
+                # Extrai a chave real da resposta
                 key_match = re.search(r"Agent key information for '\d+':\s+(\S+)", key_response)
                 activation_key = key_match.group(1) if key_match else key_response
                 
-                print(f"Successfully registered OSSEC agent. ID: {ossec_agent_id}")
+                print(f"Agente OSSEC registrado com sucesso. ID: {ossec_agent_id}")
                 return ossec_agent_id, ossec_hostname, activation_key
 
-        print(f"Failed to register OSSEC agent. Status: {response.status_code}")
+        print(f"Falha ao registrar agente OSSEC. Status: {response.status_code}")
         return None, None, None
 
     except Exception as e:
-        print(f"Exception occurred during OSSEC registration: {str(e)}")
+        print(f"Exceção ocorrida durante o registro OSSEC: {str(e)}")
         return None, None, None
-
-# Modificando a implementação da rota registro-ossec para usar Resource
-@api.route('/registro-ossec')
-class RegistroOssec(Resource):
-    def post(self):
-        """
-        Endpoint para registrar um agente no OSSEC
-        """
-        data = request.get_json()
-        name = data.get('name')
-        id_agente = data.get('id')
-        chave_ativacao = data.get('chave')
-
-        # Verify if agent is already registered in Guardian
-        agente = Agentes.query.filter_by(id=id_agente, chave=chave_ativacao).first()
-        if not agente:
-            error_msg = f"Agent not found. ID: {id_agente}, Key: {chave_ativacao}"
-            print(error_msg)
-            return jsonify({'status': 'erro', 'mensagem': error_msg}), 404
-
-        try:
-            # Register agent in OSSEC
-            ossec_agent_id, ossec_hostname, activation_key = register_ossec_agent(name, id_agente)
-            
-            if not all([ossec_agent_id, ossec_hostname, activation_key]):
-                error_msg = "Failed to register OSSEC agent"
-                print(error_msg)
-                return jsonify({'status': 'erro', 'mensagem': error_msg}), 500
-                
-            # Update agent record with OSSEC information
-            agente.ossec_registered = True
-            agente.ossec_id = ossec_agent_id
-            agente.ossec_hostname = ossec_hostname
-            db.session.commit()
-
-            # Remove ossec-register from queue
-            remove_da_fila(id_agente, chave_ativacao, 'ossec-register')
-            
-            success_msg = f"Successfully registered OSSEC agent. ID: {ossec_agent_id}, Hostname: {ossec_hostname}"
-            print(success_msg)
-            return {
-                'status': 'sucesso',
-                'activation_key': activation_key,
-                'ossec_hostname': ossec_hostname,
-                'ossec_server': "ossec"
-            }, 200
-            
-        except Exception as e:
-            db.session.rollback()
-            error_msg = f"Exception during OSSEC registration: {str(e)}"
-            print(error_msg)
-            return {
-                'status': 'erro',
-                'mensagem': error_msg
-            }, 500
-
-codigos = {'registro': 1, 'ping': 2, 'upload': 3}
 
 def normalizar_data_iso(data_str):
     """
     Normaliza uma string de data ISO 8601 para garantir que os milissegundos tenham três dígitos.
+    
+    Args:
+        data_str: String de data no formato ISO
+        
+    Returns:
+        String de data normalizada ou None
     """
     if data_str:
         # Remove o 'Z' no final, se presente
@@ -169,17 +131,44 @@ def normalizar_data_iso(data_str):
 
 # Função para decodificar base64
 def decrypt_base64(encoded_string):
+    """
+    Decodifica uma string em base64.
+    
+    Args:
+        encoded_string: String codificada em base64
+        
+    Returns:
+        String decodificada
+    """
     decoded_bytes = base64.b64decode(encoded_string.encode('utf-8'))
     decoded_string = decoded_bytes.decode('utf-8')
     return decoded_string
 
 # Registra nova atividade de agente
 def registrar_atividade(chave, id_agente, atividade):
+    """
+    Registra uma nova atividade para um agente.
+    
+    Args:
+        chave: Chave de ativação do agente
+        id_agente: ID do agente
+        atividade: Tipo de atividade realizada
+    """
     data_contato = datetime.now()
     nova_atividade = Atividades(chave=chave, id_agente=id_agente, data_contato=data_contato, atividade=atividade)
     salvar_no_banco(nova_atividade)
 
 def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
+    """
+    Salva dados recebidos dos agentes no banco de dados.
+    
+    Args:
+        chave_ativacao: Chave de ativação do agente
+        id_agente: ID do agente
+        payload: Dados recebidos
+        tipo: Tipo de dados (softwares, infos, vuln-scan, script-resultado)
+        mensagem: Mensagem completa recebida (opcional)
+    """
     data_contato = datetime.now()
     
     if tipo == 'softwares':
@@ -348,6 +337,9 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
 @api.route('/envios', methods=['POST'])
 class ReceberDados(Resource):
     def post(self):
+        """
+        Endpoint para receber dados dos agentes
+        """
         mensagem = request.get_json()
         chave_ativacao = mensagem['chave']
         id_agente = mensagem['id']
@@ -360,7 +352,6 @@ class ReceberDados(Resource):
         for agente in agentes:
             if agente.chave == chave_ativacao:
                 if int(agente.id) == int(id_agente):
-                    
                     salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem)
                     registrar_atividade(chave_ativacao, id_agente, tipo)
                     return jsonify({'status': 'sucesso'}), 200
@@ -370,13 +361,31 @@ class ReceberDados(Resource):
 @api.route('/download/<arquivo>')
 class Download(Resource):
     def get(self, arquivo):
-        caminho = 'downloads/' + arquivo
-        return send_file(caminho, as_attachment=True)
+        """
+        Endpoint para download de arquivos como install.sh e uninstall.sh
+        """
+        try:
+            # Diretório onde os arquivos estão armazenados
+            download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../downloads')
+            
+            # Verificar se o arquivo solicitado existe
+            arquivo_path = os.path.join(download_dir, arquivo)
+            if not os.path.exists(arquivo_path):
+                return {"erro": f"Arquivo {arquivo} não encontrado"}, 404
+                
+            # Retornar o arquivo para download
+            return send_file(arquivo_path, as_attachment=True)
+            
+        except Exception as e:
+            return {"erro": f"Erro ao processar o download: {str(e)}"}, 500
 
-# Nova rota para download de scripts
+# Rota para download de scripts
 @api.route('/download/script/<int:id_agente>/<script_name>')
 class DownloadScript(Resource):
     def get(self, id_agente, script_name):
+        """
+        Endpoint para download de scripts específicos para um agente
+        """
         try:
             # Construir o caminho para o script
             caminho = f'/app/apps/utils/{id_agente}/{script_name}'
@@ -389,41 +398,70 @@ class DownloadScript(Resource):
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
 
-
 @api.route('/ping')
 class Ping(Resource):
+    def get(self):
+        """
+        Endpoint para verificar se o servidor está online (GET)
+        """
+        return {"status": "online", "codigo": codigos['ping']}, 200
+        
     def post(self):
-        data = request.get_json()
+        """
+        Endpoint para verificar se o servidor está online (POST) e verificar atividades pendentes
+        """
+        # Obter dados do JSON, se houver
+        data = request.get_json(silent=True) or {}
+        
+        # Verificar se há uma chave de agente
         chave = data.get('chave')
         id_agente = data.get('id')
-
-        output = jsonify({"mensagem": "Não há atividades pendentes na fila.", "fila": None, 'codigo': codigos['ping']}), 200
-
-        agentes = Agentes.query.all()
-
-        for agente in agentes:
-            if agente.chave == chave:
-                if int(agente.id) == int(id_agente):
-                    registrar_atividade(chave, id_agente, 'ping')
-                    fila = Fila.query.all()
-                    for atividade in fila:
-                        if atividade.chave == chave:
-                            if int(atividade.id_agente) == int(id_agente):
-                                resposta = {
-                                    "mensagem": "Há atividades pendentes na fila.",
-                                    "fila": atividade.fila,
-                                    'codigo': codigos['ping']
-                                }
-                                # Adiciona o nome do script se a atividade for do tipo script
-                                if atividade.fila == 'script':
-                                    resposta['script_name'] = atividade.script_name
-                                output = jsonify(resposta), 200
-        return output
+        
+        # Resposta padrão quando não há atividades pendentes
+        resposta = {
+            "mensagem": "Não há atividades pendentes na fila.", 
+            "fila": None, 
+            'codigo': codigos['ping']
+        }
+        
+        # Se tiver chave e ID, registrar atividade e verificar fila
+        if chave and id_agente:
+            try:
+                # Registra a atividade de ping
+                registrar_atividade(chave, id_agente, 'ping')
+                
+                # Verifica se o agente existe
+                agente = Agentes.query.filter_by(chave=chave, id=id_agente).first()
+                if agente:
+                    # Verifica se há atividades pendentes na fila
+                    atividades_pendentes = Fila.query.filter_by(chave=chave, id_agente=id_agente).all()
+                    
+                    for atividade in atividades_pendentes:
+                        resposta = {
+                            "mensagem": "Há atividades pendentes na fila.",
+                            "fila": atividade.fila,
+                            'codigo': codigos['ping']
+                        }
+                        
+                        # Adiciona o nome do script se a atividade for do tipo script
+                        if atividade.fila == 'script':
+                            resposta['script_name'] = atividade.script_name
+                        
+                        # Retorna a primeira atividade encontrada
+                        return jsonify(resposta), 200
+            except Exception as e:
+                print(f"Erro ao processar ping: {str(e)}")
+        
+        # Retorna a resposta padrão se não houver atividades pendentes
+        return jsonify(resposta), 200
 
 # Rota para registro de novos agentes
 @api.route('/registro')
 class Registro(Resource):
     def post(self):
+        """
+        Endpoint para registrar novos agentes no sistema
+        """
         supostachave = request.json.get('chave')
         host = request.json.get('host')
 
@@ -435,28 +473,30 @@ class Registro(Resource):
                 return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
         return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
 
-
 @api.route('/remove_agent/<int:id_agente>')
 class RemoveAgent(Resource):
     def get(self, id_agente):
+        """
+        Endpoint para exibir a página de confirmação de remoção de agente
+        """
         try:
-            # Check if user is authenticated
+            # Verifica se o usuário está autenticado
             if not current_user.is_authenticated:
                 return redirect(url_for('authentication_api.login'))
                 
-            # Get the agent from database
+            # Obtém o agente do banco de dados
             agent = Agentes.query.filter_by(id=id_agente).first()
             
             if not agent:
                 return render_template('home/page-404.html', error="Agente não encontrado"), 404
             
-            # Get agent info for display
+            # Obtém informações do agente para exibição
             agent_info = Infos.query.filter_by(id_agente=id_agente).first()
             
             if not agent_info:
                 return render_template('home/page-404.html', error="Informações do agente não encontradas"), 404
             
-            # Show confirmation page
+            # Mostra página de confirmação
             return render_template('home/remove_agent.html', agent=agent, agent_info=agent_info)
                 
         except Exception as e:
@@ -466,42 +506,23 @@ class RemoveAgent(Resource):
 @api.route('/confirm_remove_agent/<int:id_agente>')
 class ConfirmRemoveAgent(Resource):
     def post(self, id_agente):
+        """
+        Endpoint para confirmar a remoção de um agente
+        """
         try:
-            # Check if user is authenticated
+            # Verifica se o usuário está autenticado
             if not current_user.is_authenticated:
                 return redirect(url_for('authentication_api.login'))
+                
+            # Remove o agente
+            resultado = remover_agente(id_agente)
             
-            # Get the agent from database
-            agent = Agentes.query.filter_by(id=id_agente).first()
-            
-            if not agent:
-                return render_template('home/page-404.html', error="Agente não encontrado"), 404
-            
-            # Get agent info
-            agent_info = Infos.query.filter_by(id_agente=id_agente).first()
-            
-            # Verify confirmation text
-            confirmation = request.form.get('confirmation', '')
-            if not agent_info or confirmation != agent_info.hostname:
-                flash("Confirmação incorreta. A remoção do agente foi cancelada.", "danger")
-                return redirect(url_for('authentication_api.remove_agent', id_agente=id_agente))
-            
-            # Call the remover_agente function
-            result = remover_agente(id_agente)
-            
-            if isinstance(result, tuple) and len(result) == 2:
-                success, message = result
+            if resultado:
+                # Redireciona para a página de agentes com mensagem de sucesso
+                return redirect(url_for('home_blueprint.agentes'))
             else:
-                # Handle the case where remover_agente doesn't return a tuple
-                success = result
-                message = "Agente removido com sucesso" if success else "Falha ao remover o agente"
-            
-            if success:
-                flash("Agente removido com sucesso", "success")
-                return redirect(url_for('home_api.agentes'))
-            else:
-                flash(f"Falha ao remover o agente: {message}", "danger")
-                return redirect(url_for('authentication_api.remove_agent', id_agente=id_agente))
+                # Exibe página de erro
+                return render_template('home/page-500.html', error="Falha ao remover agente"), 500
                 
         except Exception as e:
             print(f"Erro ao remover agente: {str(e)}")
