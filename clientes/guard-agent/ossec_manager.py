@@ -288,6 +288,21 @@ def importar_chave_ossec(activation_key: str) -> bool:
             log_info("Chave já importada anteriormente.")
             return True
         
+        # Verificar se o diretório pai existe
+        client_keys_dir = os.path.dirname(CLIENT_KEYS)
+        if not os.path.exists(client_keys_dir):
+            log_warning(f"Diretório {client_keys_dir} não existe. Tentando criar...")
+            try:
+                usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+                if usar_sudo:
+                    os.system(f"sudo mkdir -p {client_keys_dir}")
+                else:
+                    os.makedirs(client_keys_dir, exist_ok=True)
+                log_info(f"Diretório {client_keys_dir} criado com sucesso.")
+            except Exception as e:
+                log_error(f"Falha ao criar diretório {client_keys_dir}: {str(e)}")
+                return False
+        
         # Extrair apenas a chave da resposta do servidor
         # A chave geralmente vem no formato "Agent key information for 'XXX' is: \nCHAVE_REAL"
         if "Agent key information for" in activation_key:
@@ -296,6 +311,11 @@ def importar_chave_ossec(activation_key: str) -> bool:
             if len(parts) > 1:
                 activation_key = parts[1].strip()
                 log_info(f"Chave extraída: {activation_key[:10]}...")
+        
+        # Verificar se a chave está vazia após extração
+        if not activation_key or activation_key.strip() == '':
+            log_error("Chave extraída está vazia. Impossível importar.")
+            return False
         
         # Comando para importar a chave diretamente como string
         usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
@@ -321,7 +341,13 @@ def importar_chave_ossec(activation_key: str) -> bool:
         
         if "Added" in import_result.stdout or "successfully" in import_result.stdout:
             log_info("Chave importada com sucesso.")
-            return True
+            # Verificar se o arquivo client.keys foi criado
+            if os.path.exists(CLIENT_KEYS):
+                log_info(f"Arquivo {CLIENT_KEYS} criado com sucesso.")
+                return True
+            else:
+                log_error(f"Arquivo {CLIENT_KEYS} não foi criado após importação.")
+                return False
         else:
             log_error(f"Falha ao importar chave: {import_result.stdout}")
             return False
@@ -611,7 +637,24 @@ def configurar_ossec(ossec_manager: Optional[str] = None) -> bool:
         
         # Se não temos chave, registrar o agente
         log_info("Chave não encontrada. Iniciando registro do agente...")
-        return registrar_ossec_no_guardiao()
+        response_data = registrar_ossec_no_guardiao()
+        
+        # Verificar se obtivemos uma resposta válida
+        if (response_data) and 'chave_ossec' in response_data:
+            # Extrair a chave OSSEC da resposta
+            ossec_key = response_data.get('chave_ossec')
+            log_info(f"Chave OSSEC recebida do servidor. Importando...")
+            
+            # Importar a chave OSSEC
+            if importar_chave_ossec(ossec_key):
+                log_info("Chave OSSEC importada com sucesso.")
+                return True
+            else:
+                log_error("Falha ao importar chave OSSEC.")
+                return False
+        else:
+            log_error("Não foi possível obter a chave OSSEC do servidor.")
+            return False
         
     except Exception as e:
         log_exception(f"Erro na configuração: {str(e)}")
