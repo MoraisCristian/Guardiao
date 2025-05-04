@@ -99,55 +99,76 @@ def registrar_ossec(id_agente):
     endpoint_url = f"{SERVER_URL}/{endpoint}"
     curl_cmd = f"curl -X POST -H 'Content-Type: application/json' -d '{json.dumps(message_ossec)}' {endpoint_url}"
     
-    log_debug(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
-    log_debug(f"Endpoint: {endpoint_url}")
-    log_debug(f"Comando curl equivalente para troubleshooting: {curl_cmd}")
+    # Logar o comando curl no nível INFO para garantir que apareça no log
+    log_info(f"Enviando solicitação de registro OSSEC: {json.dumps(message_ossec)}")
+    log_info(f"Endpoint: {endpoint_url}")
+    log_info(f"Comando curl para troubleshooting: {curl_cmd}")
     
     try:
         resposta = enviar_mensagem(message_ossec, endpoint)
         
-        if resposta.status_code == 200:
-            dados_resposta = resposta.json()
-            log_debug(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
+        # Log detalhado da resposta para diagnóstico
+        if resposta:
+            log_info(f"Resposta recebida. Status: {resposta.status_code}")
             
-            if dados_resposta.get('status') == 'sucesso':
-                ossec_manager = dados_resposta.get('ossec_server')
+            try:
+                dados_resposta = resposta.json()
+                log_info(f"Resposta do registro OSSEC: {json.dumps(dados_resposta)}")
                 
-                log_info(f'Registro no OSSEC bem-sucedido!')
-                
-                # Instala e configura o OSSEC se necessário
-                if not verificar_ossec_instalado():
-                    log_info("Instalando OSSEC...")
-                    if not instalar_ossec(ossec_manager):
-                        log_error("Falha ao instalar OSSEC.")
+                if resposta.status_code == 200:
+                    if dados_resposta.get('status') == 'sucesso':
+                        ossec_manager = dados_resposta.get('ossec_server')
+                        
+                        log_info(f'Registro no OSSEC bem-sucedido!')
+                        
+                        # Instala e configura o OSSEC se necessário
+                        if not verificar_ossec_instalado():
+                            log_info("Instalando OSSEC...")
+                            if not instalar_ossec(ossec_manager):
+                                log_error("Falha ao instalar OSSEC.")
+                                return False
+                        
+                        log_info(f"Configurando OSSEC para conectar ao servidor: {ossec_manager}")
+                        if not configurar_ossec(ossec_manager):
+                            log_error("Falha ao configurar OSSEC.")
+                            return False
+                        
+                        # Reinicia o serviço OSSEC
+                        log_info("Reiniciando serviço OSSEC...")
+                        if not reiniciar_ossec():
+                            log_error("Falha ao reiniciar OSSEC.")
+                            return False
+                        
+                        log_info("OSSEC configurado e iniciado com sucesso.")
+                        return True
+                    else:
+                        mensagem_erro = dados_resposta.get('mensagem', 'Erro desconhecido')
+                        log_error(f"Falha no registro OSSEC: {mensagem_erro}")
+                        log_error(f"Resposta completa: {json.dumps(dados_resposta)}")
                         return False
-                
-                log_info(f"Configurando OSSEC para conectar ao servidor: {ossec_manager}")
-                if not configurar_ossec(ossec_manager):
-                    log_error("Falha ao configurar OSSEC.")
+                else:
+                    # Log detalhado para falha na comunicação
+                    log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
+                    log_error(f"Endpoint: {endpoint_url}")
+                    log_error(f"Payload: {json.dumps(message_ossec)}")
+                    log_error(f"Resposta: {resposta.text if hasattr(resposta, 'text') else 'Sem corpo de resposta'}")
+                    log_error(f"Comando para troubleshooting: {curl_cmd}")
                     return False
-                
-                # Reinicia o serviço OSSEC
-                log_info("Reiniciando serviço OSSEC...")
-                if not reiniciar_ossec():
-                    log_error("Falha ao reiniciar OSSEC.")
-                    return False
-                
-                log_info("OSSEC configurado e iniciado com sucesso.")
-                return True
-            else:
-                log_error(f"Falha no registro OSSEC: {dados_resposta.get('mensagem', 'Erro desconhecido')}")
+            except ValueError as e:
+                # A resposta não é um JSON válido
+                log_error(f"Erro ao processar resposta JSON: {str(e)}")
+                log_error(f"Corpo da resposta (texto): {resposta.text[:500]}")
+                log_error(f"Comando para troubleshooting: {curl_cmd}")
                 return False
         else:
-            # Log detalhado para falha na comunicação
-            log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
-            log_error(f"Endpoint: {endpoint_url}")
-            log_error(f"Payload: {json.dumps(message_ossec)}")
-            log_error(f"Resposta: {resposta.text if hasattr(resposta, 'text') else 'Sem corpo de resposta'}")
+            log_error("Nenhuma resposta recebida do servidor")
             log_error(f"Comando para troubleshooting: {curl_cmd}")
             return False
     except Exception as e:
         log_exception(f"Erro durante o registro OSSEC: {str(e)}")
+        log_error(f"Tipo de exceção: {type(e).__name__}")
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
         log_error(f"Endpoint: {endpoint_url}")
         log_error(f"Payload: {json.dumps(message_ossec)}")
         log_error(f"Comando para troubleshooting: {curl_cmd}")
