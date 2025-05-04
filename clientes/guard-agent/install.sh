@@ -357,12 +357,17 @@ manual_register_agent() {
     
     print_message "Extracted response body: $RESPONSE_BODY"
     
-    # Check response for agent ID
-    if echo "$RESPONSE_BODY" | grep -q '"id_agente"'; then
-        print_message "Registration successful based on server response containing 'id_agente'"
+    # Check response for agent ID (verificar tanto id_agente quanto id)
+    if echo "$RESPONSE_BODY" | grep -q '"id_agente"' || echo "$RESPONSE_BODY" | grep -q '"id"'; then
+        print_message "Registration successful based on server response containing agent ID"
         
-        # Extract agent ID
+        # Extract agent ID (tenta primeiro id_agente, depois id)
         AGENT_ID=$(echo "$RESPONSE_BODY" | grep -o '"id_agente":[^,}]*' | grep -o '[0-9]\+')
+        
+        # Se não encontrou id_agente, tenta extrair id
+        if [ -z "$AGENT_ID" ]; then
+            AGENT_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":[^,}]*' | grep -o '[0-9]\+')
+        fi
         
         if [ -n "$AGENT_ID" ]; then
             print_message "Successfully extracted agent ID: $AGENT_ID"
@@ -376,7 +381,7 @@ manual_register_agent() {
             return 0
         fi
     else
-        print_error "Manual registration failed. Response did not contain 'id_agente'."
+        print_error "Manual registration failed. Response did not contain agent ID."
         print_error "Response body: $RESPONSE_BODY"
         return 1
     fi
