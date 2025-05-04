@@ -370,18 +370,25 @@ def registrar_ossec_no_guardiao():
         # Obter ID do agente    
         id_agente = carregar_id()
         
-        # Criar o formato correto do hostname para o OSSEC: hostname_agentid
-        ossec_hostname = f"{hostname}_{id_agente}"
-        
+        if not id_agente:
+            log_error("ID do agente não encontrado. Impossível registrar OSSEC.")
+            return None
+            
+        if not hostname or hostname.strip() == '':
+            # Fallback para o hostname do sistema se o valor estiver vazio
+            hostname = socket.gethostname()
+            log_warning(f"Hostname vazio, usando hostname do sistema: {hostname}")
         # Ajustar os dados para corresponder ao que a rota /registro-ossec espera
         data = {
-            "chave": chave_ativacao,  # A rota espera uma chave de ativação
-            "host": ossec_hostname    # A rota espera um host
+            "chave": chave_ativacao,  # A chave de ativação
+            "host": hostname,   # O hostname formatado
+            "name": hostname,         # O nome do host
+            "id": id_agente           # O ID do agente
         }
         
         # Gerar comando curl para troubleshooting
-        endpoint = '/registro-ossec'
-        endpoint_url = f"{SERVER_URL}{endpoint}"
+        endpoint = 'registro-ossec'
+        endpoint_url = f"{SERVER_URL}/{endpoint}"
         curl_cmd = f"curl -X POST -H 'Content-Type: application/json' -d '{json.dumps(data)}' {endpoint_url}"
         
         log_info(f"Registrando OSSEC no Guardian. Endpoint: {endpoint_url}")
@@ -405,7 +412,6 @@ def registrar_ossec_no_guardiao():
             return None
             
     except Exception as e:
-        from logger import log_exception
         log_exception(f"Erro ao registrar OSSEC no Guardian: {str(e)}")
         return None
 
