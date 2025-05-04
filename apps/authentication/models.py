@@ -201,6 +201,32 @@ def remove_da_fila(id_agente, chave, fila):
     return 'Agente removido com sucesso'
 
 def registrar_agente(chave, host):
+    """
+    Registra um novo agente no sistema
+    
+    Args:
+        chave (str): Chave de ativação do agente
+        host (str): Nome do host do agente
+        
+    Returns:
+        int ou None: ID do agente registrado ou None em caso de erro
+    """
+    # Validação dos parâmetros
+    if not chave or not isinstance(chave, str) or chave.strip() == '':
+        print(f"[ERRO] Falha ao registrar agente: Chave de ativação vazia ou inválida. Valor recebido: '{chave}'")
+        return None
+        
+    if not host or not isinstance(host, str) or host.strip() == '':
+        print(f"[ERRO] Falha ao registrar agente: Host vazio ou inválido. Valor recebido: '{host}'")
+        return None
+    
+    # Verifica se a chave existe no banco de dados
+    chave_existente = Chaves.query.filter_by(chave=chave).first()
+    if not chave_existente:
+        print(f"[ERRO] Falha ao registrar agente: Chave de ativação '{chave}' não encontrada no banco de dados")
+        return None
+    
+    # Continua com o registro do agente
     agentes = Agentes.query.all()
     if agentes:
         id_agente = max(agente.id for agente in agentes) + 1
@@ -214,7 +240,8 @@ def registrar_agente(chave, host):
         salvar_no_banco(fila)
     novo_agente = Agentes(id=id_agente, chave=chave, host=host, data_ativacao=data_ativacao)
     salvar_no_banco(novo_agente)
-
+    
+    print(f"[INFO] Agente registrado com sucesso. ID: {id_agente}, Host: {host}")
     return id_agente
 
 def salvar_no_banco(nova_atividade):
