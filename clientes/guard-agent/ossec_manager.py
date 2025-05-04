@@ -359,27 +359,38 @@ def salvar_configuracao_ossec(ossec_server: str, activation_key: str, ossec_host
 
 def registrar_ossec_no_guardiao():
     """Registra o agente OSSEC no servidor Guardian"""
-    id_agente = carregar_id()
 
     try:
         # Obter informações do sistema usando a função existente
         hostname, ip, sistema, versao, mac = get_system_info()
+
+        # Obter a chave de ativação do arquivo de configuração
+        chave_ativacao = get_activation_key()
+
+        # Obter ID do agente    
+        id_agente = carregar_id()
         
         # Criar o formato correto do hostname para o OSSEC: hostname_agentid
         ossec_hostname = f"{hostname}_{id_agente}"
         
+        # Ajustar os dados para corresponder ao que a rota /registro-ossec espera
         data = {
-            "id": id_agente,
-            "nome": ossec_hostname,
-            "ip": ip,
-            "sistema": sistema,
-            "versao": versao,
-            "mac": mac
+            "chave": chave_ativacao,  # A rota espera uma chave de ativação
+            "host": ossec_hostname    # A rota espera um host
         }
         
         # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
         response = enviar_mensagem(data, '/registro-ossec')
-        return response
+        
+        if response and response.status_code == 200:
+            response_data = response.json()
+            log_info(f"Registro OSSEC bem-sucedido. ID do agente: {response_data.get('id_agente')}")
+            return response_data
+        else:
+            status_code = response.status_code if response else "Sem resposta"
+            log_error(f"Falha no registro OSSEC. Status: {status_code}")
+            return None
+            
     except Exception as e:
         from logger import log_exception
         log_exception(f"Erro ao registrar OSSEC no Guardian: {str(e)}")
