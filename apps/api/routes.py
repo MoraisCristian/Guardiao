@@ -362,8 +362,8 @@ class ReceberDados(Resource):
                 if int(agente.id) == int(id_agente):
                     salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem)
                     registrar_atividade(chave_ativacao, id_agente, tipo)
-                    return jsonify({'status': 'sucesso'}), 200
-        return jsonify({'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}), 400
+                    return {'status': 'sucesso'}, 200
+        return {'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}, 400
 
 # Rota para download de arquivos
 @api.route('/download/<arquivo>', methods=['GET'])
@@ -410,13 +410,12 @@ class DownloadScript(Resource):
             
             # Verificar se o arquivo existe
             if not os.path.exists(caminho):
-                return jsonify({'erro': 'Script não encontrado'}), 404
+                return {'erro': 'Script não encontrado'}, 404
                 
             return send_file(caminho, as_attachment=True)
         except Exception as e:
-            return jsonify({'erro': str(e)}), 500
+            return {'erro': str(e)}, 500
 
-# Modificar a rota de ping para garantir que o método POST seja aceito
 @api.route('/ping', methods=['GET', 'POST'])
 class Ping(Resource):
     @api.doc('get_ping')
@@ -469,12 +468,12 @@ class Ping(Resource):
                             resposta['script_name'] = atividade.script_name
                         
                         # Retorna a primeira atividade encontrada
-                        return jsonify(resposta), 200
+                        return resposta, 200
             except Exception as e:
                 print(f"Erro ao processar ping: {str(e)}")
         
         # Retorna a resposta padrão se não houver atividades pendentes
-        return jsonify(resposta), 200
+        return resposta, 200
 
 # Rota para registro de novos agentes
 @api.route('/registro')
@@ -492,8 +491,8 @@ class Registro(Resource):
             if supostachave == chave.chave:
                 id_agente = registrar_agente(chave.chave, host)
                 registrar_atividade(chave.chave, id_agente, 'registro')
-                return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
-        return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
+                return {'id_agente': id_agente, 'codigo': codigos['registro']}, 200
+        return {'erro': 'Chave não autorizada', 'codigo': codigos['registro']}, 403
 
 @api.route('/remove_agent/<int:id_agente>')
 class RemoveAgent(Resource):
@@ -567,5 +566,5 @@ class RegistroOssec(Resource):
             if supostachave == chave.chave:
                 id_agente = registrar_agente(chave.chave, host)
                 registrar_atividade(chave.chave, id_agente, 'registro')
-                return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
-        return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
+                return {'id_agente': id_agente, 'codigo': codigos['registro']}, 200
+        return {'erro': 'Chave não autorizada', 'codigo': codigos['registro']}, 403
