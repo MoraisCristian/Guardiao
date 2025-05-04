@@ -41,7 +41,14 @@ from apps.authentication.models import (
 )
 
 
-api = Api(blueprint)
+# Modificar a inicialização da API para incluir configurações adicionais
+api = Api(blueprint,
+          version='1.0',
+          title='API Guardião',
+          description='API para comunicação com agentes Guardião',
+          doc='/doc/',
+          default='api',
+          default_label='Endpoints da API Guardião')
 
 # Códigos de resposta para as operações
 codigos = {'registro': 1, 'ping': 2, 'upload': 3}
@@ -359,7 +366,7 @@ class ReceberDados(Resource):
         return jsonify({'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}), 400
 
 # Rota para download de arquivos
-@api.route('/download/<arquivo>')
+@api.route('/download/<arquivo>', methods=['GET'])
 class Download(Resource):
     @api.doc('get_download')
     def get(self, arquivo):
@@ -370,15 +377,23 @@ class Download(Resource):
             # Diretório onde os arquivos estão armazenados
             download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../downloads')
             
+            # Criar o diretório se não existir
+            if not os.path.exists(download_dir):
+                os.makedirs(download_dir)
+                print(f"Diretório de downloads criado: {download_dir}")
+            
             # Verificar se o arquivo solicitado existe
             arquivo_path = os.path.join(download_dir, arquivo)
             if not os.path.exists(arquivo_path):
+                print(f"Arquivo não encontrado: {arquivo_path}")
                 return {"erro": f"Arquivo {arquivo} não encontrado"}, 404
                 
             # Retornar o arquivo para download
+            print(f"Enviando arquivo: {arquivo_path}")
             return send_file(arquivo_path, as_attachment=True)
             
         except Exception as e:
+            print(f"Erro ao processar o download: {str(e)}")
             return {"erro": f"Erro ao processar o download: {str(e)}"}, 500
 
 # Rota para download de scripts
@@ -401,7 +416,8 @@ class DownloadScript(Resource):
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
 
-@api.route('/ping')
+# Modificar a rota de ping para garantir que o método POST seja aceito
+@api.route('/ping', methods=['GET', 'POST'])
 class Ping(Resource):
     @api.doc('get_ping')
     def get(self):
@@ -535,3 +551,21 @@ class ConfirmRemoveAgent(Resource):
         except Exception as e:
             print(f"Erro ao remover agente: {str(e)}")
             return render_template('home/page-500.html', error=f"Erro ao remover agente: {str(e)}"), 500
+
+@api.route('/registro-ossec', methods=['POST'])
+class RegistroOssec(Resource):
+    @api.doc('post_registro_ossec')
+    def post(self):
+        """
+        Endpoint para registrar novos agentes no sistema
+        """
+        supostachave = request.json.get('chave')
+        host = request.json.get('host')
+
+        chaves = Chaves.query.all()
+        for chave in chaves:
+            if supostachave == chave.chave:
+                id_agente = registrar_agente(chave.chave, host)
+                registrar_atividade(chave.chave, id_agente, 'registro')
+                return jsonify({'id_agente': id_agente, 'codigo': codigos['registro']}), 200
+        return jsonify({'erro': 'Chave não autorizada', 'codigo': codigos['registro']}), 403
