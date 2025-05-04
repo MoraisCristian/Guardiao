@@ -1,9 +1,9 @@
 import os
 import subprocess
 import requests
+import time
 from system_utils import detect_os_distribution, verificar_sudo_disponivel
 from config import SERVER_URL
-import time
 
 def verificar_psad_instalado():
     """Check if PSAD is installed"""
@@ -74,13 +74,98 @@ def instalar_psad():
         print(f"Erro inesperado ao instalar o PSAD: {str(e)}")
         return False
 
+def verificar_regras_iptables():
+    """Verifica se as regras de log do iptables já existem"""
+    try:
+        # Verifica se precisa usar sudo
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        
+        # Comando para listar regras do INPUT
+        comando = ['iptables', '-L', 'INPUT', '-n']
+        if usar_sudo:
+            comando.insert(0, 'sudo')
+        
+        resultado = subprocess.run(comando, capture_output=True, text=True)
+        
+        # Verifica se já existe regra LOG
+        if "LOG" in resultado.stdout:
+            print("Regras de log do iptables já configuradas.")
+            return True
+            
+        return False
+    except Exception as e:
+        print(f"Erro ao verificar regras do iptables: {str(e)}")
+        return False
+
+def verificar_regra_iptables(regra):
+    """Verifica se uma regra específica do iptables existe"""
+    try:
+        # Verifica se precisa usar sudo
+        usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
+        
+        # Comando para verificar a regra
+        comando = ['iptables', '-C'] + regra.split()
+        if usar_sudo:
+            comando.insert(0, 'sudo')
+        
+        subprocess.run(comando, check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except Exception as e:
+        print(f"Erro ao verificar regra do iptables: {str(e)}")
+        return False
+
+def verificar_configuracao_psad():
+    """Verifica se o arquivo de configuração do PSAD existe e está atualizado"""
+    try:
+        if not os.path.exists("/etc/psad/psad.conf"):
+            return False
+            
+        # Verifica a data de modificação do arquivo
+        stat = os.stat("/etc/psad/psad.conf")
+        # Se o arquivo foi modificado nas últimas 24 horas, considera atualizado
+        return (time.time() - stat.st_mtime) < 86400
+    except:
+        return False
+
+def executar_comando(comando):
+    """Executa um comando no sistema"""
+    try:
+        resultado = subprocess.run(comando.split(), capture_output=True, text=True)
+        return resultado.stdout
+    except Exception as e:
+        print(f"Erro ao executar comando: {str(e)}")
+        raise
+
+def baixar_configuracao_psad():
+    """Baixa o arquivo de configuração do PSAD"""
+    try:
+        # Determinar qual arquivo de configuração baixar com base na estrutura do sistema
+        arquivo_config = "psad-syslog.conf" if os.path.exists('/var/log/syslog') else "psad.conf"
+        
+        # Baixar o arquivo de configuração apropriado
+        url = f'{SERVER_URL}/download/{arquivo_config}'
+        resposta = requests.get(url)
+        if resposta.status_code == 200:
+            # Salvar temporariamente o arquivo
+            with open('psad_temp.conf', 'wb') as file:
+                file.write(resposta.content)
+            
+            # Mover o arquivo para o local correto
+            comando_mv = ['mv', 'psad_temp.conf', '/etc/psad/psad.conf']
+            if os.geteuid() != 0 and verificar_sudo_disponivel():
+                comando_mv.insert(0, 'sudo')
+            subprocess.run(comando_mv, check=True)
+        else:
+            print(f"Falha ao baixar o arquivo de configuração {arquivo_config}. Status Code: {resposta.status_code}")
+            return False
+    except Exception as e:
+        print(f"Erro ao baixar arquivo de configuração do PSAD: {str(e)}")
+        raise
+
 def configurar_psad():
-    """Configure PSAD after installation"""
-    print("Configurando PSAD...")
-    
-    # Verifica se precisa usar sudo
-    usar_sudo = os.geteuid() != 0 and verificar_sudo_disponivel()
-    
+    """Configura o PSAD no sistema"""
     try:
         # Verifica se o PSAD já está instalado
         if not verificar_psad_instalado():
@@ -93,80 +178,27 @@ def configurar_psad():
 
         # Verifica se as regras de log já existem
         if not verificar_regras_iptables():
-            print("Configurando PSAD...")
-            print("Habilitando logging do iptables...")
+            print("Configurando regras de log do iptables...")
             
             # Adiciona regras de log apenas se não existirem
             if not verificar_regra_iptables("INPUT -j LOG"):
                 executar_comando("iptables -A INPUT -j LOG")
-                print("Comando executado com sucesso: iptables -A INPUT -j LOG")
+                print("Regra de log adicionada ao INPUT")
             
             if not verificar_regra_iptables("FORWARD -j LOG"):
                 executar_comando("iptables -A FORWARD -j LOG")
-                print("Comando executado com sucesso: iptables -A FORWARD -j LOG")
+                print("Regra de log adicionada ao FORWARD")
         else:
             print("Regras de log do iptables já configuradas.")
 
         # Verifica se o arquivo de configuração já existe e está atualizado
         if not verificar_configuracao_psad():
-            print("Detectado sistema com syslog, baixando psad-syslog.conf...")
+            print("Atualizando configuração do PSAD...")
             baixar_configuracao_psad()
-            print("Arquivo de configuração psad-syslog.conf baixado com sucesso.")
-            print("Arquivo de configuração movido para /etc/psad/psad.conf")
+            print("Configuração do PSAD atualizada com sucesso.")
         else:
             print("Configuração do PSAD já está atualizada.")
 
-        # Atualizar assinaturas do PSAD
-        print("Atualizando assinaturas do PSAD...")
-        comando_sig = ['psad', '--sig-update']
-        if usar_sudo:
-            comando_sig.insert(0, 'sudo')
-        subprocess.run(comando_sig, check=True)
-        print("Assinaturas do PSAD atualizadas com sucesso.")
-        
-        # Iniciar e habilitar o serviço PSAD
-        print("Iniciando e habilitando o serviço PSAD...")
-        os_type = detect_os_distribution()
-        
-        # Diferentes comandos para diferentes sistemas
-        if os_type in ['debian', 'ubuntu'] or os_type in ['centos', 'redhat']:
-            # Sistemas que usam systemd
-            comandos_service = [
-                ['systemctl', 'enable', 'psad'],
-                ['systemctl', 'start', 'psad']
-            ]
-        elif os_type == 'darwin':
-            # macOS (usando launchctl)
-            comandos_service = [
-                ['launchctl', 'load', '-w', '/Library/LaunchDaemons/com.psad.plist']
-            ]
-        else:
-            # Sistemas genéricos (usando service)
-            comandos_service = [
-                ['service', 'psad', 'enable'],
-                ['service', 'psad', 'start']
-            ]
-        
-        for comando in comandos_service:
-            if usar_sudo and os_type != 'darwin':  # No macOS, launchctl não precisa de sudo
-                comando.insert(0, 'sudo')
-            try:
-                subprocess.run(comando, check=True)
-                print(f"Comando executado com sucesso: {' '.join(comando)}")
-            except subprocess.CalledProcessError as e:
-                print(f"Aviso: Erro ao executar comando de serviço: {str(e)}")
-                # Tenta método alternativo se o primeiro falhar
-                if 'systemctl' in comando:
-                    alt_comando = ['service', 'psad', 'start' if 'start' in comando else 'enable']
-                    if usar_sudo:
-                        alt_comando.insert(0, 'sudo')
-                    try:
-                        subprocess.run(alt_comando, check=True)
-                        print(f"Método alternativo executado com sucesso: {' '.join(alt_comando)}")
-                    except subprocess.CalledProcessError as e2:
-                        print(f"Erro também no método alternativo: {str(e2)}")
-        
-        print("Configuração do PSAD concluída com sucesso.")
         return True
     except Exception as e:
         print(f"Erro ao configurar PSAD: {str(e)}")
@@ -197,40 +229,3 @@ def verificar_e_configurar_psad():
     except Exception as e:
         print(f"Erro ao verificar e configurar PSAD: {str(e)}")
         return False
-
-def verificar_regras_iptables():
-    """Verifica se as regras de log do iptables já existem"""
-    try:
-        output = executar_comando("iptables -L INPUT -n | grep LOG")
-        return "LOG" in output
-    except:
-        return False
-
-def verificar_regra_iptables(regra):
-    """Verifica se uma regra específica do iptables existe"""
-    try:
-        output = executar_comando(f"iptables -C {regra}")
-        return True
-    except:
-        return False
-
-def verificar_configuracao_psad():
-    """Verifica se o arquivo de configuração do PSAD existe e está atualizado"""
-    try:
-        if not os.path.exists("/etc/psad/psad.conf"):
-            return False
-            
-        # Verifica a data de modificação do arquivo
-        stat = os.stat("/etc/psad/psad.conf")
-        # Se o arquivo foi modificado nas últimas 24 horas, considera atualizado
-        return (time.time() - stat.st_mtime) < 86400
-    except:
-        return False
-
-def baixar_configuracao_psad():
-    # Implemente a lógica para baixar o arquivo de configuração do PSAD
-    pass
-
-def executar_comando(comando):
-    # Implemente a lógica para executar um comando no sistema
-    pass
