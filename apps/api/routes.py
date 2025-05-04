@@ -561,6 +561,8 @@ class RegistroOssec(Resource):
         supostachave = request.json.get('chave')
         host = request.json.get('host')
 
+        print(host)
+
         chaves = Chaves.query.all()
         for chave in chaves:
             if supostachave == chave.chave:
