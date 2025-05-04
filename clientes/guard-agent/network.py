@@ -3,7 +3,7 @@ import json
 import os
 import time
 from logger import log_info, log_error, log_debug, log_exception, log_warning
-from config import API_URL, SERVER_URL
+from config import API_URL, SERVER_URL, chave_ativacao
 
 def enviar_mensagem(data, endpoint):
     """Envia mensagem para o servidor Guardian"""
