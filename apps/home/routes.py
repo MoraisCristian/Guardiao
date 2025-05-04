@@ -1,16 +1,26 @@
-from apps.home import blueprint
-from flask import render_template, request, redirect, url_for, flash
-from flask_login import login_required
+# Importações do Flask e extensões relacionadas
+from flask import render_template, request, redirect, url_for, flash, send_file
+from flask_login import login_required, current_user, login_user, logout_user
+from flask_restx import Resource, Api
+from flask_dance.contrib.github import github
 from jinja2 import TemplateNotFound
-from datetime import datetime, timedelta
-import requests
 
-from apps.config import API_GENERATOR
-from apps.authentication.models import Vulnerabilidades, Atividades, Agentes, Chaves, Infos, Fila, criar_chave, deletar_chave, salvar_no_banco
+# Importações de módulos padrão
+import random, string ,os, requests
+from datetime import datetime, timedelta
+
+# Importações relacionadas ao banco de dados
 from sqlalchemy import or_, desc
 from apps import db
 
-import random, string, os
+# Importações específicas da aplicação
+from apps.home import blueprint
+from apps.config import API_GENERATOR
+from apps.authentication.models import (
+    Vulnerabilidades, Atividades, Softwares, Agentes, 
+    Chaves, Users, Infos, Fila, WebScan,
+    remover_agente, criar_chave, deletar_chave
+)
 
 @blueprint.route('/index')
 @login_required
@@ -75,6 +85,47 @@ def guardiao(id):
 
     segment = get_segment(request)
     return render_template('home/perfil_agente.html', segment=segment, infos=infos[0], vulns=vulns)
+
+@blueprint.route('/remove_agent/<int:agent_id>', methods=['GET'])
+def remove_agent_route(agent_id):
+    try:
+        # Check if user is authenticated
+        if not current_user.is_authenticated:
+            return redirect(url_for('home_api.login'))
+            
+        # Get the agent from database
+        agent = Agentes.query.filter_by(id=agent_id).first()
+        
+        if not agent:
+            return render_template('home/page-404.html', 
+                                  error="Agente não encontrado"), 404
+        
+        # Call the remover_agente function that was imported
+        success = remover_agente(agent_id)
+        
+        if success:
+            # Log the activity
+            nova_atividade = Atividades(
+                agente_id=agent_id,
+                tipo="remocao",
+                descricao=f"Agente {agent.hostname} removido manualmente",
+                data=datetime.utcnow()
+            )
+            db.session.add(nova_atividade)
+            db.session.commit()
+            
+            # Redirect to the agents list with success message
+            return redirect(url_for('home_api.agentes', 
+                                   msg="Agente removido com sucesso"))
+        else:
+            # If removal failed, redirect with error message
+            return redirect(url_for('home_api.agentes', 
+                                   error="Falha ao remover o agente"))
+            
+    except Exception as e:
+        print(f"Erro ao remover agente: {str(e)}")
+        return render_template('home/page-500.html', 
+                              error=f"Erro ao remover agente: {str(e)}"), 500
 
 # Rota para realizar um scan on demand em um guardião
 @blueprint.route('/scan_on_demand/<int:id>', methods=['GET', 'POST'])
@@ -355,6 +406,207 @@ def ossec_alerts():
     segment = get_segment(request)
     return render_template('home/ossec_alerts.html', segment=segment, alerts=alerts)
 
+
+
+########## Páginas web do WAS #############
+from apps.authentication.models import WebScan
+
+# Página de gerenciamento de scans web
+@blueprint.route('/webscans')
+def webscans():
+    scans = WebScan.query.filter_by(usuario_id=current_user.id).all()
+    segment = 'webscans'
+    return render_template('home/webscans.html', scans=scans, segment=segment)
+
+# Página para criar novo scan
+@blueprint.route('/webscans/novo', methods=['GET', 'POST'])
+def novo_webscan():
+    if request.method == 'POST':
+        nome = request.form['nome']
+        url = request.form['url']
+        recorrencia = request.form['recorrencia']
+        hora_execucao_str = request.form.get('hora_execucao')
+        
+        # Processar dias da semana (checkboxes)
+        dias_semana = request.form.getlist('dias_semana')
+        dias_semana_str = ','.join(dias_semana) if dias_semana else None
+        
+        # Converter hora de execução para objeto Time
+        hora_execucao = None
+        if hora_execucao_str:
+            from datetime import datetime, time
+            hora, minuto = hora_execucao_str.split(':')
+            hora_execucao = time(int(hora), int(minuto))
+        
+        # Calcular próxima execução com base na recorrência e dias selecionados
+        proxima_execucao = None
+        if recorrencia != 'Nunca' and hora_execucao:
+            from datetime import datetime, timedelta
+            agora = datetime.now()
+            
+            # Definir a próxima execução com base na hora especificada
+            proxima_execucao = datetime.combine(agora.date(), hora_execucao)
+            
+            # Se a hora já passou hoje, avançar para o próximo dia
+            if proxima_execucao < agora:
+                proxima_execucao += timedelta(days=1)
+            
+            # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
+            if recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and dias_semana:
+                # Converter dias da semana para inteiros
+                dias_int = [int(dia) for dia in dias_semana]
+                
+                # Encontrar o próximo dia da semana válido
+                dias_para_adicionar = 0
+                while proxima_execucao.weekday() not in dias_int:
+                    proxima_execucao += timedelta(days=1)
+                    dias_para_adicionar += 1
+                    if dias_para_adicionar > 7:  # Evitar loop infinito
+                        break
+        
+        scan = WebScan(
+            nome=nome,
+            url=url,
+            recorrencia=recorrencia,
+            dias_semana=dias_semana_str,
+            hora_execucao=hora_execucao,
+            proxima_execucao=proxima_execucao,
+            usuario_id=current_user.id
+        )
+        db.session.add(scan)
+        db.session.commit()
+        return redirect(url_for('home_blueprint.webscans'))
+    return render_template('home/novo_webscan.html')
+
+# Editar scan
+@blueprint.route('/webscans/editar/<int:id>', methods=['GET', 'POST'])
+def editar_webscan(id):
+    scan = WebScan.query.get_or_404(id)
+    if request.method == 'POST':
+        scan.nome = request.form['nome']
+        scan.url = request.form['url']
+        scan.recorrencia = request.form['recorrencia']
+        
+        # Processar dias da semana (checkboxes)
+        dias_semana = request.form.getlist('dias_semana')
+        scan.dias_semana = ','.join(dias_semana) if dias_semana else None
+        
+        # Processar hora de execução
+        hora_execucao_str = request.form.get('hora_execucao')
+        if hora_execucao_str:
+            from datetime import time
+            hora, minuto = hora_execucao_str.split(':')
+            scan.hora_execucao = time(int(hora), int(minuto))
+        else:
+            scan.hora_execucao = None
+        
+        # Recalcular próxima execução
+        if scan.recorrencia != 'Nunca' and scan.hora_execucao:
+            from datetime import datetime, timedelta
+            agora = datetime.now()
+            
+            # Definir a próxima execução com base na hora especificada
+            proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
+            
+            # Se a hora já passou hoje, avançar para o próximo dia
+            if proxima_execucao < agora:
+                proxima_execucao += timedelta(days=1)
+            
+            # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
+            if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
+                # Converter dias da semana para inteiros
+                dias_int = [int(dia) for dia in scan.dias_semana.split(',')]
+                
+                # Encontrar o próximo dia da semana válido
+                dias_para_adicionar = 0
+                while proxima_execucao.weekday() not in dias_int:
+                    proxima_execucao += timedelta(days=1)
+                    dias_para_adicionar += 1
+                    if dias_para_adicionar > 7:  # Evitar loop infinito
+                        break
+            
+            scan.proxima_execucao = proxima_execucao
+        else:
+            scan.proxima_execucao = None
+        
+        db.session.commit()
+        return redirect(url_for('home_blueprint.webscans'))
+    
+    # Preparar dias da semana para o template
+    dias_semana = scan.dias_semana.split(',') if scan.dias_semana else []
+    
+    return render_template('home/editar_webscan.html', scan=scan, dias_semana=dias_semana)
+
+# Desativar scan
+@blueprint.route('/webscans/desativar/<int:id>', methods=['POST'])
+def desativar_webscan(id):
+    scan = WebScan.query.get_or_404(id)
+    scan.ativo = False
+    scan.status = 'desativado'
+    db.session.commit()
+    return redirect(url_for('home_blueprint.webscans'))
+
+@blueprint.route('/webscans/ativar/<int:id>', methods=['POST'])
+def ativar_webscan(id):
+    scan = WebScan.query.get_or_404(id)
+    scan.ativo = True
+    scan.status = 'agendado'
+    
+    # Recalcular próxima execução
+    if scan.recorrencia != 'Nunca' and scan.hora_execucao:
+        from datetime import datetime, timedelta
+        agora = datetime.now()
+        
+        # Definir a próxima execução com base na hora especificada
+        proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
+        
+        # Se a hora já passou hoje, avançar para o próximo dia
+        if proxima_execucao < agora:
+            proxima_execucao += timedelta(days=1)
+        
+        # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
+        if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
+            # Converter dias da semana para inteiros
+            dias_int = [int(dia) for dia in scan.dias_semana.split(',')]
+            
+            # Encontrar o próximo dia da semana válido
+            dias_para_adicionar = 0
+            while proxima_execucao.weekday() not in dias_int:
+                proxima_execucao += timedelta(days=1)
+                dias_para_adicionar += 1
+                if dias_para_adicionar > 7:  # Evitar loop infinito
+                    break
+        
+        scan.proxima_execucao = proxima_execucao
+    
+    db.session.commit()
+    return redirect(url_for('home_blueprint.webscans'))
+
+# Clonar scan
+@blueprint.route('/webscans/clonar/<int:id>', methods=['POST'])
+def clonar_webscan(id):
+    scan = WebScan.query.get_or_404(id)
+    novo_scan = WebScan(
+        nome=scan.nome + ' (Clone)',
+        url=scan.url,
+        status='agendado',
+        recorrencia=scan.recorrencia,
+        dias_semana=scan.dias_semana,
+        hora_execucao=scan.hora_execucao,
+        proxima_execucao=scan.proxima_execucao,
+        usuario_id=scan.usuario_id
+    )
+    db.session.add(novo_scan)
+    db.session.commit()
+    return redirect(url_for('home_blueprint.webscans'))
+
+# Excluir scan
+@blueprint.route('/webscans/excluir/<int:id>', methods=['POST'])
+def excluir_webscan(id):
+    scan = WebScan.query.get_or_404(id)
+    db.session.delete(scan)
+    db.session.commit()
+    return redirect(url_for('home_blueprint.webscans'))
 
 
 

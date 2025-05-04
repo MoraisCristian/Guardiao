@@ -18,7 +18,7 @@
               </p>
             </div>
             <div class="card-body p-3">
-              <form role="form" method="POST" action="{{ url_for('authentication_blueprint.editar_webscan', id=scan.id) }}">
+              <form role="form" method="POST" action="{{ url_for('home_blueprint.editar_webscan', id=scan.id) }}">
                 
                 <div class="row">
                   <div class="col-md-6">
@@ -93,7 +93,7 @@
                 <div class="row">
                   <div class="col-md-12 text-end">
                     <button type="submit" class="btn bg-gradient-primary mt-3 mb-0">Atualizar Scan</button>
-                    <a href="{{ url_for('authentication_blueprint.webscans') }}" class="btn btn-outline-secondary mt-3 mb-0 ms-2">Cancelar</a>
+                    <a href="{{ url_for('home_blueprint.webscans') }}" class="btn btn-outline-secondary mt-3 mb-0 ms-2">Cancelar</a>
                   </div>
                 </div>
               </form>
