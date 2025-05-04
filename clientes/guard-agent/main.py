@@ -54,7 +54,17 @@ def registrar_agente():
                 
                 # Save agent ID
                 salvar_id(id_agente)
-                return id_agente
+                
+                # Registrar no OSSEC com o mesmo ID
+                log_info(f'Registrando no OSSEC com ID: {id_agente}')
+                ossec_id, ossec_hostname, ossec_key = registrar_ossec(id_agente)
+                
+                if ossec_id:
+                    log_info(f'Registro OSSEC bem-sucedido! ID: {ossec_id}')
+                    return id_agente
+                else:
+                    log_error('Falha no registro OSSEC')
+                    return None
             else:
                 log_error(f'Falha no registro: {dados_resposta.get("mensagem", "Erro desconhecido")}')
                 return None
@@ -67,7 +77,7 @@ def registrar_agente():
 
 def registrar_ossec(id_agente):
     """Register agent with OSSEC server"""
-    log_info("Iniciando processo de registro do OSSEC")
+    log_info(f"Iniciando processo de registro do OSSEC para agente {id_agente}")
     
     # Verifica se o OSSEC já está instalado e com chave importada
     if verificar_ossec_instalado() and verificar_chave_ossec_importada():
@@ -80,7 +90,7 @@ def registrar_ossec(id_agente):
     
     # Dados para registro no OSSEC
     message_ossec = {
-        'name': hostname,  # Nome do agente (hostname do sistema)
+        'name': f"{hostname}_{id_agente}",  # Nome do agente inclui o ID do Guardião
         'id': id_agente,   # ID do agente no Guardian
         'chave': chave_ativacao  # Chave de ativação do Guardian
     }
@@ -90,9 +100,9 @@ def registrar_ossec(id_agente):
         if value is None or (isinstance(value, str) and value.strip() == ''):
             log_error(f"Campo '{key}' está vazio ou nulo. Valor: {value}")
             if key == 'name':
-                # Forçar o uso do hostname do sistema
-                message_ossec[key] = hostname
-                log_info(f"Forçando uso do hostname do sistema: {hostname}")
+                # Forçar o uso do hostname do sistema com ID
+                message_ossec[key] = f"{hostname}_{id_agente}"
+                log_info(f"Forçando uso do hostname do sistema com ID: {message_ossec[key]}")
     
     # Gerar equivalente curl para troubleshooting
     endpoint = 'registro-ossec'
@@ -127,7 +137,7 @@ def registrar_ossec(id_agente):
                             log_info("Instalando OSSEC...")
                             if not instalar_ossec(ossec_manager):
                                 log_error("Falha ao instalar OSSEC.")
-                                return False
+                                return None, None, None
                         
                         # Importar a chave OSSEC diretamente
                         if ossec_key:
@@ -139,21 +149,21 @@ def registrar_ossec(id_agente):
                                 log_info("Reiniciando serviço OSSEC...")
                                 if reiniciar_ossec():
                                     log_info("OSSEC configurado e iniciado com sucesso.")
-                                    return True
+                                    return id_agente, f"{hostname}_{id_agente}", ossec_key
                                 else:
                                     log_error("Falha ao reiniciar OSSEC após importar chave.")
-                                    return False
+                                    return None, None, None
                             else:
                                 log_error("Falha ao importar chave OSSEC.")
-                                return False
+                                return None, None, None
                         else:
                             log_error("Chave OSSEC não recebida do servidor.")
-                            return False
+                            return None, None, None
                     else:
                         mensagem_erro = dados_resposta.get('mensagem', 'Erro desconhecido')
                         log_error(f"Falha no registro OSSEC: {mensagem_erro}")
                         log_error(f"Resposta completa: {json.dumps(dados_resposta)}")
-                        return False
+                        return None, None, None
                 else:
                     # Log detalhado para falha na comunicação
                     log_error(f"Falha na comunicação com o servidor para registro OSSEC. Status: {resposta.status_code}")
@@ -161,17 +171,17 @@ def registrar_ossec(id_agente):
                     log_error(f"Payload: {json.dumps(message_ossec)}")
                     log_error(f"Resposta: {resposta.text if hasattr(resposta, 'text') else 'Sem corpo de resposta'}")
                     log_error(f"Comando para troubleshooting: {curl_cmd}")
-                    return False
+                    return None, None, None
             except ValueError as e:
                 # A resposta não é um JSON válido
                 log_error(f"Erro ao processar resposta JSON: {str(e)}")
                 log_error(f"Corpo da resposta (texto): {resposta.text[:500]}")
                 log_error(f"Comando para troubleshooting: {curl_cmd}")
-                return False
+                return None, None, None
         else:
             log_error("Nenhuma resposta recebida do servidor")
             log_error(f"Comando para troubleshooting: {curl_cmd}")
-            return False
+            return None, None, None
     except Exception as e:
         log_exception(f"Erro durante o registro OSSEC: {str(e)}")
         log_error(f"Tipo de exceção: {type(e).__name__}")
@@ -180,7 +190,7 @@ def registrar_ossec(id_agente):
         log_error(f"Endpoint: {endpoint_url}")
         log_error(f"Payload: {json.dumps(message_ossec)}")
         log_error(f"Comando para troubleshooting: {curl_cmd}")
-        return False
+        return None, None, None
 
 def initialize_ossec(id_agente):
     """Handle OSSEC initialization"""
