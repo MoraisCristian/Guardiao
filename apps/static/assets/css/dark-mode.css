@@ -21,13 +21,13 @@
 }
 
 .dark-mode .card {
-  background-color: #242526;
+  background-color: #0f0f0f;
   border-color: #3E4042;
 }
 
 .dark-mode .table {
   color: #E4E6EB;
-  border-color: #3E4042;
+  border-color: #242424;
 }
 
 .dark-mode .modal,

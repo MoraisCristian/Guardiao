@@ -4527,11 +4527,13 @@ textarea.form-control-lg {
   --bs-card-inner-border-radius: 1rem;
   --bs-card-cap-padding-y: 0.5rem;
   --bs-card-cap-padding-x: 1rem;
-  --bs-card-cap-bg: #fff;
+  /* bg dark */
+  --bs-card-cap-bg: #0f0f0f;
   --bs-card-cap-color: ;
   --bs-card-height: ;
   --bs-card-color: ;
-  --bs-card-bg: #fff;
+  /* bg dark */
+  --bs-card-bg: #171717;
   --bs-card-img-overlay-padding: 1rem;
   --bs-card-group-margin: 0.75rem;
   position: relative;
@@ -9749,8 +9751,9 @@ textarea.form-control-lg {
   background-color: transparent !important;
 }
 
+/* bg dark */
 .bg-gray-100 {
-  background-color: #d1d1b9 !important;
+  background-color: #242424 !important; 
 }
 
 .bg-gray-200 {
@@ -19874,7 +19877,8 @@ hr.horizontal.gray-light {
 }
 .navbar-vertical .navbar-nav > .nav-item .nav-link.active {
   color: #344767;
-  background-color: #fff;
+  /* bg dark */
+  background-color: #0f0f0f;
 }
 .navbar-vertical .navbar-nav > .nav-item .nav-link.active .icon {
   background-image: linear-gradient(310deg, #566d7e 0%, #b6c5cd 100%);
