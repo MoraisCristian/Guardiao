@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./apps:/app/apps
+      - webscan_results:/var/webscan_results
     ports:
       - "5002:5000"  # Expõe a API do Flask para o host
     environment:
@@ -22,6 +23,7 @@ services:
       - app-network
     depends_on:
       - mariadb
+      - redis
 
   mariadb:
     image: mariadb:10.6
@@ -51,6 +53,82 @@ services:
       - app-network
     depends_on:
       - mariadb
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
+  webscan-worker-1:
+    build:
+      context: ./workers
+      dockerfile: Dockerfile
+    volumes:
+      - webscan_results:/var/webscan_results
+    environment:
+      - WORKER_ID=1
+      - DB_ENGINE=mysql+pymysql
+      - DB_USERNAME=guardiao
+      - DB_PASS=guardiao_password
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=guardiao_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - app-network
+    depends_on:
+      - redis
+      - mariadb
+
+  webscan-worker-2:
+    build:
+      context: ./workers
+      dockerfile: Dockerfile
+    volumes:
+      - webscan_results:/var/webscan_results
+    environment:
+      - WORKER_ID=2
+      - DB_ENGINE=mysql+pymysql
+      - DB_USERNAME=guardiao
+      - DB_PASS=guardiao_password
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=guardiao_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - app-network
+    depends_on:
+      - redis
+      - mariadb
+
+  # webscan-worker-3:
+  #   build:
+  #     context: ./workers
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - webscan_results:/var/webscan_results
+  #   environment:
+  #     - WORKER_ID=3
+  #     - DB_ENGINE=mysql+pymysql
+  #     - DB_USERNAME=guardiao
+  #     - DB_PASS=guardiao_password
+  #     - DB_HOST=mariadb
+  #     - DB_PORT=3306
+  #     - DB_NAME=guardiao_db
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - redis
+  #     - mariadb
 
   ossec:
     build:
@@ -107,6 +185,8 @@ services:
 volumes:
   zinc-data:
   mariadb-data:
+  redis-data:
+  webscan_results:
   ossec_etc:
   ossec_logs:
   ossec_queue:
