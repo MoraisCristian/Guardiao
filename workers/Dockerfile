@@ -25,6 +25,7 @@ WORKDIR /app
 # Copiar arquivos necessários
 COPY webscan_worker.py /app/
 COPY requirements.txt /app/
+COPY ../apps/authentication/models.py /app/models.py
 
 # Instalar dependências Python
 RUN pip install --no-cache-dir -r requirements.txt
