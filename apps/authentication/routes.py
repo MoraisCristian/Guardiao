@@ -103,53 +103,48 @@ def register():
 
 # Endpoint para autenticação via JWT (JSON Web Tokens)
 @blueprint.route('/login/jwt/', methods=['POST'])
-class JWTLogin(Resource):
-    def post(self):
-        try:
-            data = request.form
+def jwt_login():
+    try:
+        data = request.form
 
-            if not data:
-                data = request.json
+        if not data:
+            data = request.json
 
-            if not data:
+        if not data:
+            return {
+                'message': 'Nome de usuário ou senha está faltando',
+                "data": None,
+                'success': False
+            }, 400
+        # Validar entrada
+        user = Users.query.filter_by(username=data.get('username')).first()
+        if user and verify_pass(data.get('password'), user.password):
+            try:
+                if not user.api_token or user.api_token == '':
+                    user.api_token = generate_token(user.id)
+                    user.api_token_ts = int(datetime.utcnow().timestamp())
+                    db.session.commit()
                 return {
-                           'message': 'Nome de usuário ou senha está faltando',
-                           "data": None,
-                           'success': False
-                       }, 400
-            # Validar entrada
-            user = Users.query.filter_by(username=data.get('username')).first()
-            if user and verify_pass(data.get('password'), user.password):
-                try:
-
-                    # Gerar token se não existir ou estiver vazio
-                    if not user.api_token or user.api_token == '':
-                        user.api_token = generate_token(user.id)
-                        user.api_token_ts = int(datetime.utcnow().timestamp())
-                        db.session.commit()
-
-                    # Token deve expirar após 24 horas
-                    return {
-                        "message": "Token de autenticação obtido com sucesso",
-                        "success": True,
-                        "data": user.api_token
-                    }
-                except Exception as e:
-                    return {
-                               "error": "Algo deu errado",
-                               "success": False,
-                               "message": str(e)
-                           }, 500
-            return {
-                       'message': 'Nome de usuário ou senha está errado',
-                       'success': False
-                   }, 403
-        except Exception as e:
-            return {
-                       "error": "Algo deu errado",
-                       "success": False,
-                       "message": str(e)
-                   }, 500
+                    "message": "Token de autenticação obtido com sucesso",
+                    "success": True,
+                    "data": user.api_token
+                }, 200
+            except Exception as e:
+                return {
+                    "error": "Algo deu errado",
+                    "success": False,
+                    "message": str(e)
+                }, 500
+        return {
+            'message': 'Nome de usuário ou senha está errado',
+            'success': False
+        }, 403
+    except Exception as e:
+        return {
+            "error": "Algo deu errado",
+            "success": False,
+            "message": str(e)
+        }, 500
 
 # Rota para logout de usuários
 @blueprint.route('/logout')
