@@ -290,7 +290,7 @@ def main():
                                 
                             elif ping_data['fila'] == 'vuln-scan':
                                 log_info("Iniciando varredura de vulnerabilidades...")
-                                vuln_scan(id_agente)
+                                vuln_scan()
                                 
                             elif ping_data['fila'] == 'script' and 'script_name' in ping_data:
                                 log_info(f"Executando script: {ping_data['script_name']}")
