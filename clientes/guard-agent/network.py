@@ -91,6 +91,7 @@ def enviar_softwares(id_agente, softwares):
     try:
         data = {
             "id": id_agente,
+            "chave": chave_ativacao,
             "tipo": "softwares",
             "payload": softwares
         }
@@ -104,6 +105,7 @@ def enviar_infos(id_agente, infos):
     try:
         data = {
             "id": id_agente,
+            "chave": chave_ativacao,
             "tipo": "infos",
             "payload": infos
         }
@@ -117,6 +119,7 @@ def enviar_vulns(id_agente, vulns):
     try:
         data = {
             "id": id_agente,
+            "chave": chave_ativacao,
             "tipo": "vuln-scan",
             "payload": vulns
         }
