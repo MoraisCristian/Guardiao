@@ -68,8 +68,10 @@ services:
     build:
       context: ./workers
       dockerfile: Dockerfile
+    restart: always
     volumes:
       - webscan_results:/var/webscan_results
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - WORKER_ID=1
       - DB_ENGINE=mysql+pymysql
@@ -90,8 +92,10 @@ services:
     build:
       context: ./workers
       dockerfile: Dockerfile
+    restart: always
     volumes:
       - webscan_results:/var/webscan_results
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - WORKER_ID=2
       - DB_ENGINE=mysql+pymysql
@@ -108,27 +112,7 @@ services:
       - redis
       - mariadb
 
-  # webscan-worker-3:
-  #   build:
-  #     context: ./workers
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - webscan_results:/var/webscan_results
-  #   environment:
-  #     - WORKER_ID=3
-  #     - DB_ENGINE=mysql+pymysql
-  #     - DB_USERNAME=guardiao
-  #     - DB_PASS=guardiao_password
-  #     - DB_HOST=mariadb
-  #     - DB_PORT=3306
-  #     - DB_NAME=guardiao_db
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   networks:
-  #     - app-network
-  #   depends_on:
-  #     - redis
-  #     - mariadb
+
 
   ossec:
     build:
