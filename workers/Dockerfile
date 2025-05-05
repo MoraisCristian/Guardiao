@@ -1,9 +1,17 @@
 FROM python:3.12-slim
 
-# Instalar dependências do sistema
+# Instalar dependências do sistema e Go
 RUN apt-get update && apt-get install -y \
-    nuclei \
+    wget \
+    git \
+    golang \
     && rm -rf /var/lib/apt/lists/*
+
+# Instalar Nuclei via Go
+RUN go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+
+# Adicionar Go bin ao PATH
+ENV PATH="/root/go/bin:${PATH}"
 
 # Criar diretório da aplicação
 WORKDIR /app
