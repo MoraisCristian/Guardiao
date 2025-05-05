@@ -29,8 +29,8 @@
                   </div>
                   <div class="col-md-6">
                     <div class="input-group input-group-static mb-4">
-                      <label for="url">URL Alvo</label>
-                      <input type="url" class="form-control" id="url" name="url" placeholder="https://exemplo.com" required>
+                      <label for="urls">URLs Alvo (uma por linha)</label>
+                      <textarea class="form-control" id="urls" name="urls" rows="3" placeholder="https://exemplo1.com&#10;https://exemplo2.com" required></textarea>
                     </div>
                   </div>
                 </div>
@@ -90,6 +90,87 @@
                   </div>
                 </div>
 
+                <!-- Configurações de Autenticação -->
+                <div class="row mt-4">
+                  <div class="col-md-12">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="autenticado" name="autenticado" onchange="toggleAuthFields()">
+                      <label class="form-check-label" for="autenticado">Usar Autenticação</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="auth_fields" style="display: none;">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="input-group input-group-static mb-4">
+                        <label for="username">Usuário</label>
+                        <input type="text" class="form-control" id="username" name="username">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="input-group input-group-static mb-4">
+                        <label for="password">Senha</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Configurações do Nuclei -->
+                <div class="row mt-4">
+                  <div class="col-md-12">
+                    <h6 class="mb-3">Configurações do Nuclei</h6>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="severidade">Severidade Mínima</label>
+                      <select class="form-control" id="severidade" name="severidade">
+                        <option value="low">Baixa</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="high">Alta</option>
+                        <option value="critical">Crítica</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="templates">Templates Específicos (opcional)</label>
+                      <input type="text" class="form-control" id="templates" name="templates" placeholder="cves,exposures">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="rate_limit">Rate Limit</label>
+                      <input type="number" class="form-control" id="rate_limit" name="rate_limit" value="150" min="1">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="threads">Threads</label>
+                      <input type="number" class="form-control" id="threads" name="threads" value="25" min="1">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="timeout">Timeout (s)</label>
+                      <input type="number" class="form-control" id="timeout" name="timeout" value="5" min="1">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="input-group input-group-static mb-4">
+                      <label for="retries">Tentativas</label>
+                      <input type="number" class="form-control" id="retries" name="retries" value="1" min="1">
+                    </div>
+                  </div>
+                </div>
+
                 <div class="row">
                   <div class="col-md-12 text-end">
                     <button type="submit" class="btn bg-gradient-primary mt-3 mb-0">Salvar Scan</button>
@@ -121,10 +202,22 @@
       diasSemanaContainer.style.display = 'block';
     }
   }
+
+  function toggleAuthFields() {
+    var autenticado = document.getElementById('autenticado').checked;
+    var authFields = document.getElementById('auth_fields');
+    
+    if (autenticado) {
+      authFields.style.display = 'block';
+    } else {
+      authFields.style.display = 'none';
+    }
+  }
   
   // Executar ao carregar a página
   document.addEventListener('DOMContentLoaded', function() {
     toggleDiasSemana();
+    toggleAuthFields();
   });
 </script>
 {% endblock javascripts %}

@@ -423,13 +423,26 @@ def webscans():
 def novo_webscan():
     if request.method == 'POST':
         nome = request.form['nome']
-        url = request.form['url']
+        urls = request.form['urls']  # Agora recebe múltiplas URLs
         recorrencia = request.form['recorrencia']
         hora_execucao_str = request.form.get('hora_execucao')
         
         # Processar dias da semana (checkboxes)
         dias_semana = request.form.getlist('dias_semana')
         dias_semana_str = ','.join(dias_semana) if dias_semana else None
+        
+        # Configurações de autenticação
+        autenticado = 'autenticado' in request.form
+        username = request.form.get('username') if autenticado else None
+        password = request.form.get('password') if autenticado else None
+        
+        # Configurações do Nuclei
+        severidade = request.form.get('severidade', 'medium')
+        templates = request.form.get('templates')
+        rate_limit = int(request.form.get('rate_limit', 150))
+        threads = int(request.form.get('threads', 25))
+        timeout = int(request.form.get('timeout', 5))
+        retries = int(request.form.get('retries', 1))
         
         # Converter hora de execução para objeto Time
         hora_execucao = None
@@ -466,12 +479,21 @@ def novo_webscan():
         
         scan = WebScan(
             nome=nome,
-            url=url,
+            urls=urls,
             recorrencia=recorrencia,
             dias_semana=dias_semana_str,
             hora_execucao=hora_execucao,
             proxima_execucao=proxima_execucao,
-            usuario_id=current_user.id
+            usuario_id=current_user.id,
+            autenticado=autenticado,
+            username=username,
+            password=password,
+            severidade=severidade,
+            templates=templates,
+            rate_limit=rate_limit,
+            threads=threads,
+            timeout=timeout,
+            retries=retries
         )
         db.session.add(scan)
         db.session.commit()
@@ -484,12 +506,25 @@ def editar_webscan(id):
     scan = WebScan.query.get_or_404(id)
     if request.method == 'POST':
         scan.nome = request.form['nome']
-        scan.url = request.form['url']
+        scan.urls = request.form['urls']
         scan.recorrencia = request.form['recorrencia']
         
         # Processar dias da semana (checkboxes)
         dias_semana = request.form.getlist('dias_semana')
         scan.dias_semana = ','.join(dias_semana) if dias_semana else None
+        
+        # Configurações de autenticação
+        scan.autenticado = 'autenticado' in request.form
+        scan.username = request.form.get('username') if scan.autenticado else None
+        scan.password = request.form.get('password') if scan.autenticado else None
+        
+        # Configurações do Nuclei
+        scan.severidade = request.form.get('severidade', 'medium')
+        scan.templates = request.form.get('templates')
+        scan.rate_limit = int(request.form.get('rate_limit', 150))
+        scan.threads = int(request.form.get('threads', 25))
+        scan.timeout = int(request.form.get('timeout', 5))
+        scan.retries = int(request.form.get('retries', 1))
         
         # Processar hora de execução
         hora_execucao_str = request.form.get('hora_execucao')

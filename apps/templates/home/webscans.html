@@ -16,11 +16,12 @@
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>URL</th>
+                  <th>URLs</th>
                   <th>Status</th>
                   <th>Recorrência</th>
                   <th>Última Execução</th>
                   <th>Próxima Execução</th>
+                  <th>Configurações</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -28,11 +29,29 @@
                 {% for scan in scans %}
                 <tr>
                   <td>{{ scan.nome }}</td>
-                  <td>{{ scan.url }}</td>
+                  <td>
+                    {% set urls = scan.urls.split('\n') %}
+                    {% for url in urls[:2] %}
+                      <div>{{ url }}</div>
+                    {% endfor %}
+                    {% if urls|length > 2 %}
+                      <div class="text-muted">+{{ urls|length - 2 }} URLs</div>
+                    {% endif %}
+                  </td>
                   <td>{{ scan.status }}</td>
                   <td>{{ scan.recorrencia or '-' }}</td>
                   <td>{{ scan.ultima_execucao.strftime('%d/%m/%Y %H:%M') if scan.ultima_execucao else '-' }}</td>
                   <td>{{ scan.proxima_execucao.strftime('%d/%m/%Y %H:%M') if scan.proxima_execucao else '-' }}</td>
+                  <td>
+                    <div class="d-flex flex-column">
+                      {% if scan.autenticado %}
+                        <span class="badge bg-info mb-1">Autenticado</span>
+                      {% endif %}
+                      <span class="badge bg-{{ 'success' if scan.severidade == 'low' else 'warning' if scan.severidade == 'medium' else 'danger' if scan.severidade == 'high' else 'dark' }}">
+                        Severidade: {{ scan.severidade|title }}
+                      </span>
+                    </div>
+                  </td>
                   <td>
                     <a href="{{ url_for('home_blueprint.editar_webscan', id=scan.id) }}" class="btn btn-sm btn-warning">Editar</a>
                     {% if scan.status == 'desativado' %}

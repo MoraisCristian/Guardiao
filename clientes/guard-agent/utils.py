@@ -6,7 +6,7 @@ import os
 import socket
 import uuid
 import requests
-from network import enviar_mensagem, enviar_softwares
+from network import enviar_mensagem, enviar_softwares, enviar_vulns
 
 def verificar_sudo_disponivel():
     """Check if sudo is available"""
@@ -374,29 +374,13 @@ def vuln_scan():
         except:
             pass
             
+        # Enviar os resultados para o servidor
+        enviar_vulns(os.environ.get('AGENT_ID'), vuln_data)
+            
         return vuln_data
     except Exception as e:
         print(f"Erro ao executar scan com Trivy: {str(e)}")
-        # Fallback to basic scan
-        scan_result = {
-            'status': 'error',
-            'message': str(e),
-            'open_ports': []
-        }
-        
-        # Check for open ports
-        for port in [22, 80, 443, 3306, 5432]:
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(0.5)
-                result = s.connect_ex(('127.0.0.1', port))
-                if result == 0:
-                    scan_result['open_ports'].append(port)
-                s.close()
-            except:
-                pass
-        
-        return scan_result
+        return None
 
 def baixar_script(script_name, id_agente, server_url):
     """Download script from server"""
@@ -419,52 +403,3 @@ def baixar_script(script_name, id_agente, server_url):
     else:
         print(f'Falha ao baixar o script {script_name}. Status Code:', resposta.status_code)
         return None
-
-# Modificar qualquer função que faça comunicação com o servidor
-# para garantir que use o prefixo /api/
-
-def execute_script(id_agente, script_id):
-    """Executa um script remoto"""
-    from network import enviar_mensagem
-    from logger import log_info, log_error, log_exception
-    
-    try:
-        # Obter o script do servidor
-        data = {
-            "id": id_agente,
-            "script_id": script_id
-        }
-        
-        # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
-        response = enviar_mensagem(data, '/get-script')
-        
-        if response and response.status_code == 200:
-            # Processar e executar o script
-            pass
-        else:
-            log_error(f"Falha ao obter script {script_id}")
-            
-    except Exception as e:
-        log_exception(f"Erro ao executar script {script_id}: {str(e)}")
-
-def vuln_scan(id_agente):
-    """Executa uma varredura de vulnerabilidades"""
-    from network import enviar_mensagem
-    from logger import log_info, log_error, log_exception
-    
-    try:
-        # ... código existente ...
-        
-        # Enviar resultados para o servidor
-        data = {
-            "id": id_agente,
-            "vulnerabilidades": resultados
-        }
-        
-        # Usar o endpoint com prefixo /api/ já configurado na função enviar_mensagem
-        response = enviar_mensagem(data, '/vulnerabilidades')
-        
-        # ... código existente ...
-        
-    except Exception as e:
-        log_exception(f"Erro na varredura de vulnerabilidades: {str(e)}")

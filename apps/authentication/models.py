@@ -310,7 +310,7 @@ class WebScan(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(120), nullable=False)
-    url = db.Column(db.String(500), nullable=False)
+    urls = db.Column(db.Text, nullable=False)  # Armazena múltiplas URLs separadas por vírgula
     status = db.Column(db.String(50), nullable=False, default='agendado')  # agendado, executando, finalizado, desativado
     recorrencia = db.Column(db.String(50), nullable=True)  # ex: 'Nunca', 'Diário', 'Semanal', 'Quinzenal', 'Mensal'
     dias_semana = db.Column(db.String(100), nullable=True)  # Armazena os dias da semana como string (ex: "1,3,5" para segunda, quarta e sexta)
@@ -318,6 +318,20 @@ class WebScan(db.Model):
     ultima_execucao = db.Column(db.DateTime, nullable=True)
     proxima_execucao = db.Column(db.DateTime, nullable=True)
     ativo = db.Column(db.Boolean, default=True)
+    
+    # Configurações de autenticação
+    autenticado = db.Column(db.Boolean, default=False)
+    username = db.Column(db.String(100), nullable=True)
+    password = db.Column(db.String(100), nullable=True)
+    
+    # Configurações do Nuclei
+    severidade = db.Column(db.String(50), default='medium')  # low, medium, high, critical
+    templates = db.Column(db.Text, nullable=True)  # Templates específicos do Nuclei
+    rate_limit = db.Column(db.Integer, default=150)  # Limite de requisições por segundo
+    threads = db.Column(db.Integer, default=25)  # Número de threads
+    timeout = db.Column(db.Integer, default=5)  # Timeout em segundos
+    retries = db.Column(db.Integer, default=1)  # Número de tentativas
+    
     usuario_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
 
     def __repr__(self):

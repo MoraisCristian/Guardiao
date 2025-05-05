@@ -91,9 +91,10 @@ def enviar_softwares(id_agente, softwares):
     try:
         data = {
             "id": id_agente,
-            "softwares": softwares
+            "tipo": "softwares",
+            "payload": softwares
         }
-        return enviar_mensagem(data, '/softwares')
+        return enviar_mensagem(data, '/envios')
     except Exception as e:
         log_exception(f"Erro ao enviar softwares: {str(e)}")
         return None
@@ -103,9 +104,23 @@ def enviar_infos(id_agente, infos):
     try:
         data = {
             "id": id_agente,
-            "infos": infos
+            "tipo": "infos",
+            "payload": infos
         }
-        return enviar_mensagem(data, '/infos')
+        return enviar_mensagem(data, '/envios')
     except Exception as e:
         log_exception(f"Erro ao enviar informações: {str(e)}")
+        return None
+
+def enviar_vulns(id_agente, vulns):
+    """Envia resultados do scan de vulnerabilidades para o servidor"""
+    try:
+        data = {
+            "id": id_agente,
+            "tipo": "vuln-scan",
+            "payload": vulns
+        }
+        return enviar_mensagem(data, '/envios')
+    except Exception as e:
+        log_exception(f"Erro ao enviar vulnerabilidades: {str(e)}")
         return None
