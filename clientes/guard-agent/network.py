@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import time
+import base64
 from logger import log_info, log_error, log_debug, log_exception, log_warning
 from config import API_URL, SERVER_URL, chave_ativacao
 
@@ -89,11 +90,15 @@ def res_ping(id_agente, comando_id):
 def enviar_softwares(id_agente, softwares):
     """Envia lista de softwares para o servidor"""
     try:
+        # Codifica o payload em base64
+        payload_json = json.dumps(softwares)
+        payload_base64 = base64.b64encode(payload_json.encode('utf-8')).decode('utf-8')
+        
         data = {
             "id": id_agente,
             "chave": chave_ativacao,
             "tipo": "softwares",
-            "payload": softwares
+            "payload": payload_base64
         }
         return enviar_mensagem(data, '/envios')
     except Exception as e:
@@ -103,11 +108,15 @@ def enviar_softwares(id_agente, softwares):
 def enviar_infos(id_agente, infos):
     """Envia informações do sistema para o servidor"""
     try:
+        # Codifica o payload em base64
+        payload_json = json.dumps(infos)
+        payload_base64 = base64.b64encode(payload_json.encode('utf-8')).decode('utf-8')
+        
         data = {
             "id": id_agente,
             "chave": chave_ativacao,
             "tipo": "infos",
-            "payload": infos
+            "payload": payload_base64
         }
         return enviar_mensagem(data, '/envios')
     except Exception as e:
@@ -117,11 +126,15 @@ def enviar_infos(id_agente, infos):
 def enviar_vulns(id_agente, vulns):
     """Envia resultados do scan de vulnerabilidades para o servidor"""
     try:
+        # Codifica o payload em base64
+        payload_json = json.dumps(vulns)
+        payload_base64 = base64.b64encode(payload_json.encode('utf-8')).decode('utf-8')
+        
         data = {
             "id": id_agente,
             "chave": chave_ativacao,
             "tipo": "vuln-scan",
-            "payload": vulns
+            "payload": payload_base64
         }
         return enviar_mensagem(data, '/envios')
     except Exception as e:
