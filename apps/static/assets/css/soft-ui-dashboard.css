@@ -16,7 +16,7 @@
   --bs-green: #81E6D9;
   --bs-teal: #20c997;
   --bs-cyan: #0dcaf0;
-  --bs-white: #fff;
+  --bs-white: #1f1f1f;
   --bs-gray: #6c757d;
   --bs-gray-dark: #343a40;
   --bs-gray-100: #f8f9fa;
@@ -36,7 +36,7 @@
   --bs-danger: #ea0606;
   --bs-light: #e9ecef;
   --bs-dark: #344767;
-  --bs-white: #fff;
+  --bs-white: #1f1f1f;
   --bs-primary-rgb: 203, 12, 159;
   --bs-secondary-rgb: 131, 146, 171;
   --bs-success-rgb: 130, 214, 22;
@@ -58,7 +58,7 @@
   --bs-body-font-weight: 400;
   --bs-body-line-height: 1.5;
   --bs-body-color: #67748e;
-  --bs-body-bg: #fff;
+  --bs-body-bg: #1f1f1f;
   --bs-border-width: 1px;
   --bs-border-style: solid;
   --bs-border-color: #dee2e6;
@@ -606,7 +606,7 @@ progress {
 
 .img-thumbnail {
   padding: 0.25rem;
-  background-color: #fff;
+  background-color: #1f1f1f;
   border: 1px solid #dee2e6;
   border-radius: 0.5rem;
   max-width: 100%;
@@ -2266,15 +2266,15 @@ progress {
 }
 
 .table-dark {
-  --bs-table-color: #fff;
+  --bs-table-color: #1f1f1f;
   --bs-table-bg: #344767;
   --bs-table-border-color: #485976;
   --bs-table-striped-bg: #3e506f;
-  --bs-table-striped-color: #fff;
+  --bs-table-striped-color: #1f1f1f;
   --bs-table-active-bg: #485976;
-  --bs-table-active-color: #fff;
+  --bs-table-active-color: #1f1f1f;
   --bs-table-hover-bg: #435572;
-  --bs-table-hover-color: #fff;
+  --bs-table-hover-color: #1f1f1f;
   color: var(--bs-table-color);
   border-color: var(--bs-table-border-color);
 }
@@ -2357,7 +2357,7 @@ progress {
   font-weight: 400;
   line-height: 1.4rem;
   color: #495057;
-  background-color: #fff;
+  background-color: #1f1f1f;
   background-clip: padding-box;
   border: 1px solid #d2d6da;
   -webkit-appearance: none;
@@ -2381,7 +2381,7 @@ progress {
 
 .form-control:focus {
   color: #495057;
-  background-color: #fff;
+  background-color: #1f1f1f;
   border-color: #b6c5cd;
   outline: 0;
   box-shadow: 0 0 0 2px #b6c5cd;
@@ -2411,7 +2411,7 @@ progress {
   -webkit-margin-end: 0.75rem;
           margin-inline-end: 0.75rem;
   color: #495057;
-  background-color: #fff;
+  background-color: #1f1f1f;
   pointer-events: none;
   border-color: inherit;
   border-style: solid;
@@ -2507,7 +2507,7 @@ textarea.form-control-lg {
   font-weight: 400;
   line-height: 1.4rem;
   color: #495057;
-  background-color: #fff;
+  background-color: #1f1f1f;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
@@ -2585,7 +2585,7 @@ textarea.form-control-lg {
   height: 1.23em;
   margin-top: 0.135em;
   vertical-align: top;
-  background-color: #fff;
+  background-color: #1f1f1f;
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -2899,7 +2899,7 @@ textarea.form-control-lg {
   color: #566d7e;
   text-align: center;
   white-space: nowrap;
-  background-color: #fff;
+  background-color: #1f1f1f;
   border: 1px solid #d2d6da;
   border-radius: 0.5rem;
 }
@@ -4510,7 +4510,7 @@ textarea.form-control-lg {
   --bs-navbar-hover-color: rgba(255, 255, 255, 0.75);
   --bs-navbar-disabled-color: rgba(255, 255, 255, 0.25);
   --bs-navbar-active-color: #fff;
-  --bs-navbar-brand-color: #fff;
+  --bs-navbar-brand-color: #1f1f1f;
   --bs-navbar-brand-hover-color: #fff;
   --bs-navbar-toggler-border-color: rgba(255, 255, 255, 0.1);
   --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
@@ -6351,7 +6351,7 @@ textarea.form-control-lg {
   margin-left: 3px;
   text-indent: -999px;
   cursor: pointer;
-  background-color: #fff;
+  background-color: #1f1f1f;
   background-clip: padding-box;
   border: 0;
   border-top: 10px solid transparent;
@@ -20126,7 +20126,7 @@ hr.horizontal.gray-light {
 }
 
 .navbar-vertical .navbar-nav .nav-item .nav-link .icon i {
-  color: #fff;
+  color: #141727;
 }
 
 .nav.nav-pills {

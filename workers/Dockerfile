@@ -31,7 +31,7 @@ COPY models.py /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Criar diretórios necessários
-RUN mkdir -p /var/log /var/webscan_results
+RUN mkdir -p /var/log /var/webscan_results /var/webscan_results/scans
 
 # Comando para executar o worker
 CMD ["python", "webscan_worker.py"] 

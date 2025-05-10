@@ -457,18 +457,17 @@ def novo_webscan():
             from datetime import datetime, timedelta
             agora = datetime.now()
             
-            # Definir a próxima execução com base na hora especificada
+            # Definir a próxima execução com base na hora especificada para o dia atual
             proxima_execucao = datetime.combine(agora.date(), hora_execucao)
             
-            # Se a hora já passou hoje, avançar para o próximo dia
+            # Se a hora de execução já passou hoje, agendar para o dia seguinte
             if proxima_execucao < agora:
-                proxima_execucao += timedelta(days=1)
+                proxima_execucao = datetime.combine(agora.date() + timedelta(days=1), hora_execucao)
             
             # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
             if recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and dias_semana:
                 # Converter dias da semana para inteiros
-                dias_int = [int(dia) for dia in dias_semana]
-                
+                dias_int = [int(dia) for dia in dias_semana]                
                 # Encontrar o próximo dia da semana válido
                 dias_para_adicionar = 0
                 while proxima_execucao.weekday() not in dias_int:
@@ -540,12 +539,12 @@ def editar_webscan(id):
             from datetime import datetime, timedelta
             agora = datetime.now()
             
-            # Definir a próxima execução com base na hora especificada
+            # Definir a próxima execução com base na hora especificada para o dia atual
             proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
             
-            # Se a hora já passou hoje, avançar para o próximo dia
+            # Se a hora de execução já passou hoje, agendar para o dia seguinte
             if proxima_execucao < agora:
-                proxima_execucao += timedelta(days=1)
+                proxima_execucao = datetime.combine(agora.date() + timedelta(days=1), scan.hora_execucao)
             
             # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
             if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
@@ -592,12 +591,12 @@ def ativar_webscan(id):
         from datetime import datetime, timedelta
         agora = datetime.now()
         
-        # Definir a próxima execução com base na hora especificada
+        # Definir a próxima execução com base na hora especificada para o dia atual
         proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
         
-        # Se a hora já passou hoje, avançar para o próximo dia
-        if proxima_execucao < agora:
-            proxima_execucao += timedelta(days=1)
+        # Se a hora de execução já passou hoje, agendar para o dia seguinte
+        if scan.recorrencia == 'Diária':
+            proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
         
         # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
         if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
@@ -605,11 +604,17 @@ def ativar_webscan(id):
             dias_int = [int(dia) for dia in scan.dias_semana.split(',')]
             
             # Encontrar o próximo dia da semana válido
-            dias_para_adicionar = 0
             while proxima_execucao.weekday() not in dias_int:
                 proxima_execucao += timedelta(days=1)
-                dias_para_adicionar += 1
-                if dias_para_adicionar > 7:  # Evitar loop infinito
+                
+                # Para recorrência quinzenal, adicionar 14 dias após encontrar o primeiro dia válido
+                if scan.recorrencia == 'Quinzenal' and proxima_execucao.weekday() in dias_int:
+                    proxima_execucao += timedelta(days=14)
+                    break
+                
+                # Para recorrência mensal, adicionar 28 dias após encontrar o primeiro dia válido
+                if scan.recorrencia == 'Mensal' and proxima_execucao.weekday() in dias_int:
+                    proxima_execucao += timedelta(days=28)
                     break
         
         scan.proxima_execucao = proxima_execucao
@@ -623,12 +628,22 @@ def clonar_webscan(id):
     scan = WebScan.query.get_or_404(id)
     novo_scan = WebScan(
         nome=scan.nome + ' (Clone)',
-        url=scan.url,
+        urls=scan.urls,
         status='agendado',
         recorrencia=scan.recorrencia,
         dias_semana=scan.dias_semana,
         hora_execucao=scan.hora_execucao,
         proxima_execucao=scan.proxima_execucao,
+        ativo=True,
+        autenticado=scan.autenticado,
+        username=scan.username,
+        password=scan.password,
+        severidade=scan.severidade,
+        templates=scan.templates,
+        rate_limit=scan.rate_limit,
+        threads=scan.threads,
+        timeout=scan.timeout,
+        retries=scan.retries,
         usuario_id=scan.usuario_id
     )
     db.session.add(novo_scan)
