@@ -580,11 +580,27 @@ def desativar_webscan(id):
     db.session.commit()
     return redirect(url_for('home_blueprint.webscans'))
 
+from datetime import datetime, time, timedelta
+
+def definir_proxima_execucao_para_hoje_00h01():
+    agora = datetime.now()
+    hoje_0001 = datetime.combine(agora.date(), time(0, 1))
+    
+    # Se já passou das 00h01 de hoje, define para amanhã às 00h01
+    if agora > hoje_0001:
+        hoje_0001 += timedelta(days=1)
+    
+    # Atualiza todos os registros no banco de dados
+    WebScan.query.update({WebScan.proxima_execucao: hoje_0001})
+    db.session.commit()
+
+
 @blueprint.route('/webscans/ativar/<int:id>', methods=['POST'])
 def ativar_webscan(id):
     scan = WebScan.query.get_or_404(id)
     scan.ativo = True
     scan.status = 'agendado'
+    definir_proxima_execucao_para_hoje_00h01()
     
     # Recalcular próxima execução
     if scan.recorrencia != 'Nunca' and scan.hora_execucao:
