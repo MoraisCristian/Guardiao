@@ -77,7 +77,7 @@ download_config() {
     chmod 755 "$INSTALL_DIR"
     
     # Download configuration file with retry logic
-    CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/api/download/guard_config.json"
+    CONFIG_URL="http://${SERVER_IP}:${SERVER_PORT}/api/download/config/${ACTIVATION_KEY}"
     print_message "Downloading configuration from $CONFIG_URL"
     
     for i in {1..3}; do

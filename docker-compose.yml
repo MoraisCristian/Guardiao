@@ -10,6 +10,7 @@ services:
       - ./apps:/app/apps
       - webscan_results:/var/webscan_results
       - ./workers/scans:/var/webscan_results/scans
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "5002:5000"  # Expõe a API do Flask para o host
     environment:
@@ -65,7 +66,7 @@ services:
     networks:
       - app-network
 
-  worker-1:
+  worker:
     build:
       context: ./workers
       dockerfile: Dockerfile
@@ -76,31 +77,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       - WORKER_ID=1
-      - DB_ENGINE=mysql+pymysql
-      - DB_USERNAME=guardiao
-      - DB_PASS=guardiao_password
-      - DB_HOST=mariadb
-      - DB_PORT=3306
-      - DB_NAME=guardiao_db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    networks:
-      - app-network
-    depends_on:
-      - redis
-      - mariadb
-
-  worker-2:
-    build:
-      context: ./workers
-      dockerfile: Dockerfile
-    restart: always
-    volumes:
-      - webscan_results:/var/webscan_results
-      - ./workers/scans:/var/webscan_results/scans
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - WORKER_ID=2
       - DB_ENGINE=mysql+pymysql
       - DB_USERNAME=guardiao
       - DB_PASS=guardiao_password

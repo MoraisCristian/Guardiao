@@ -62,6 +62,8 @@
                           placeholder="Limite de agentes" required>
                         <input class="form-control form-control-sm mb-3 w-45" type="date" name="data_expiracao"
                           placeholder="Data" required>
+                        <input class="form-control form-control-sm mb-3" type="text" name="server_ip" placeholder="IP do Servidor" required>
+                        <input class="form-control form-control-sm mb-3" type="text" name="server_port" placeholder="Porta do Servidor" required>
 
                         <select class="form-control form-control-sm mb-3 w-45" name="status" required>
                           <option disabled selected value="">Selecione o status</option>
@@ -101,9 +103,12 @@
                         class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder w-10">
                         Tags
                       </th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">IP Servidor</th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">Porta Servidor</th>
                       <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
                         Status
                       </th>
+                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">Instalar</th>
                       <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
                         Editar
                       </th>
@@ -122,15 +127,62 @@
                         <p class="align-middle text-center text-sm">{{ chave.chave }}</p>
                       </td>
                       <td class="align-middle text-center text-sm">
-                        <span class="text-center me-2 d-flex align-items-center justify-content-center">{{
-                          chave.limite_agentes }}</span>
+                        <span class="text-center me-2 d-flex align-items-center justify-content-center">{{ chave.limite_agentes }}</span>
                       </td>
                       <td class="align-middle text-center text-sm">
                         <span class="text-secondary text-xs font-weight-bold">{{ chave.tags }}</span>
                       </td>
                       <td class="align-middle text-center text-sm">
+                        <span class="text-secondary text-xs font-weight-bold">{{ chave.server_ip }}</span>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <span class="text-secondary text-xs font-weight-bold">{{ chave.server_port }}</span>
+                      </td>
+                      <td class="align-middle text-center text-sm">
                         <!-- Badge para exibir o status -->
                         <span id="statusBadge" class="badge badge-sm bg-gradient-success">{{ chave.status }}</span>
+                      </td>
+                      <td class="align-middle text-center">
+                        <button type="button" class="btn btn-transparent text-info" data-bs-toggle="modal" data-bs-target="#installModal_{{ chave.chave }}">
+                          <i class="fa fa-download"></i>
+                        </button>
+                        <!-- Modal de instalação -->
+                        <div class="modal fade" id="installModal_{{ chave.chave }}" tabindex="-1" aria-labelledby="installModalLabel_{{ chave.chave }}" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <header class="modal-header">
+                                <h1 class="modal-title fs-5" id="installModalLabel_{{ chave.chave }}">Comando de Instalação</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </header>
+                              <div class="modal-body">
+                                <p>Use um dos comandos abaixo para instalar o agente:</p>
+                                <div class="mb-3">
+                                  <label class="form-label">HTTP:</label>
+                                  <div class="input-group">
+                                    <input type="text" class="form-control" id="httpCmd_{{ chave.chave }}" 
+                                           value="curl -s http://{{ chave.server_ip }}:{{ chave.server_port }}/instalar/{{ chave.chave }} | bash" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('httpCmd_{{ chave.chave }}')">
+                                      <i class="fa fa-copy"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div class="mb-3">
+                                  <label class="form-label">HTTPS (ignorando certificado):</label>
+                                  <div class="input-group">
+                                    <input type="text" class="form-control" id="httpsCmd_{{ chave.chave }}" 
+                                           value="curl -s -k https://{{ chave.server_ip }}:{{ chave.server_port }}/instalar/{{ chave.chave }} | bash" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('httpsCmd_{{ chave.chave }}')">
+                                      <i class="fa fa-copy"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                              <footer class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                              </footer>
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td class="align-middle text-center">
                         <!-- Botão para abrir o modal de exclusão -->
@@ -182,6 +234,23 @@
   </footer>
   {% endblock content %}
 
+  <!-- Adicionar script para copiar comando -->
+  <script>
+  function copyToClipboard(elementId) {
+    var copyText = document.getElementById(elementId);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value);
+    
+    // Feedback visual
+    var button = copyText.nextElementSibling;
+    var originalIcon = button.innerHTML;
+    button.innerHTML = '<i class="fa fa-check"></i>';
+    setTimeout(function() {
+      button.innerHTML = originalIcon;
+    }, 2000);
+  }
+  </script>
 </body>
 
 </html>

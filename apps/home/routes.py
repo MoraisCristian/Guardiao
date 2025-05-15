@@ -1,5 +1,5 @@
 # Importações do Flask e extensões relacionadas
-from flask import render_template, request, redirect, url_for, flash, send_file
+from flask import render_template, request, redirect, url_for, flash, send_file, Response, jsonify
 from flask_login import login_required, current_user, login_user, logout_user
 from flask_restx import Resource, Api
 from flask_dance.contrib.github import github
@@ -10,7 +10,7 @@ import random, string ,os, requests
 from datetime import datetime, timedelta, time
 
 # Importações relacionadas ao banco de dados
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc, text
 from apps import db
 
 # Importações específicas da aplicação
@@ -19,8 +19,10 @@ from apps.config import API_GENERATOR
 from apps.authentication.models import (
     Vulnerabilidades, Atividades, Softwares, Agentes, 
     Chaves, Users, Infos, Fila, WebScan,
-    remover_agente, criar_chave, deletar_chave
+    remover_agente, criar_chave, deletar_chave,
+    ScanResult
 )
+import json
 
 @blueprint.route('/index')
 @login_required
@@ -224,8 +226,10 @@ def criar():
     limite_agentes = int(request.form['limite_agentes'])
     data_expiracao = datetime.strptime(request.form['data_expiracao'], '%Y-%m-%d') if request.form['data_expiracao'] else None
     status = request.form['status']
+    server_ip = request.form['server_ip']
+    server_port = request.form['server_port']
 
-    criar_chave(nome, chave, tags, limite_agentes, data_expiracao, status)
+    criar_chave(nome, chave, tags, limite_agentes, data_expiracao, status, server_ip, server_port)
 
     return redirect('/ambientes')
 
@@ -539,41 +543,11 @@ def editar_webscan(id):
             scan.hora_execucao = time(1, 1)
 
         agora = datetime.now() 
+        
         # Definir a próxima execução com base na hora especificada para o dia atual
         proxima_execucao = datetime.combine(agora.date(), scan.hora_execucao)
         WebScan.query.update({WebScan.proxima_execucao: proxima_execucao})
         db.session.commit()
-        
-        # Recalcular próxima execução
-        #if scan.recorrencia != 'Nunca' and scan.hora_execucao:
-        #    agora = datetime.now()
-        #    
-        #    # Definir a próxima execução com base na hora especificada para o dia atual
-        #    proxima_execucao = datetime.combine(agora.date(), time(0, 1))
-#
-        #    WebScan.query.update({WebScan.proxima_execucao: proxima_execucao})
-        #    db.session.commit()
-        #    
-            ## Se a hora de execução já passou hoje, agendar para o dia seguinte
-            #if proxima_execucao < agora:
-            #    proxima_execucao = datetime.combine(agora.date() + timedelta(days=1), scan.hora_execucao)
-            
-            # Para recorrência semanal, quinzenal ou mensal, encontrar o próximo dia da semana válido
-            #if scan.recorrencia in ['Semanal', 'Quinzenal', 'Mensal'] and scan.dias_semana:
-            #    # Converter dias da semana para inteiros
-            #    dias_int = [int(dia) for dia in scan.dias_semana.split(',')]
-            #    
-            #    # Encontrar o próximo dia da semana válido
-            #    dias_para_adicionar = 0
-            #    while proxima_execucao.weekday() not in dias_int:
-            #        proxima_execucao += timedelta(days=1)
-            #        dias_para_adicionar += 1
-            #        if dias_para_adicionar > 7:  # Evitar loop infinito
-            #            break
-        #    
-        #    scan.proxima_execucao = proxima_execucao
-        #else:
-        #    scan.proxima_execucao = None
         
         WebScan.query.update({WebScan.proxima_execucao: scan.proxima_execucao})
         db.session.commit()
@@ -684,9 +658,120 @@ def clonar_webscan(id):
 @blueprint.route('/webscans/excluir/<int:id>', methods=['POST'])
 def excluir_webscan(id):
     scan = WebScan.query.get_or_404(id)
+    
+    # Primeiro, excluir todos os resultados relacionados usando SQL direto
+    db.session.execute(text('DELETE FROM scan_results WHERE scan_id = :scan_id'), {'scan_id': id})
+    
+    # Agora podemos excluir o scan
     db.session.delete(scan)
     db.session.commit()
     return redirect(url_for('home_blueprint.webscans'))
+
+# Listar resultados de scan
+@blueprint.route('/scan_results')
+@login_required
+def scan_results():
+    results = ScanResult.query.order_by(ScanResult.created_at.desc()).all()
+    segment = 'scan_results'
+    return render_template('home/scan_results.html', results=results, segment=segment)
+
+# Detalhes de um resultado de scan
+@blueprint.route('/scan_results/<int:result_id>')
+@login_required
+def scan_result_detail(result_id):
+    result = ScanResult.query.get_or_404(result_id)
+    vulns = []
+    try:
+        with open(f'/var/webscan_results/scans/{result.filename}', 'r') as f:
+            raw_vulns = json.load(f)
+            for item in raw_vulns:
+                info = item.get('info', {})
+                classification = info.get('classification', {})
+                cvss_score = None
+                if 'cvss-score' in info:
+                    cvss_score = info.get('cvss-score')
+                elif 'cvss-score' in classification:
+                    cvss_score = classification.get('cvss-score')
+                elif 'cvss' in info and isinstance(info['cvss'], dict):
+                    cvss_score = info['cvss'].get('score')
+                elif 'cvss' in classification and isinstance(classification['cvss'], dict):
+                    cvss_score = classification['cvss'].get('score')
+                tags = info.get('tags')
+                cwe = None
+                if 'cwe-id' in classification:
+                    cwe = classification['cwe-id']
+                elif 'cwe' in classification:
+                    cwe = classification['cwe']
+                vulns.append({
+                    'title': info.get('name') or '-',
+                    'severity': info.get('severity') or '-',
+                    'cvss_score': cvss_score or '-',
+                    'cwe': cwe or '-',
+                    'tags': tags or '-',
+                    'raw_json': item,
+                })
+    except Exception as e:
+        vulns = []
+    # Filtros
+    search = request.args.get('search', '').lower()
+    severity = request.args.get('severity', '')
+    filtered_vulns = []
+    for v in vulns:
+        if search and search not in v.get('title', '').lower():
+            continue
+        if severity and v.get('severity', '').lower() != severity.lower():
+            continue
+        filtered_vulns.append(v)
+    severities = sorted(set(v.get('severity', 'N/A') for v in vulns))
+    return render_template('home/scan_result_detail.html', result=result, vulns=filtered_vulns, severities=severities, segment='scan_result_detail', search=search, selected_severity=severity)
+
+@blueprint.route('/instalar/<chave>')
+def instalar(chave):
+    """
+    Rota para gerar o script de instalação personalizado com a chave de ativação
+    """
+    # Verifica se a chave existe
+    chave_obj = Chaves.query.filter_by(chave=chave).first()
+    if not chave_obj:
+        return "Chave de ativação inválida", 404
+
+    # Lê o template do script de instalação
+    with open('clientes/guard-agent/install.sh', 'r') as f:
+        script_content = f.read()
+
+    # Substitui os placeholders
+    script_content = script_content.replace('SERVER_IP_PLACEHOLDER', chave_obj.server_ip)
+    script_content = script_content.replace('SERVER_PORT_PLACEHOLDER', chave_obj.server_port)
+    script_content = script_content.replace('ACTIVATION_KEY=""', f'ACTIVATION_KEY="{chave}"')
+
+    # Retorna o script modificado
+    return Response(script_content, mimetype='text/plain')
+
+@blueprint.route('/api/download/config/<chave>')
+def download_config(chave):
+    """
+    Rota para baixar o arquivo de configuração específico para uma chave
+    """
+    # Verifica se a chave existe
+    chave_obj = Chaves.query.filter_by(chave=chave).first()
+    if not chave_obj:
+        return jsonify({"error": "Chave de ativação inválida"}), 404
+
+    # Cria o conteúdo do arquivo de configuração
+    config = {
+        "server_ip": chave_obj.server_ip,
+        "server_port": chave_obj.server_port,
+        "activation_key": chave
+    }
+
+    # Retorna o arquivo de configuração
+    return Response(
+        json.dumps(config, indent=4),
+        mimetype='application/json',
+        headers={
+            'Content-Disposition': 'attachment; filename=guard_config.json'
+        }
+    )
 
 
 

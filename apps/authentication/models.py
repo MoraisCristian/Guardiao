@@ -28,7 +28,7 @@ class Users(db.Model, UserMixin):
 
     oauth_github  = db.Column(db.String(100), nullable=True)
 
-    api_token     = db.Column(db.String(100))
+    api_token     = db.Column(db.String(255))
     api_token_ts  = db.Column(db.Integer)    
 
     def __init__(self, **kwargs):
@@ -57,6 +57,8 @@ class Chaves(db.Model):
     limite_agentes = db.Column(db.Integer, nullable=False)
     data_expiracao = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(10), nullable=False)
+    server_ip = db.Column(db.String(120), nullable=False)
+    server_port = db.Column(db.String(10), nullable=False)
 
     def __repr__(self):
         return '<Chave %r>' % self.nome
@@ -188,8 +190,17 @@ class Vulnerabilidades(db.Model):
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-def criar_chave(nome, chave, tags, limite_agentes, data_expiracao, status):
-    nova_chave = Chaves(nome=nome, chave=chave, tags=tags, limite_agentes=limite_agentes, data_expiracao=data_expiracao, status=status)
+def criar_chave(nome, chave, tags, limite_agentes, data_expiracao, status, server_ip, server_port):
+    nova_chave = Chaves(
+        nome=nome, 
+        chave=chave, 
+        tags=tags, 
+        limite_agentes=limite_agentes, 
+        data_expiracao=data_expiracao, 
+        status=status,
+        server_ip=server_ip,
+        server_port=server_port
+    )
     db.session.add(nova_chave)
     db.session.commit()
 
@@ -334,5 +345,22 @@ class WebScan(db.Model):
     
     usuario_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
 
+    scan_results = db.relationship("ScanResult", back_populates="scan")
+
     def __repr__(self):
         return f'<WebScan {self.nome}>'
+
+class ScanResult(db.Model):
+    __tablename__ = 'scan_results'
+
+    id = db.Column(db.Integer, primary_key=True)
+    scan_id = db.Column(db.Integer, db.ForeignKey('webscans.id'), nullable=False)
+    url = db.Column(db.String(255), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+
+    scan = db.relationship("WebScan", back_populates="scan_results")
+
+    def __repr__(self):
+        return f'<ScanResult {self.filename}>'

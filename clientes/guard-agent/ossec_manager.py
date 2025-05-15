@@ -228,7 +228,15 @@ def baixar_ossec_conf(ossec_manager: str) -> bool:
     try:
         log_info(f"Baixando arquivo de configuração do servidor {ossec_manager}...")
         ossec_conf_temp = "/tmp/ossec.conf.downloaded"
-        ossec_conf_url = f"{SERVER_URL}/download/ossec.conf"
+        
+        # Obter a chave de ativação do arquivo de configuração
+        chave_ativacao = get_activation_key()
+        if not chave_ativacao:
+            log_error("Chave de ativação não encontrada. Impossível baixar ossec.conf")
+            return False
+            
+        # Construir URL com a chave de ativação
+        ossec_conf_url = f"{SERVER_URL}/download/ossec.conf/{chave_ativacao}"
         
         # Baixar o arquivo
         response = requests.get(ossec_conf_url, timeout=10)

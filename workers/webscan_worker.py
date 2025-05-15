@@ -259,7 +259,7 @@ class WebScanWorker:
             '-c', str(scan_data['threads']),
             '-timeout', str(scan_data['timeout']),
             '-retries', str(scan_data['retries']),
-            '-o', output_file
+            '-je', output_file  
         ]
 
         if scan_data['autenticado'] == '1':
@@ -313,6 +313,20 @@ class WebScanWorker:
                 # Registra o resultado no banco de dados usando o modelo ScanResult
                 session = self.Session()
                 try:
+                    # Verifica se a tabela scan_results existe
+                    session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS scan_results (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            scan_id INT NOT NULL,
+                            url VARCHAR(255) NOT NULL,
+                            filename VARCHAR(255) NOT NULL,
+                            created_at DATETIME NOT NULL,
+                            status VARCHAR(50) NOT NULL,
+                            FOREIGN KEY (scan_id) REFERENCES webscans(id)
+                        )
+                    """))
+                    session.commit()
+                    
                     scan_result = ScanResult(
                         scan_id=scan_id,
                         url=processed_url,
@@ -366,15 +380,30 @@ class WebScanWorker:
         """Calcula a próxima data de execução baseado nas configurações de agendamento"""
         current_time = datetime.now()
         
-        if scan.recorrencia == 'diario':
-            next_execution = current_time.replace(
-                hour=scan.hora_execucao.hour,
-                minute=scan.hora_execucao.minute,
-                second=0,
-                microsecond=0
-            ) + timedelta(days=1)
+        if scan.recorrencia.lower() == 'diário':
+            # Se a hora atual já passou da hora de execução, agenda para amanhã
+            if current_time.time() >= scan.hora_execucao:
+                next_execution = current_time.replace(
+                    hour=scan.hora_execucao.hour,
+                    minute=scan.hora_execucao.minute,
+                    second=0,
+                    microsecond=0
+                ) + timedelta(days=1)
+            else:
+                # Se ainda não chegou a hora de execução, agenda para hoje
+                next_execution = current_time.replace(
+                    hour=scan.hora_execucao.hour,
+                    minute=scan.hora_execucao.minute,
+                    second=0,
+                    microsecond=0
+                )
+            logger.info(f"Calculando próxima execução diária:")
+            logger.info(f"  - Hora atual: {current_time.time()}")
+            logger.info(f"  - Hora de execução: {scan.hora_execucao}")
+            logger.info(f"  - Próxima execução calculada: {next_execution}")
+            return next_execution
             
-        elif scan.recorrencia == 'semanal':
+        elif scan.recorrencia.lower() == 'semanal':
             # Encontra o próximo dia da semana configurado
             dias_semana = [int(d) for d in scan.dias_semana.split(',')]
             current_weekday = current_time.weekday()
@@ -400,10 +429,16 @@ class WebScanWorker:
                 microsecond=0
             ) + timedelta(days=days_ahead)
             
-        else:  # único
-            next_execution = None
+            logger.info(f"Calculando próxima execução semanal:")
+            logger.info(f"  - Dia atual: {current_weekday}")
+            logger.info(f"  - Dias configurados: {dias_semana}")
+            logger.info(f"  - Próximo dia: {next_weekday}")
+            logger.info(f"  - Próxima execução calculada: {next_execution}")
+            return next_execution
             
-        return next_execution
+        else:  # único
+            logger.info(f"Scan configurado como único, sem recorrência")
+            return None
 
     def process_scan(self, scan_id):
         """Processa um scan da fila"""
@@ -427,7 +462,7 @@ class WebScanWorker:
             scan.ultima_execucao = datetime.now()
             session.commit()
 
-            # Processa cada URL individualmente, tratando tanto vírgulas quanto quebras de linha
+            # Processa cada URL individualmente
             urls = []
             # Conta a ocorrência de vírgulas e quebras de linha
             comma_count = scan_data['urls'].count(',')
@@ -438,39 +473,15 @@ class WebScanWorker:
                 urls = [url.strip() for url in scan_data['urls'].split(',') if url.strip()]
             else:
                 urls = [url.strip() for url in scan_data['urls'].split('\n') if url.strip()]
-            for url in scan_data['urls'].split(','):
-                # Se a URL contém quebras de linha, divide por elas também
-                if '\n' in url:
-                    urls.extend([u.strip() for u in url.split('\n') if u.strip()])
-                else:
-                    urls.append(url.strip())
             
             # Remove URLs vazias e duplicadas
             urls = list(set([url for url in urls if url]))
             
-            results = {
-                'scan_id': scan_id,
-                'start_time': datetime.now().isoformat(),
-                'urls': []
-            }
-
             success = True
             for url in urls:
                 logger.info(f"Processando URL: {url}")
-                url_result = {
-                    'url': url,
-                    'success': self.execute_nuclei_scan(scan_data, url)
-                }
-                results['urls'].append(url_result)
-                if not url_result['success']:
+                if not self.execute_nuclei_scan(scan_data, url):
                     success = False
-
-            results['end_time'] = datetime.now().isoformat()
-            
-            # Salvar resultados
-            results_file = os.path.join(RESULTS_DIR, str(scan_id), 'results.json')
-            with open(results_file, 'w') as f:
-                json.dump(results, f, indent=2)
 
             # Atualizar status e datas
             scan.status = 'finalizado' if success else 'falha'
@@ -494,11 +505,62 @@ class WebScanWorker:
             if scan_key in self.redis_client:
                 self.redis_client.delete(scan_key)
 
+    def initialize_scans(self):
+        """Inicializa os scans que não possuem próxima execução definida"""
+        session = self.Session()
+        try:
+            logger.info("Inicializando scans sem próxima execução definida")
+            
+            # Busca todos os scans ativos que não possuem próxima execução
+            scans = session.query(WebScan).filter(
+                WebScan.ativo == True,
+                WebScan.proxima_execucao == None
+            ).all()
+            
+            logger.info(f"Encontrados {len(scans)} scans para inicialização")
+            
+            for scan in scans:
+                logger.info(f"Processando scan {scan.id} - {scan.nome}")
+                logger.info(f"Configurações do scan:")
+                logger.info(f"  - Status atual: {scan.status}")
+                logger.info(f"  - Recorrência: {scan.recorrencia}")
+                logger.info(f"  - Hora de execução: {scan.hora_execucao}")
+                if scan.recorrencia == 'semanal':
+                    logger.info(f"  - Dias da semana: {scan.dias_semana}")
+                
+                # Calcula a próxima execução
+                next_execution = self.calculate_next_execution(scan)
+                
+                if next_execution:
+                    scan.proxima_execucao = next_execution
+                    scan.status = 'agendado'
+                    logger.info(f"Scan {scan.id} agendado para: {next_execution}")
+                    logger.info(f"  - Status atualizado para: agendado")
+                else:
+                    logger.warning(f"Scan {scan.id} não possui recorrência definida ou configuração inválida")
+                    logger.warning(f"  - Recorrência: {scan.recorrencia}")
+                    logger.warning(f"  - Hora de execução: {scan.hora_execucao}")
+                    if scan.recorrencia == 'semanal':
+                        logger.warning(f"  - Dias da semana: {scan.dias_semana}")
+            
+            session.commit()
+            logger.info("Inicialização de scans concluída")
+            
+        except Exception as e:
+            logger.error(f"Erro ao inicializar scans:\n{traceback.format_exc()}")
+            session.rollback()
+        finally:
+            session.close()
+
     def run(self):
         """Loop principal do worker"""
         logger.info(f"Worker {self.worker_id} iniciado")
+                
         while True:
             try:
+                # Inicializa os scans antes de começar o loop principal
+                self.initialize_scans()
+                
                 # Verifica conexões periodicamente
                 self.check_connections()
                 

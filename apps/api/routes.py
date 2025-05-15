@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime
 import requests
+import tempfile
 
 # Third-party frameworks
 from flask import (
@@ -615,3 +616,47 @@ class RegistroOssec(Resource):
                 }, 200
                 
         return {'erro': 'Chave não autorizada', 'codigo': codigos['registro']}, 403
+
+@api.route('/download/ossec.conf/<chave>', methods=['GET'])
+class DownloadOssecConf(Resource):
+    @api.doc('get_ossec_conf')
+    def get(self, chave):
+        """
+        Endpoint para download do arquivo ossec.conf personalizado
+        """
+        try:
+            # Buscar a chave no banco de dados
+            chave_db = Chaves.query.filter_by(chave=chave).first()
+            if not chave_db:
+                return {"erro": "Chave de ativação inválida"}, 403
+
+            # Ler o template do ossec.conf
+            template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../downloads/ossec.conf')
+            if not os.path.exists(template_path):
+                return {"erro": "Template ossec.conf não encontrado"}, 404
+
+            with open(template_path, 'r') as f:
+                template_content = f.read()
+
+            # Substituir o IP do servidor no template
+            config_content = template_content.replace(
+                '<server-ip>localhost</server-ip>',
+                f'<server-ip>{chave_db.server_ip}</server-ip>'
+            )
+
+            # Criar um arquivo temporário com o conteúdo modificado
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.conf')
+            temp_file.write(config_content.encode('utf-8'))
+            temp_file.close()
+
+            # Enviar o arquivo
+            return send_file(
+                temp_file.name,
+                as_attachment=True,
+                download_name='ossec.conf',
+                mimetype='text/plain'
+            )
+
+        except Exception as e:
+            print(f"Erro ao gerar ossec.conf: {str(e)}")
+            return {"erro": f"Erro ao gerar ossec.conf: {str(e)}"}, 500

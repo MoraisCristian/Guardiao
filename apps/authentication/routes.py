@@ -3,6 +3,10 @@
 import json
 from datetime import datetime
 import os, re
+import logging
+
+# Configuração do logger
+logger = logging.getLogger(__name__)
 
 # Importações do Flask e extensões relacionadas
 from flask_restx import Resource, Api
@@ -111,35 +115,47 @@ def jwt_login():
             data = request.json
 
         if not data:
+            logger.warning("Tentativa de login JWT sem dados de entrada")
             return {
                 'message': 'Nome de usuário ou senha está faltando',
                 "data": None,
                 'success': False
             }, 400
+
         # Validar entrada
-        user = Users.query.filter_by(username=data.get('username')).first()
+        username = data.get('username')
+        logger.info(f"Tentativa de login JWT para usuário: {username}")
+        
+        user = Users.query.filter_by(username=username).first()
         if user and verify_pass(data.get('password'), user.password):
             try:
                 if not user.api_token or user.api_token == '':
                     user.api_token = generate_token(user.id)
                     user.api_token_ts = int(datetime.utcnow().timestamp())
                     db.session.commit()
+                    logger.info(f"Novo token gerado para usuário: {username}")
+                
+                logger.info(f"Login JWT bem-sucedido para usuário: {username}")
                 return {
                     "message": "Token de autenticação obtido com sucesso",
                     "success": True,
                     "data": user.api_token
                 }, 200
             except Exception as e:
+                logger.error(f"Erro ao gerar token para usuário {username}: {str(e)}", exc_info=True)
                 return {
                     "error": "Algo deu errado",
                     "success": False,
                     "message": str(e)
                 }, 500
+        
+        logger.warning(f"Tentativa de login JWT falhou para usuário: {username}")
         return {
             'message': 'Nome de usuário ou senha está errado',
             'success': False
         }, 403
     except Exception as e:
+        logger.error(f"Erro inesperado no login JWT: {str(e)}", exc_info=True)
         return {
             "error": "Algo deu errado",
             "success": False,

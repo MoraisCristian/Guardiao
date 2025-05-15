@@ -4,18 +4,20 @@ COPY . /app
 
 WORKDIR /app
 
-# Instalar dependências do sistema primeiro
-RUN apt-get update 
-RUN apt-get install -y curl golang git default-libmysqlclient-dev build-essential
-###python3-flask-sqlalchemy python3-flask-migrate 
+# Instalar dependências do sistema
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    default-libmysqlclient-dev \
+    git \
+    golang \
+    build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-#RUN python3 -m pip install --upgrade pip
 
 RUN pip install -r requirements.txt
 RUN pip install pymysql
-
-RUN bash prepare.sh
 
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=development
