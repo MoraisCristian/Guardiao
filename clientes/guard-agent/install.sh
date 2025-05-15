@@ -232,6 +232,13 @@ download_and_install() {
         return 1
     fi
     
+    # Copy config file to agent directory
+    if [ -f "$CONFIG_FILE" ]; then
+        print_message "Copying configuration file to agent directory"
+        cp "$CONFIG_FILE" "$AGENT_DIR/guard_config.json"
+        chmod 644 "$AGENT_DIR/guard_config.json"
+    fi
+    
     # Copy MD5 file to installation directory
     cp /tmp/guardiao.md5 "$MD5_FILE"
     
