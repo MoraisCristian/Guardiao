@@ -46,62 +46,70 @@
                   </form>
                 </tr>
                 <tr>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    ID
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Hostname
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    IP
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Sistema Operacional
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Última Conexão
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Tipo de Atividade
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Status
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Ações
-                  </th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">ID</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Hostname</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">IP</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Sistema Operacional</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Última Conexão</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Tipo de Atividade</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {% for agent in agents %}
                 <tr>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ agent.id }}</p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ agent.id }}</h6>
+                      </div>
+                    </div>
                   </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['hostname'] }}</p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ infos[agent.id]['hostname'] }}</h6>
+                      </div>
+                    </div>
                   </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['ip'] }}</p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ infos[agent.id]['ip'] }}</h6>
+                      </div>
+                    </div>
                   </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ infos[agent.id]['os'] }}</p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ infos[agent.id]['os'] }}</h6>
+                      </div>
+                    </div>
                   </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">
-                      {% if activities[agent.id]['last_contact'] %}
-                        {% if activities[agent.id]['last_contact'] == "Unknown" %}
-                          Desconhecido
-                        {% else %}
-                          {{ activities[agent.id]['last_contact'].strftime('%d/%m/%Y %H:%M:%S') }}
-                        {% endif %}
-                      {% else %}
-                        Nunca conectado
-                      {% endif %}
-                    </p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">
+                          {% if activities[agent.id]['last_contact'] %}
+                            {% if activities[agent.id]['last_contact'] == "Unknown" %}
+                              Desconhecido
+                            {% else %}
+                              {{ activities[agent.id]['last_contact'].strftime('%d/%m/%Y %H:%M:%S') }}
+                            {% endif %}
+                          {% else %}
+                            Nunca conectado
+                          {% endif %}
+                        </h6>
+                      </div>
+                    </div>
                   </td>
-                  <td class="align-middle text-center">
-                    <p class="text-xs font-weight-bold mb-0">{{ activities[agent.id]['activity_type'] }}</p>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ activities[agent.id]['activity_type'] }}</h6>
+                      </div>
+                    </div>
                   </td>
                   <td class="align-middle text-center">
                     {% if activities[agent.id]['last_contact'] and activities[agent.id]['last_contact'] != "Unknown" %}

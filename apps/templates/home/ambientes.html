@@ -89,29 +89,15 @@
                   <thead>
                     <!-- Cabeçalho da tabela -->
                     <tr>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                        Nome
-                      </th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                        Chave
-                      </th>
-                      <th
-                        class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder w-10">
-                        Limite de Agentes
-                      </th>
-                      <th
-                        class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder w-10">
-                        Tags
-                      </th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">IP Servidor</th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">Porta Servidor</th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                        Status
-                      </th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">Instalar</th>
-                      <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                        Editar
-                      </th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Nome</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Chave</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Limite de Agentes</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Tags</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">IP Servidor</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Porta Servidor</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Instalar</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Editar</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -119,28 +105,49 @@
                     {% for chave in chaves %}
                     <tr>
                       <td>
-                        <div class="text-center me-2 d-flex align-items-center justify-content-center">
-                          <h2 class="mb-0 text-sm">{{ chave.nome }}</h2>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.nome }}</h6>
+                          </div>
                         </div>
                       </td>
                       <td>
-                        <p class="align-middle text-center text-sm">{{ chave.chave }}</p>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.chave }}</h6>
+                          </div>
+                        </div>
                       </td>
-                      <td class="align-middle text-center text-sm">
-                        <span class="text-center me-2 d-flex align-items-center justify-content-center">{{ chave.limite_agentes }}</span>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.limite_agentes }}</h6>
+                          </div>
+                        </div>
                       </td>
-                      <td class="align-middle text-center text-sm">
-                        <span class="text-secondary text-xs font-weight-bold">{{ chave.tags }}</span>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.tags }}</h6>
+                          </div>
+                        </div>
                       </td>
-                      <td class="align-middle text-center text-sm">
-                        <span class="text-secondary text-xs font-weight-bold">{{ chave.server_ip }}</span>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.server_ip }}</h6>
+                          </div>
+                        </div>
                       </td>
-                      <td class="align-middle text-center text-sm">
-                        <span class="text-secondary text-xs font-weight-bold">{{ chave.server_port }}</span>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{ chave.server_port }}</h6>
+                          </div>
+                        </div>
                       </td>
-                      <td class="align-middle text-center text-sm">
-                        <!-- Badge para exibir o status -->
-                        <span id="statusBadge" class="badge badge-sm bg-gradient-success">{{ chave.status }}</span>
+                      <td class="align-middle text-center">
+                        <span class="badge badge-sm bg-gradient-success">{{ chave.status }}</span>
                       </td>
                       <td class="align-middle text-center">
                         <button type="button" class="btn btn-transparent text-info" data-bs-toggle="modal" data-bs-target="#installModal_{{ chave.chave }}">
