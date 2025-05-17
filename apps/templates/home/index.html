@@ -276,24 +276,42 @@
             <table class="table align-items-center mb-0">
               <thead>
                 <tr>
-                  <th>Título</th>
-                  <th>CVE</th>
-                  <th>Severidade</th>
-                  <th>CVSS</th>
-                  <th>Ativo</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Título</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">CVE</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Severidade</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">CVSS</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ativo</th>
                 </tr>
               </thead>
               <tbody>
                 {% for v in top_10_vulns_criticas %}
                 <tr>
-                  <td>{{ v.title }}</td>
-                  <td>{{ v.cve_id }}</td>
-                  <td>{{ v.severity }}</td>
-                  <td>{{ v.cvss_score }}</td>
-                  <td>{{ v.hostname }}</td>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ v.title }}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ v.cve_id }}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-danger">{{ v.severity }}</span>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-warning">{{ v.cvss_score }}</span>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-info">{{ v.hostname }}</span>
+                  </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5">Nenhuma vulnerabilidade crítica encontrada.</td></tr>
+                <tr>
+                  <td colspan="5" class="text-center text-sm">
+                    <span class="text-secondary">Nenhuma vulnerabilidade crítica encontrada.</span>
+                  </td>
+                </tr>
                 {% endfor %}
               </tbody>
             </table>
