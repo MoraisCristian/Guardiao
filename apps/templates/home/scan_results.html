@@ -1,0 +1,67 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Resultados de Scan{% endblock title %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="page-header min-height-300 border-radius-xl mt-4" style="background-image: url('{{ config.ASSETS_ROOT }}/img/curved-images/curved0.jpg'); background-position-y: 50%;">
+    <span class="mask bg-gradient-primary opacity-6"></span>
+  </div>
+  <div class="card card-body blur shadow-blur mx-4 mt-n6 overflow-hidden">
+    <div class="row gx-4">
+      <div class="col-auto my-auto">
+        <div class="h-100">
+          <h5 class="mb-1">Resultados de Scan</h5>
+          <p class="mb-0 font-weight-bold text-sm">Lista de todos os resultados de scans disponíveis</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 p-3">
+          <h6 class="mb-1">Resultados</h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Scan</th>
+                  <th>URL</th>
+                  <th>Arquivo</th>
+                  <th>Status</th>
+                  <th>Data</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in results %}
+                <tr>
+                  <td>{{ r.id }}</td>
+                  <td>{{ r.scan.nome if r.scan else '-' }}</td>
+                  <td>{{ r.url }}</td>
+                  <td>{{ r.filename }}</td>
+                  <td>{{ r.status }}</td>
+                  <td>{{ r.created_at.strftime('%d/%m/%Y %H:%M') if r.created_at else '-' }}</td>
+                  <td>
+                    <a href="{{ url_for('home_blueprint.scan_result_detail', result_id=r.id) }}" class="btn btn-primary btn-sm">Ver Detalhes</a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">Nenhum resultado encontrado.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% include "includes/footer.html" %}
+</div>
+{% endblock content %} 

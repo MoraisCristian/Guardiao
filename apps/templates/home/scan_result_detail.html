@@ -1,0 +1,115 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Detalhes do Scan{% endblock title %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="page-header min-height-300 border-radius-xl mt-4" style="background-image: url('{{ config.ASSETS_ROOT }}/img/curved-images/curved0.jpg'); background-position-y: 50%;">
+    <span class="mask bg-gradient-primary opacity-6"></span>
+  </div>
+  <div class="card card-body blur shadow-blur mx-4 mt-n6 overflow-hidden">
+    <div class="row gx-4">
+      <div class="col-auto my-auto">
+        <div class="h-100">
+          <h5 class="mb-1">Detalhes do Scan: {{ result.filename }}</h5>
+          <p class="mb-0 font-weight-bold text-sm">URL: {{ result.url }} | Data: {{ result.created_at.strftime('%d/%m/%Y %H:%M') if result.created_at else '-' }}</p>
+        </div>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('home_blueprint.scan_results') }}" class="btn btn-secondary btn-sm">Voltar</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 p-3">
+          <h6 class="mb-1">Vulnerabilidades Encontradas</h6>
+          <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+              <input type="text" name="search" class="form-control" placeholder="Buscar por título ou CVE" value="{{ search }}">
+            </div>
+            <div class="col-auto">
+              <select name="severity" class="form-select">
+                <option value="">Todas Severidades</option>
+                {% for sev in severities %}
+                  <option value="{{ sev }}" {% if selected_severity == sev %}selected{% endif %}>{{ sev|capitalize }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+          </form>
+        </div>
+        <div class="card-body p-3">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Severidade</th>
+                  <th>CVSS-Score</th>
+                  <th>CWE</th>
+                  <th>Tags</th>
+                  <th>Vuln JSON</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in vulns %}
+                <tr>
+                  <td>{{ v.title }}</td>
+                  <td>{{ v.severity|capitalize }}</td>
+                  <td>{{ v.cvss_score or '-' }}</td>
+                  <td>
+                    {% if v.cwe %}
+                      {% if v.cwe is string %}{{ v.cwe }}{% else %}{{ v.cwe|join(', ') }}{% endif %}
+                    {% else %}-{% endif %}
+                  </td>
+                  <td>
+                    {% if v.tags %}
+                      {% if v.tags is string %}{{ v.tags }}{% else %}{{ v.tags|join(', ') }}{% endif %}
+                    {% else %}-{% endif %}
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#jsonModal{{ loop.index }}">
+                      Ver JSON
+                    </button>
+                    <!-- Modal -->
+                    <div class="modal fade" id="jsonModal{{ loop.index }}" tabindex="-1" aria-labelledby="jsonModalLabel{{ loop.index }}" aria-hidden="true">
+                      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="jsonModalLabel{{ loop.index }}">Detecção Completa (JSON)</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                          </div>
+                          <div class="modal-body">
+                            <pre style="background:#f8f9fa; border-radius:8px; padding:16px; font-size:13px; color:#222;">
+{{ v.raw_json | tojson(indent=2) }}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6">Nenhuma vulnerabilidade encontrada.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% include "includes/footer.html" %}
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+{{ super() }}
+<!-- Bootstrap JS (caso não esteja incluso no base) -->
+{% endblock javascripts %} 
