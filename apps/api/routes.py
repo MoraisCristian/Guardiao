@@ -24,6 +24,7 @@ from werkzeug.datastructures import MultiDict
 # Application modules
 from apps.api import blueprint
 from apps.authentication.decorators import token_required
+from apps import db
 
 # Models and database operations
 from apps.authentication.models import (
@@ -40,7 +41,6 @@ from apps.authentication.models import (
     remove_da_fila,
     salvar_no_banco
 )
-
 
 # Modificar a inicialização da API para incluir configurações adicionais
 api = Api(blueprint,
@@ -262,93 +262,136 @@ def salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem=None):
             remove_da_fila(id_agente, chave_ativacao, tipo)
 
     elif tipo == 'infos':
-        infos = Infos(json.loads(payload))
-        salvar_no_banco(infos)
-        remove_da_fila(id_agente, chave_ativacao, tipo)
+        try:
+            # Decodifica o payload
+            payload_data = json.loads(payload)
+            
+            # Adiciona a chave e id_agente ao payload
+            payload_data['chave'] = chave_ativacao
+            payload_data['id_agente'] = id_agente
+            
+            # Cria o objeto Infos com os dados completos
+            infos = Infos(payload_data)
+            salvar_no_banco(infos)
+            remove_da_fila(id_agente, chave_ativacao, tipo)
+        except Exception as e:
+            print(f"[ERRO] Erro ao processar dados de infos: {str(e)}")
+            # Mesmo com erro, tenta remover da fila para evitar loop infinito
+            remove_da_fila(id_agente, chave_ativacao, tipo)
 
     elif tipo == 'vuln-scan':
-        # Decodifica o payload
-        dados_vuln = json.loads(payload)
-        data_atualizacao = datetime.now()
+        try:
+            # Decodifica o payload
+            print(f"[INFO] Iniciando processamento de vulnerabilidades para agente {id_agente}")
+            dados_vuln = json.loads(payload)
+            data_atualizacao = datetime.now()
 
-        # Itera sobre os resultados do scan
-        for result in dados_vuln.get('Results', []):
-            target = result.get('Target')
-            vulnerabilities = result.get('Vulnerabilities', [])
+            # Verifica se há resultados no payload
+            if not dados_vuln.get('Results'):
+                print(f"[ERRO] Nenhum resultado encontrado no payload para agente {id_agente}")
+                remove_da_fila(id_agente, chave_ativacao, tipo)
+                return
 
-            for vuln in vulnerabilities:
-                if vuln.get('VulnerabilityID'):
-                    # Extrai os dados da vulnerabilidade
-                    cve_id = vuln.get('VulnerabilityID')
-                    installed_version = vuln.get('InstalledVersion')
-                    fixed_version = vuln.get('FixedVersion')
-                    status = vuln.get('Status')
-                    severity = vuln.get('Severity')
-                    title = vuln.get('Title')
-                    description = vuln.get('Description')
-                    cwe_ids = vuln.get('CweIDs', [])
-                    cvss = vuln.get('CVSS', {})
-                    references = vuln.get('References', [])
-                    published_date = vuln.get('PublishedDate')
-                    last_modified_date = vuln.get('LastModifiedDate')
+            # Itera sobre os resultados do scan
+            total_vulns = 0
+            for result in dados_vuln.get('Results', []):
+                target = result.get('Target')
+                vulnerabilities = result.get('Vulnerabilities', [])
+                
+                print(f"[INFO] Processando {len(vulnerabilities)} vulnerabilidades para target {target}")
 
-                    # Converte as datas para o formato datetime
-                    if published_date:
-                        published_date = normalizar_data_iso(published_date)
-                        published_date = datetime.fromisoformat(published_date)
-                    else:
-                        published_date = None
+                for vuln in vulnerabilities:
+                    try:
+                        if not vuln.get('VulnerabilityID'):
+                            continue
 
-                    if last_modified_date:
-                        last_modified_date = normalizar_data_iso(last_modified_date)
-                        last_modified_date = datetime.fromisoformat(last_modified_date)
-                    else:
-                        last_modified_date = None
+                        # Extrai os dados da vulnerabilidade
+                        cve_id = vuln.get('VulnerabilityID')
+                        installed_version = vuln.get('InstalledVersion')
+                        fixed_version = vuln.get('FixedVersion')
+                        status = vuln.get('Status')
+                        severity = vuln.get('Severity')
+                        title = vuln.get('Title')
+                        description = vuln.get('Description')
+                        cwe_ids = vuln.get('CweIDs', [])
+                        cvss = vuln.get('CVSS', {})
+                        references = vuln.get('References', [])
+                        published_date = vuln.get('PublishedDate')
+                        last_modified_date = vuln.get('LastModifiedDate')
 
-                    # Verifica se a vulnerabilidade já existe para este agente
-                    vuln_existente = Vulnerabilidades.query.filter_by(
-                        id_agente=id_agente,
-                        cve_id=cve_id
-                    ).first()
-                    
-                    if vuln_existente:
-                        # Atualiza a vulnerabilidade existente
-                        vuln_existente.target = target
-                        vuln_existente.status = status
-                        vuln_existente.installed_version = installed_version
-                        vuln_existente.fixed_version = fixed_version
-                        vuln_existente.severity = severity
-                        vuln_existente.title = title
-                        vuln_existente.description = description
-                        vuln_existente.cwe_ids = cwe_ids
-                        vuln_existente.cvss = cvss
-                        vuln_existente.references = references
-                        vuln_existente.published_date = published_date
-                        vuln_existente.last_modified_date = last_modified_date
-                        vuln_existente.data_atualizacao = data_atualizacao
-                        db.session.commit()
-                    else:
-                        # Cria uma nova entrada no banco de dados
-                        nova_vulnerabilidade = Vulnerabilidades()
-                        nova_vulnerabilidade.chave = chave_ativacao
-                        nova_vulnerabilidade.id_agente = id_agente
-                        nova_vulnerabilidade.cve_id = cve_id
-                        nova_vulnerabilidade.target = target
-                        nova_vulnerabilidade.status = status
-                        nova_vulnerabilidade.installed_version = installed_version
-                        nova_vulnerabilidade.fixed_version = fixed_version
-                        nova_vulnerabilidade.severity = severity
-                        nova_vulnerabilidade.title = title
-                        nova_vulnerabilidade.description = description
-                        nova_vulnerabilidade.cwe_ids = cwe_ids
-                        nova_vulnerabilidade.cvss = cvss
-                        nova_vulnerabilidade.references = references
-                        nova_vulnerabilidade.published_date = published_date
-                        nova_vulnerabilidade.last_modified_date = last_modified_date
-                        nova_vulnerabilidade.data_atualizacao = data_atualizacao
-                        salvar_no_banco(nova_vulnerabilidade)
+                        # Converte as datas para o formato datetime
+                        if published_date:
+                            published_date = normalizar_data_iso(published_date)
+                            published_date = datetime.fromisoformat(published_date)
+                        else:
+                            published_date = None
 
-        remove_da_fila(id_agente, chave_ativacao, tipo)
+                        if last_modified_date:
+                            last_modified_date = normalizar_data_iso(last_modified_date)
+                            last_modified_date = datetime.fromisoformat(last_modified_date)
+                        else:
+                            last_modified_date = None
+
+                        # Verifica se a vulnerabilidade já existe para este agente
+                        vuln_existente = Vulnerabilidades.query.filter_by(
+                            id_agente=id_agente,
+                            cve_id=cve_id
+                        ).first()
+                        
+                        if vuln_existente:
+                            # Atualiza a vulnerabilidade existente
+                            print(f"[INFO] Atualizando vulnerabilidade existente: {cve_id}")
+                            vuln_existente.target = target
+                            vuln_existente.status = status
+                            vuln_existente.installed_version = installed_version
+                            vuln_existente.fixed_version = fixed_version
+                            vuln_existente.severity = severity
+                            vuln_existente.title = title
+                            vuln_existente.description = description
+                            vuln_existente.cwe_ids = cwe_ids
+                            vuln_existente.cvss = cvss
+                            vuln_existente.references = references
+                            vuln_existente.published_date = published_date
+                            vuln_existente.last_modified_date = last_modified_date
+                            vuln_existente.data_atualizacao = data_atualizacao
+                            db.session.commit()
+                        else:
+                            # Cria uma nova entrada no banco de dados
+                            print(f"[INFO] Criando nova vulnerabilidade: {cve_id}")
+                            nova_vulnerabilidade = Vulnerabilidades(
+                                chave=chave_ativacao,
+                                id_agente=id_agente,
+                                cve_id=cve_id,
+                                target=target,
+                                status=status,
+                                installed_version=installed_version,
+                                fixed_version=fixed_version,
+                                severity=severity,
+                                title=title,
+                                description=description,
+                                cwe_ids=cwe_ids,
+                                cvss=cvss,
+                                references=references,
+                                published_date=published_date,
+                                last_modified_date=last_modified_date,
+                                data_atualizacao=data_atualizacao
+                            )
+                            salvar_no_banco(nova_vulnerabilidade)
+                            total_vulns += 1
+
+                    except Exception as e:
+                        print(f"[ERRO] Erro ao processar vulnerabilidade: {str(e)}")
+                        continue
+
+            print(f"[INFO] Processamento concluído. Total de novas vulnerabilidades: {total_vulns}")
+            remove_da_fila(id_agente, chave_ativacao, tipo)
+
+        except Exception as e:
+            print(f"[ERRO] Erro ao processar dados de vulnerabilidades: {str(e)}")
+            import traceback
+            print(f"[ERRO] Traceback: {traceback.format_exc()}")
+            # Mesmo com erro, tenta remover da fila para evitar loop infinito
+            remove_da_fila(id_agente, chave_ativacao, tipo)
 
     elif tipo == 'script-resultado':
         # Decodifica o payload
@@ -374,22 +417,90 @@ class ReceberDados(Resource):
         """
         Endpoint para receber dados dos agentes
         """
-        mensagem = request.get_json()
-        chave_ativacao = mensagem['chave']
-        id_agente = mensagem['id']
-        tipo = mensagem['tipo']
-        payload = decrypt_base64(mensagem['payload'])
-        print(mensagem, chave_ativacao, id_agente, tipo, payload)
+        try:
+            # Log da requisição recebida
+            print(f"[INFO] Recebendo requisição POST em /envios")
+            print(f"[INFO] Headers: {dict(request.headers)}")
+            
+            # Verificar se há dados JSON
+            if not request.is_json:
+                print("[ERRO] Requisição não contém dados JSON")
+                return {'status': 'falha', 'mensagem': 'Dados JSON inválidos'}, 400
 
-        agentes = Agentes.query.all()
+            mensagem = request.get_json()
+            if not mensagem:
+                print("[ERRO] Dados JSON vazios")
+                return {'status': 'falha', 'mensagem': 'Dados JSON vazios'}, 400
 
-        for agente in agentes:
-            if agente.chave == chave_ativacao:
-                if int(agente.id) == int(id_agente):
-                    salvar_dados_db(chave_ativacao, id_agente, payload, tipo, mensagem)
-                    registrar_atividade(chave_ativacao, id_agente, tipo)
-                    return {'status': 'sucesso'}, 200
-        return {'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}, 400
+            # Log dos campos recebidos
+            print(f"[INFO] Campos recebidos: {list(mensagem.keys())}")
+
+            chave_ativacao = mensagem.get('chave')
+            id_agente = mensagem.get('id')
+            tipo = mensagem.get('tipo')
+            payload = mensagem.get('payload')
+
+            # Validação dos campos obrigatórios
+            if not all([chave_ativacao, id_agente, tipo, payload]):
+                campos_faltantes = []
+                if not chave_ativacao: campos_faltantes.append('chave')
+                if not id_agente: campos_faltantes.append('id')
+                if not tipo: campos_faltantes.append('tipo')
+                if not payload: campos_faltantes.append('payload')
+                print(f"[ERRO] Campos obrigatórios faltando: {', '.join(campos_faltantes)}")
+                return {'status': 'falha', 'mensagem': f'Dados incompletos na requisição. Campos faltando: {", ".join(campos_faltantes)}'}, 400
+
+            try:
+                # Log do tamanho do payload
+                print(f"[INFO] Tamanho do payload antes da decodificação: {len(payload)} bytes")
+                
+                # Decodificar o payload
+                payload_decodificado = decrypt_base64(payload)
+                print(f"[INFO] Tamanho do payload após decodificação: {len(payload_decodificado)} bytes")
+                
+                # Tentar fazer parse do JSON
+                try:
+                    payload_json = json.loads(payload_decodificado)
+                    print(f"[INFO] Payload JSON parseado com sucesso")
+                except json.JSONDecodeError as e:
+                    print(f"[ERRO] Falha ao fazer parse do JSON: {str(e)}")
+                    return {'status': 'falha', 'mensagem': f'Erro ao decodificar JSON do payload: {str(e)}'}, 400
+                
+            except Exception as e:
+                print(f"[ERRO] Erro ao decodificar payload: {str(e)}")
+                return {'status': 'falha', 'mensagem': f'Erro ao decodificar payload: {str(e)}'}, 400
+
+            print(f"[INFO] Processando dados do agente {id_agente} (tipo: {tipo})")
+
+            # Verificar se o agente existe
+            agentes = Agentes.query.all()
+            agente_encontrado = False
+            
+            for agente in agentes:
+                if agente.chave == chave_ativacao and str(agente.id) == str(id_agente):
+                    agente_encontrado = True
+                    try:
+                        print(f"[INFO] Salvando dados no banco para agente {id_agente}")
+                        salvar_dados_db(chave_ativacao, id_agente, payload_decodificado, tipo, mensagem)
+                        print(f"[INFO] Registrando atividade para agente {id_agente}")
+                        registrar_atividade(chave_ativacao, id_agente, tipo)
+                        print(f"[INFO] Processamento concluído com sucesso para agente {id_agente}")
+                        return {'status': 'sucesso'}, 200
+                    except Exception as e:
+                        print(f"[ERRO] Erro ao processar dados: {str(e)}")
+                        import traceback
+                        print(f"[ERRO] Traceback: {traceback.format_exc()}")
+                        return {'status': 'falha', 'mensagem': f'Erro ao processar dados: {str(e)}'}, 500
+
+            if not agente_encontrado:
+                print(f"[ERRO] Agente não encontrado - ID: {id_agente}, Chave: {chave_ativacao}")
+                return {'status': 'falha', 'mensagem': 'Chave de ativação ou ID do agente não encontrado'}, 400
+
+        except Exception as e:
+            print(f"[ERRO] Erro ao processar requisição: {str(e)}")
+            import traceback
+            print(f"[ERRO] Traceback: {traceback.format_exc()}")
+            return {'status': 'falha', 'mensagem': f'Erro ao processar requisição: {str(e)}'}, 500
 
 # Rota para download de arquivos
 @api.route('/download/<arquivo>', methods=['GET'])

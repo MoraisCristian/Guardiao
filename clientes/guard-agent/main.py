@@ -4,7 +4,7 @@ import json
 import uuid
 import os
 import platform
-from config import ram, nome, chave_ativacao, codigos, SERVER_URL
+from config import ram, nome, chave_ativacao, codigos, SERVER_URL, force_config_sync
 from system_utils import detect_os_distribution, os_update, os_install, verificar_sudo_disponivel
 from ossec_manager import (
     verificar_ossec_instalado, verificar_chave_ossec_importada, 
@@ -15,6 +15,16 @@ from psad_manager import verificar_e_configurar_psad
 from network import enviar_mensagem, salvar_id, carregar_id, ping, res_ping, enviar_softwares, enviar_infos
 from utils import collect_softwares, collect_system_info, execute_script, vuln_scan
 from logger import log_info, log_warning, log_error, log_info, log_critical, log_exception
+
+def verificar_configuracao():
+    """Verifica e sincroniza a configuração antes de iniciar o agente"""
+    log_info("Verificando configuração do agente...")
+    config = force_config_sync()
+    if not config:
+        log_critical("Falha ao sincronizar configuração. Verifique os logs para mais detalhes.")
+        return False
+    log_info("Configuração sincronizada com sucesso.")
+    return True
 
 def registrar_agente():
     """Register agent with the server"""
@@ -238,6 +248,11 @@ def main():
     log_info("Iniciando agente Guardian...")
     
     try:
+        # Verificar e sincronizar configuração
+        if not verificar_configuracao():
+            log_critical("Falha na verificação da configuração. Saindo...")
+            return
+            
         # Load agent ID if exists
         id_agente = carregar_id()
         log_info(f'ID do agente carregado: {id_agente}')
@@ -262,6 +277,12 @@ def main():
         log_info("Iniciando loop principal do agente...")
         while True:
             try:
+                # Verificar configuração antes de cada ping
+                if not verificar_configuracao():
+                    log_warning("Falha ao sincronizar configuração. Tentando novamente em 60 segundos...")
+                    time.sleep(60)
+                    continue
+                    
                 log_info("Enviando ping para o servidor...")
                 ping_response = ping(id_agente)
                 
@@ -290,7 +311,7 @@ def main():
                                 
                             elif ping_data['fila'] == 'vuln-scan':
                                 log_info("Iniciando varredura de vulnerabilidades...")
-                                vuln_scan()
+                                vuln_scan(id_agente)
                                 
                             elif ping_data['fila'] == 'script' and 'script_name' in ping_data:
                                 log_info(f"Executando script: {ping_data['script_name']}")
@@ -312,8 +333,8 @@ def main():
                 log_exception(f"Erro no loop principal: {str(e)}")
                 
             # Sleep before next iteration
-            log_info("Aguardando 60 segundos antes do próximo ping...")
-            time.sleep(60)
+            log_info("Aguardando 15 segundos antes do próximo ping...")
+            time.sleep(15)
             
     except Exception as e:
         log_exception(f"Erro fatal no agente: {str(e)}")

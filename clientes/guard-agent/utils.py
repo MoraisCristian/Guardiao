@@ -329,7 +329,7 @@ def baixar_e_instalar_trivy():
         print(f'Falha ao baixar o binário {binario}. Status Code: {resposta.status_code}')
         return False
 
-def vuln_scan():
+def vuln_scan(id_agente=None):
     """Run vulnerability scan using Trivy"""
     if not verificar_trivy_instalado():
         print("Trivy não está instalado. Instalando...")
@@ -360,24 +360,69 @@ def vuln_scan():
         # Create a temporary file for the scan results
         output_file = 'vuln-scan.json'
         
-        # Run Trivy scan with limited scope for faster results
-        comando = ['trivy', 'fs', '--scanners', 'vuln', '--format', 'json', '-o', output_file, '/']
-        subprocess.run(comando, check=True)
+        # Diretórios a serem ignorados
+        skip_dirs = [
+            '/var/spool/postfix',  # Ignorar diretório do Postfix
+            '/proc',              # Ignorar diretório de processos
+            '/sys',              # Ignorar diretório do sistema
+            '/dev',              # Ignorar diretório de dispositivos
+            '/run',              # Ignorar diretório de runtime
+            '/tmp',              # Ignorar diretório temporário
+            '/var/run',          # Ignorar diretório de runtime
+            '/var/lock',         # Ignorar diretório de locks
+            '/var/cache',        # Ignorar diretório de cache
+            '/var/tmp'           # Ignorar diretório temporário
+        ]
+        
+        # Construir comando com diretórios ignorados
+        comando = ['trivy', 'fs', '--scanners', 'vuln', '--format', 'json', '-o', output_file]
+        for skip_dir in skip_dirs:
+            comando.extend(['--skip-dirs', skip_dir])
+        comando.append('/')
+        
+        print(f"Executando scan com Trivy: {' '.join(comando)}")
+        print(f"Diretórios ignorados: {', '.join(skip_dirs)}")
+        
+        # Executar o scan com timeout de 5 minutos
+        resultado = subprocess.run(comando, check=True, timeout=300, capture_output=True, text=True)
+        
+        print("Scan concluído com sucesso. Lendo resultados...")
+        print(f"Saída do Trivy: {resultado.stdout}")
         
         # Read the scan results
         with open(output_file, 'r') as file:
             vuln_data = json.load(file)
         
+        print(f"Resultados do scan carregados. Tamanho do arquivo: {len(json.dumps(vuln_data))} bytes")
+        print(f"Número de vulnerabilidades encontradas: {len(vuln_data.get('Results', []))}")
+        
         # Clean up
         try:
             os.remove(output_file)
-        except:
-            pass
+            print("Arquivo temporário removido com sucesso")
+        except Exception as e:
+            print(f"Erro ao remover arquivo temporário: {str(e)}")
             
         # Enviar os resultados para o servidor
-        enviar_vulns(os.environ.get('AGENT_ID'), vuln_data)
+        if id_agente:
+            print(f"Enviando resultados para o servidor (ID do agente: {id_agente})...")
+            if enviar_vulns(id_agente, vuln_data):
+                print("Resultados enviados com sucesso!")
+                return vuln_data
+            else:
+                print("Falha ao enviar resultados para o servidor")
+                return None
+        else:
+            print("ID do agente não fornecido. Impossível enviar resultados.")
+            return None
             
-        return vuln_data
+    except subprocess.TimeoutExpired:
+        print("Scan excedeu o tempo limite de 5 minutos")
+        return None
+    except subprocess.CalledProcessError as e:
+        print(f"Erro ao executar scan com Trivy: {str(e)}")
+        print(f"Saída de erro: {e.stderr}")
+        return None
     except Exception as e:
         print(f"Erro ao executar scan com Trivy: {str(e)}")
         return None

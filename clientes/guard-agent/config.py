@@ -2,6 +2,7 @@ import socket
 import json
 import os
 import sys
+import shutil
 from logger import log_info, log_warning, log_error, log_debug, log_exception
 
 # Global configuration variables
@@ -22,23 +23,46 @@ except Exception as e:
 codigos = {'registro': 1, 'ping': 2, 'upload': 3, 'ossec-register': 4}
 OSSEC_LOG_PATH = "/ossec/alerts.json"
 
+def force_config_sync():
+    """Força a sincronização do arquivo de configuração local com o principal"""
+    main_config_path = '/var/guardiao/guard_config.json'
+    local_config_path = os.path.join(os.path.dirname(__file__), 'guard_config.json')
+    
+    try:
+        if os.path.exists(main_config_path):
+            log_info(f"Arquivo de configuração principal encontrado: {main_config_path}")
+            
+            # Ler configuração do arquivo principal
+            with open(main_config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Garantir que o diretório local existe
+            os.makedirs(os.path.dirname(local_config_path), exist_ok=True)
+            
+            # Sobrescrever arquivo local com a configuração principal
+            with open(local_config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+            
+            log_info(f"Arquivo de configuração local atualizado com sucesso: {local_config_path}")
+            return config
+        else:
+            log_error(f"Arquivo de configuração principal não encontrado: {main_config_path}")
+            return None
+    except Exception as e:
+        log_exception(f"Erro ao sincronizar arquivos de configuração: {str(e)}")
+        return None
+
 # Load configuration from file
 def load_config():
-    config_path = 'guard_config.json'
-    try:
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-                log_info("Configuration loaded successfully from file")
-                return config
-        else:
-            log_error(f"Configuration file {config_path} not found.")
-            log_info("Please create a guard_config.json file with server_ip, server_port, and activation_key.")
-            sys.exit(1)
-    except Exception as e:
-        log_exception(f"Error loading configuration file")
-        log_error("Please ensure guard_config.json is properly formatted.")
+    """Carrega a configuração do arquivo principal e sincroniza com o local"""
+    # Forçar sincronização dos arquivos de configuração
+    config = force_config_sync()
+    
+    if not config:
+        log_error("Falha ao carregar configuração. Verifique os logs para mais detalhes.")
         sys.exit(1)
+    
+    return config
 
 # Load configuration
 config = load_config()
@@ -46,39 +70,21 @@ config = load_config()
 # Set configuration values
 chave_ativacao = config.get("activation_key", "")
 if not chave_ativacao:
-    log_error("No activation key found in configuration file.")
-    log_info("Please add an activation_key to guard_config.json.")
+    log_error("Chave de ativação não encontrada no arquivo de configuração.")
+    log_info("Por favor, adicione uma activation_key ao guard_config.json.")
     sys.exit(1)
 
 server_ip = config.get("server_ip", "")
 if not server_ip:
-    log_error("No server IP found in configuration file.")
-    log_info("Please add a server_ip to guard_config.json.")
+    log_error("IP do servidor não encontrado no arquivo de configuração.")
+    log_info("Por favor, adicione um server_ip ao guard_config.json.")
     sys.exit(1)
 
 server_port = config.get("server_port", "")
 if not server_port:
-    log_error("No server port found in configuration file.")
-    log_info("Please add a server_port to guard_config.json.")
+    log_error("Porta do servidor não encontrada no arquivo de configuração.")
+    log_info("Por favor, adicione um server_port ao guard_config.json.")
     sys.exit(1)
-
-# Server URL
-# Precisamos verificar como a URL do servidor está definida
-# e garantir que todas as chamadas de API incluam o prefixo /api/
-
-# Exemplo de modificação (o conteúdo exato dependerá do arquivo atual)
-import os
-import json
-
-# Carregar configurações do arquivo JSON
-config_file = os.path.join(os.path.dirname(__file__), 'guard_config.json')
-with open(config_file, 'r') as f:
-    config = json.load(f)
-
-# Configurações do servidor
-server_ip = config.get('server_ip', '127.0.0.1')
-server_port = config.get('server_port', '5000')
-chave_ativacao = config.get('activation_key', '')
 
 # Construir URL base com prefixo /api/
 BASE_URL = f"http://{server_ip}:{server_port}"
@@ -86,6 +92,4 @@ API_URL = f"{BASE_URL}/api"  # Adicionar prefixo /api/
 SERVER_URL = API_URL  # Para compatibilidade com código existente
 
 # Outras configurações
-nome = os.environ.get('HOSTNAME', None)
 ram = "512M"
-codigos = {}

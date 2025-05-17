@@ -27,27 +27,113 @@ import json
 @blueprint.route('/index')
 @login_required
 def index():
-    # Busque todas as chaves e agentes do banco de dados
+    # Dados básicos
     chaves = Chaves.query.all()
     agentes = Agentes.query.all()
     vulns = Vulnerabilidades.query.all()
-    vulns_criticas = 0
-    for vuln in vulns:
-        if vuln.severity == 'critical':
-            vulns_criticas += 1
-
-    # Inicialize contadores
-    total_keys = len(chaves)
-    total_agents = len(agentes)
+    
+    # Contagem de vulnerabilidades por severidade
+    vulns_criticas = len([v for v in vulns if v.severity.lower() == 'critical'])
+    vulns_altas = len([v for v in vulns if v.severity.lower() == 'high'])
+    vulns_medias = len([v for v in vulns if v.severity.lower() == 'medium'])
+    vulns_baixas = len([v for v in vulns if v.severity.lower() == 'low'])
+    vulns_info = len([v for v in vulns if v.severity.lower() == 'info'])
     total_vulns = len(vulns)
-    agents_per_key = {}
 
-    # Percorra cada chave no banco de dados
-    for chave in chaves:
-        # Conte o número de agentes para esta chave
-        agents_per_key[chave.nome] = len([agente for agente in agentes if agente.chave == chave.chave])
+    # Top 10 ativos mais vulneráveis
+    ativos_vulneraveis = {}
+    for vuln in vulns:
+        if vuln.id_agente not in ativos_vulneraveis:
+            ativos_vulneraveis[vuln.id_agente] = {
+                'total': 0,
+                'criticas': 0,
+                'altas': 0,
+                'hostname': Infos.query.filter_by(id_agente=vuln.id_agente).first().hostname if Infos.query.filter_by(id_agente=vuln.id_agente).first() else 'Desconhecido'
+            }
+        ativos_vulneraveis[vuln.id_agente]['total'] += 1
+        if vuln.severity.lower() == 'critical':
+            ativos_vulneraveis[vuln.id_agente]['criticas'] += 1
+        elif vuln.severity.lower() == 'high':
+            ativos_vulneraveis[vuln.id_agente]['altas'] += 1
 
-    return render_template('home/index.html', segment='index', API_GENERATOR=len(API_GENERATOR), total_keys=total_keys, agents_per_key=agents_per_key, total_agents=total_agents, vulns_criticas=vulns_criticas, total_vulns=total_vulns)
+    top_10_ativos = sorted(ativos_vulneraveis.items(), key=lambda x: x[1]['total'], reverse=True)[:10]
+
+    # Top 10 vulnerabilidades mais críticas
+    vulns_criticas_list = [v for v in vulns if v.severity and v.severity.lower() == 'critical']
+    top_10_vulns_criticas = []
+    for v in sorted(vulns_criticas_list, key=lambda x: x.cvss.get('nvd', {}).get('V3Score', 0) if x.cvss and isinstance(x.cvss, dict) else 0, reverse=True)[:10]:
+        info = Infos.query.filter_by(id_agente=v.id_agente).first()
+        top_10_vulns_criticas.append({
+            'title': v.title,
+            'cve_id': v.cve_id,
+            'severity': v.severity,
+            'cvss_score': v.cvss.get('nvd', {}).get('V3Score', '-') if v.cvss and isinstance(v.cvss, dict) else '-',
+            'hostname': info.hostname if info else 'Desconhecido'
+        })
+
+    # Fila de atividades e atividades realizadas
+    fila_atividades = Fila.query.order_by(Fila.data_registro.desc()).limit(10).all()
+    atividades_realizadas = Atividades.query.order_by(Atividades.data_contato.desc()).limit(10).all()
+
+    # Distribuição de sistemas operacionais
+    sistemas_operacionais = {}
+    for agente in agentes:
+        info = Infos.query.filter_by(id_agente=agente.id).first()
+        if info and info.os_info:
+            if info.os_info not in sistemas_operacionais:
+                sistemas_operacionais[info.os_info] = 0
+            sistemas_operacionais[info.os_info] += 1
+
+    # Dados de vulnerabilidades web
+    web_vulns = {
+        'critical': 0,
+        'high': 0,
+        'medium': 0,
+        'low': 0,
+        'info': 0
+    }
+    
+    urls_vulneraveis = {}
+    
+    # Buscar todos os resultados de scan
+    scan_results = ScanResult.query.all()
+    for result in scan_results:
+        try:
+            with open(f'/var/webscan_results/scans/{result.filename}', 'r') as f:
+                raw_vulns = json.load(f)
+                for item in raw_vulns:
+                    info = item.get('info', {})
+                    severity = info.get('severity', '').lower()
+                    if severity in web_vulns:
+                        web_vulns[severity] += 1
+                    
+                    # Contagem por URL
+                    if result.url not in urls_vulneraveis:
+                        urls_vulneraveis[result.url] = 0
+                    urls_vulneraveis[result.url] += 1
+        except Exception as e:
+            print(f"Erro ao ler arquivo {result.filename}: {str(e)}")
+
+    # Top 10 URLs mais vulneráveis
+    top_10_urls = sorted(urls_vulneraveis.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    return render_template('home/index.html',
+                         segment='index',
+                         total_keys=len(chaves),
+                         total_agents=len(agentes),
+                         total_vulns=total_vulns,
+                         vulns_criticas=vulns_criticas,
+                         vulns_altas=vulns_altas,
+                         vulns_medias=vulns_medias,
+                         vulns_baixas=vulns_baixas,
+                         vulns_info=vulns_info,
+                         top_10_ativos=top_10_ativos,
+                         top_10_vulns_criticas=top_10_vulns_criticas,
+                         fila_atividades=fila_atividades,
+                         atividades_realizadas=atividades_realizadas,
+                         sistemas_operacionais=sistemas_operacionais,
+                         web_vulns=web_vulns,
+                         top_10_urls=top_10_urls)
 
 
 @blueprint.route('/guardioes', methods=['GET', 'POST'])

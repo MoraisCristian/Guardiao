@@ -4,6 +4,7 @@
 <!-- Specific CSS goes HERE -->
 {% block stylesheets %}
 <!-- Importação global do CSS customizado -->
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
 {% endblock stylesheets %} {% block content %}
 
 <div class="container-fluid py-4">
@@ -194,6 +195,243 @@
     </div>
   </div>
 
+  <!-- Gráficos -->
+  <div class="row mt-4">
+    <div class="col-lg-6 mb-lg-0 mb-4">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="chart">
+            <canvas id="os-chart" class="chart-canvas" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="chart">
+            <canvas id="severity-chart" class="chart-canvas" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabelas de Vulnerabilidades -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>Top 10 Ativos Mais Vulneráveis</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Hostname</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Total Vulns</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Críticas</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Altas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for id_agente, data in top_10_ativos %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{data.hostname}}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{data.total}}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-danger">{{data.criticas}}</span>
+                  </td>
+                  <td class="align-middle text-center">
+                    <span class="badge badge-sm bg-gradient-warning">{{data.altas}}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela das 10 Vulnerabilidades Mais Críticas -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>Top 10 Vulnerabilidades Críticas</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>CVE</th>
+                  <th>Severidade</th>
+                  <th>CVSS</th>
+                  <th>Ativo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in top_10_vulns_criticas %}
+                <tr>
+                  <td>{{ v.title }}</td>
+                  <td>{{ v.cve_id }}</td>
+                  <td>{{ v.severity }}</td>
+                  <td>{{ v.cvss_score }}</td>
+                  <td>{{ v.hostname }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">Nenhuma vulnerabilidade crítica encontrada.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vulnerabilidades Web -->
+  <div class="row mt-4">
+    <div class="col-lg-6 mb-lg-0 mb-4">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="chart">
+            <canvas id="web-vulns-chart" class="chart-canvas" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6>Top 10 URLs Mais Vulneráveis</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">URL</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Total Vulns</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for url, count in top_10_urls %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{url}}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle text-center">
+                    <span class="badge badge-sm bg-gradient-danger">{{count}}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila e Atividades -->
+  <div class="row mt-4">
+    <div class="col-lg-6 mb-lg-0 mb-4">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6>Fila de Atividades</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Agente</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Atividade</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for atividade in fila_atividades %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{atividade.id_agente}}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{atividade.fila}}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-info">{{atividade.data_registro.strftime('%d/%m/%Y %H:%M')}}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6>Atividades Realizadas</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Agente</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Atividade</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for atividade in atividades_realizadas %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{atividade.id_agente}}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{atividade.atividade}}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-success">{{atividade.data_contato.strftime('%d/%m/%Y %H:%M')}}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   {% include "includes/footer.html" %}
 </div>
@@ -202,6 +440,108 @@
 
 <!-- Specific JS goes HERE -->
 {% block javascripts %}
-<!-- Importação global do JS customizado -->
-<script src="{{ url_for('static', filename='assets/js/hightech-theme.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+  // Gráfico de Sistemas Operacionais
+  const osCtx = document.getElementById('os-chart').getContext('2d');
+  new Chart(osCtx, {
+    type: 'doughnut',
+    data: {
+      labels: {{ sistemas_operacionais.keys() | list | tojson }},
+      datasets: [{
+        data: {{ sistemas_operacionais.values() | list | tojson }},
+        backgroundColor: [
+          '#e91e63',
+          '#3a416f',
+          '#1a2035',
+          '#344767',
+          '#67748e'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        title: {
+          display: true,
+          text: 'Distribuição de Sistemas Operacionais'
+        }
+      }
+    }
+  });
+
+  // Gráfico de Severidade
+  const severityCtx = document.getElementById('severity-chart').getContext('2d');
+  new Chart(severityCtx, {
+    type: 'radar',
+    data: {
+      labels: ['Críticas', 'Altas', 'Médias', 'Baixas', 'Info'],
+      datasets: [{
+        label: 'Vulnerabilidades',
+        data: [
+          {{ vulns_criticas }},
+          {{ vulns_altas }},
+          {{ vulns_medias }},
+          {{ vulns_baixas }},
+          {{ vulns_info }}
+        ],
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        title: {
+          display: true,
+          text: 'Distribuição de Severidade'
+        }
+      }
+    }
+  });
+
+  // Gráfico de Vulnerabilidades Web
+  const webVulnsCtx = document.getElementById('web-vulns-chart').getContext('2d');
+  new Chart(webVulnsCtx, {
+    type: 'pie',
+    data: {
+      labels: ['Críticas', 'Altas', 'Médias', 'Baixas', 'Info'],
+      datasets: [{
+        data: [
+          {{ web_vulns.critical }},
+          {{ web_vulns.high }},
+          {{ web_vulns.medium }},
+          {{ web_vulns.low }},
+          {{ web_vulns.info }}
+        ],
+        backgroundColor: [
+          '#e91e63',
+          '#ff9800',
+          '#ffc107',
+          '#4caf50',
+          '#2196f3'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        title: {
+          display: true,
+          text: 'Vulnerabilidades Web por Severidade'
+        }
+      }
+    }
+  });
+</script>
 {% endblock javascripts %}
