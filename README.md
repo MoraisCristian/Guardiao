@@ -1,10 +1,6 @@
 # Guardião
-  
-**Plataforma Brasileira de CyberSec de Código Aberto**
 
-**Modelo Purple Team Integrado**
-
-**Scanners Passivos/Ativos | Monitoramento | Resposta Ativa**
+**Scanners Passivos/Ativos | Monitoramento | Resposta Ativa | Gestão de Vulnerabilidades**
 
 > ⚠️ **Aviso de Segurança**: Este projeto está em desenvolvimento ativo e contém vulnerabilidades conhecidas. Seu uso é recomendado **apenas para testes em ambientes controlados**, não para produção. Contribuições são bem-vindas para fortalecer a segurança da plataforma.
 
