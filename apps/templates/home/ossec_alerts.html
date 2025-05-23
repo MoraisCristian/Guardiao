@@ -81,53 +81,38 @@
                   </form>
                 </tr>
                 <tr>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Timestamp
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Nível
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Regra
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Descrição
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    IP de Origem
-                  </th>
-                  <th class="align-middle text-center text-uppercase text-secondary text-sm font-weight-bolder">
-                    Detalhes
-                  </th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Timestamp</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Nível</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Regra</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Descrição</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">IP de Origem</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Detalhes</th>
                 </tr>
               </thead>
               <tbody>
                 {% for alert in alerts %}
-                <!-- In the table body section -->
-                                <tr>
-                                  <td class="align-middle text-center">
-                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('timestamp', 'N/A') }}</p>
-                                  </td>
-                                  <td class="align-middle text-center">
-                                    <p class="text-xs font-weight-bold mb-0">
-                                      {{ alert.get('level', 'N/A') }}
-                                    </p>
-                                  </td>
-                                  <td class="align-middle text-center">
-                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('rule', 'N/A') }}</p>
-                                  </td>
-                                  <td class="align-middle text-center description-cell">
-                                    <p class="text-xs font-weight-bold mb-0" title="{{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}">
-                                      {{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}
-                                    </p>
-                                  </td>
-                                  <td class="align-middle text-center">
-                                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('src_ip', 'N/A') }}</p>
-                                  </td>
-                                  <td class="align-middle text-center">
-                                    <button type="button" class="btn btn-sm btn-level-{{ alert.get('level', '0').strip() }}" data-bs-toggle="modal" data-bs-target="#alertModal{{ loop.index }}">
-                                      Ver Detalhes
-                                    </button>
+                <tr>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('timestamp', 'N/A') }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('level', 'N/A') }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('rule', 'N/A') }}</p>
+                  </td>
+                  <td class="description-cell">
+                    <p class="text-xs font-weight-bold mb-0" title="{{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}">
+                      {{ alert.get('description', 'N/A') }} {{ alert.get('full_log', 'Detalhes não disponíveis').split('->')[-1] }}
+                    </p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ alert.get('src_ip', 'N/A') }}</p>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-level-{{ alert.get('level', '0').strip() }}" data-bs-toggle="modal" data-bs-target="#alertModal{{ loop.index }}">
+                      Ver Detalhes
+                    </button>
                     
                     <!-- Modal for alert details -->
                     <div class="modal fade" id="alertModal{{ loop.index }}" tabindex="-1" aria-labelledby="alertModalLabel{{ loop.index }}" aria-hidden="true">

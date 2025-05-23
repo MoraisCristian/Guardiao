@@ -49,29 +49,39 @@
             <table class="table align-items-center mb-0">
               <thead>
                 <tr>
-                  <th>Título</th>
-                  <th>Severidade</th>
-                  <th>CVSS-Score</th>
-                  <th>CWE</th>
-                  <th>Tags</th>
-                  <th>Vuln JSON</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Título</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Severidade</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">CVSS-Score</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">CWE</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Tags</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Vuln JSON</th>
                 </tr>
               </thead>
               <tbody>
                 {% for v in vulns %}
                 <tr>
-                  <td>{{ v.title }}</td>
-                  <td>{{ v.severity|capitalize }}</td>
-                  <td>{{ v.cvss_score or '-' }}</td>
                   <td>
-                    {% if v.cwe %}
-                      {% if v.cwe is string %}{{ v.cwe }}{% else %}{{ v.cwe|join(', ') }}{% endif %}
-                    {% else %}-{% endif %}
+                    <p class="text-xs font-weight-bold mb-0">{{ v.title }}</p>
                   </td>
                   <td>
-                    {% if v.tags %}
-                      {% if v.tags is string %}{{ v.tags }}{% else %}{{ v.tags|join(', ') }}{% endif %}
-                    {% else %}-{% endif %}
+                    <p class="text-xs font-weight-bold mb-0">{{ v.severity|capitalize }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ v.cvss_score or '-' }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">
+                      {% if v.cwe %}
+                        {% if v.cwe is string %}{{ v.cwe }}{% else %}{{ v.cwe|join(', ') }}{% endif %}
+                      {% else %}-{% endif %}
+                    </p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">
+                      {% if v.tags %}
+                        {% if v.tags is string %}{{ v.tags }}{% else %}{{ v.tags|join(', ') }}{% endif %}
+                      {% else %}-{% endif %}
+                    </p>
                   </td>
                   <td>
                     <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#jsonModal{{ loop.index }}">

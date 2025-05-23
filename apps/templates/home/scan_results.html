@@ -30,24 +30,36 @@
             <table class="table align-items-center mb-0">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Scan</th>
-                  <th>URL</th>
-                  <th>Arquivo</th>
-                  <th>Status</th>
-                  <th>Data</th>
-                  <th>Ações</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">ID</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Scan</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">URL</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Arquivo</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Data</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {% for r in results %}
                 <tr>
-                  <td>{{ r.id }}</td>
-                  <td>{{ r.scan.nome if r.scan else '-' }}</td>
-                  <td>{{ r.url }}</td>
-                  <td>{{ r.filename }}</td>
-                  <td>{{ r.status }}</td>
-                  <td>{{ r.created_at.strftime('%d/%m/%Y %H:%M') if r.created_at else '-' }}</td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.id }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.scan.nome if r.scan else '-' }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.url }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.filename }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.status }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ r.created_at.strftime('%d/%m/%Y %H:%M') if r.created_at else '-' }}</p>
+                  </td>
                   <td>
                     <a href="{{ url_for('home_blueprint.scan_result_detail', result_id=r.id) }}" class="btn btn-primary btn-sm">Ver Detalhes</a>
                   </td>
