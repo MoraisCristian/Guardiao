@@ -22,11 +22,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Trivy
-        run: |
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_Linux-64bit.deb
-          sudo dpkg -i trivy_Linux-64bit.deb
-
       - name: Run Trivy FS scan
-        run: |
-          trivy fs --exit-code 1 --severity HIGH,CRITICAL --scanners vuln,secret,config . > trivy-report.txt
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          trivy-config: trivy.yaml
