@@ -10,14 +10,12 @@ on:
 
 jobs:
   gitleaks:
-    name: GitLeaks
+    name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+      - uses: actions/checkout@v4
         with:
-          scan_args: detect --source . --report-format json --report-path gitleaks-report.json
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
