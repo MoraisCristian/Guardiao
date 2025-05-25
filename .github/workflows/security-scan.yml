@@ -9,13 +9,26 @@ on:
       - main
 
 jobs:
-  gitleaks:
-    name: gitleaks
+  security:
+    name: Security Scans
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+
+      - name: Run Trivy FS scan
+        run: |
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL --scanners vuln,secret,config . > trivy-report.txt
