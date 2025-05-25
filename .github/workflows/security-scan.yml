@@ -24,9 +24,3 @@ jobs:
 
       - name: Run GitLeaks
         run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
-
-      - name: Upload GitLeaks report
-        uses: actions/upload-artifact@v2
-        with:
-          name: gitleaks-report
-          path: gitleaks-report.json
